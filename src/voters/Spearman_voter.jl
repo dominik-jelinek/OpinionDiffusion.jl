@@ -75,19 +75,18 @@ function spearman_encoding(vote, weights)
     return opinion
 end
 =#
-function step!(voter::Spearman_voter, graph, voters, vertexDiffConfig)
-    neighbors_ = neighbors(graph, voter)
+function step!(self::Spearman_voter, voters, graph, voter_diff_config)
+    neighbors_ = neighbors(graph, self.ID)
     if length(neighbors_) == 0
         return
     end
         
-    self = voters[voter]
     neighbor_id = neighbors_[rand(1:end)]
     neighbor = voters[neighbor_id]
 
-    if vertexDiffConfig["method"] == "averageOne"
+    if voter_diff_config["method"] == "averageOne"
         average_one!(self, neighbor)
-    elseif vertexDiffConfig["method"] == "averageAll"
+    elseif voter_diff_config["method"] == "averageAll"
         average_all!(self, neighbor)
     else
         error("Unknown vertex diffusion method, [averageOne | averageAll]")
@@ -95,7 +94,7 @@ function step!(voter::Spearman_voter, graph, voters, vertexDiffConfig)
 end
 
 function average_all!(voter_1::Spearman_voter, voter_2::Spearman_voter)
-    distance = (voter_1 - voter_2) / 2
+    distance = (voter_1.opinion - voter_2.opinion) / 2
         
     if rand() < 0.5 # could be a parameter
         # attract
@@ -109,7 +108,7 @@ function average_all!(voter_1::Spearman_voter, voter_2::Spearman_voter)
 end
 
 function average_one!(voter_1::Spearman_voter, voter_2::Spearman_voter)
-    can = rand(1:length(voter_1))
+    can = rand(1:length(voter_1.opinion))
     distance = (voter_1.opinion[can] - voter_2.opinion[can]) / 2
         
     if rand() < 0.5 # could be a parameter

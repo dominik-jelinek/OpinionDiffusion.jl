@@ -54,7 +54,7 @@ end
 function init_graph(vert_count::Int, edges::Vector{LightGraphs.SimpleGraphs.SimpleEdge{Int64}})
    g = SimpleGraphFromIterator(edges)
    
-   add_vertices!(g, vert_count - length(edges))
+   add_vertices!(g, vert_count - nv(g))
    
    return g
 end

@@ -48,16 +48,16 @@ function init_voters(election, weights, openmindedness_distr, stubbornness_distr
     return voters
 end
 
-function graph_diffusion!(model, edgeDiffConfig)
-    edgeDiffFunc = parse_function(edgeDiffConfig["edgeDiffFunc"])
-    distMetric = parse_metric(edgeDiffConfig["distMetric"])
+function graph_diffusion!(model, edge_diff_config)
+    edge_diff_func = parse_function(edge_diff_config["edge_diff_func"])
+    dist_metric = parse_metric(edge_diff_config["dist_metric"])
     
-    n = edgeDiffConfig["evolveEdges"]
+    n = edge_diff_config["evolve_edges"]
     start = rand(1:length(model.voters), n)
     finish = rand(1:length(model.voters), n)
 
     for i in 1:n
-        edge_diffusion!(voters[start[i]], voters[finish[i]], model.social_network, edgeDiffFunc, distMetric)
+        edge_diffusion!(model.voters[start[i]], model.voters[finish[i]], model.social_network, edge_diff_func, dist_metric)
     end
 end
 

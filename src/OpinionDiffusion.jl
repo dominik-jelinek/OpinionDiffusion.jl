@@ -41,4 +41,5 @@ include("experiment/Experiment.jl")
 export parse_data2
 export Spearman_model
 export Experiment
+export run_experiment!
 end

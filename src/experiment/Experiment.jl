@@ -30,6 +30,7 @@ function Experiment(model, parties, candidates, exp_config)
     exp_dir = "$(model.log_dir)/experiment_$(model.exp_counter[1])"
     mkpath(exp_dir)
     YAML.write_file("$(exp_dir)/exp_config.yml", exp_config)
+    jldsave("$(exp_dir)/model_0.jld2"; model)
     diff_counter = [1]
     model.exp_counter[1] += 1
 
@@ -57,7 +58,7 @@ function run_experiment!(experiment, diffusion_config)
     for i in 1:diffusion_config["diffusions"]
         diffusion!(experiment.model, diffusion_config)
         
-        update_metrics!(experiment.model)
+        update_metrics!(experiment)
         
         #cluster_labels, clusters = clustering(sampled_opinions, candidates, parties, exp_config["clustering_config"])
         #projections = reduceDim(sampled_opinions, expConfig["reduceDimConfig"])
@@ -65,13 +66,13 @@ function run_experiment!(experiment, diffusion_config)
         #    visualizeVoters(sampled_opinions, sampled_voters, candidates, parties, exp_config, exp_dir * "/images", diff_counter)      
         #end
 
-        if i % diffusion_config["checkpoint"]
-            log(experiment.model)
+        if i % diffusion_config["checkpoint"] == 0
+            log(experiment)
         end
         experiment.diff_counter[1] += 1
     end
 
-    jldsave("$(exp_dir)/diffusion_metrics.jld2"; experiment.diffusion_metrics)
+    jldsave("$(experiment.exp_dir)/diffusion_metrics.jld2"; experiment.diffusion_metrics)
     return experiment.diffusion_metrics
 end
 
@@ -80,7 +81,7 @@ function Spearman_metrics(voters, social_network, can_count)
     dict = degree_histogram(social_network)
     keyss = collect(keys(dict))
     votes = get_votes(voters)
-    
+
     return Spearman_metrics([minimum(keyss)], 
                             [ne(social_network) * 2 / nv(social_network)], 
                             [maximum(keyss)], 
@@ -89,17 +90,23 @@ function Spearman_metrics(voters, social_network, can_count)
                             [copeland_voting(votes, can_count)])
 end
 
-function update_metrics!(model::Spearman_model)
-    dict = degree_histogram(model.social_network)
+function update_metrics!(experiment::Experiment)
+    social_network = experiment.model.social_network
+    diffusion_metrics = experiment.diffusion_metrics
+    can_count = length(experiment.candidates)
+
+    dict = degree_histogram(social_network)
     keyss = collect(keys(dict))
-    push!(metrics.min_degrees, minimum(keyss))
-    push!(metrics.avg_degrees, ne(model.social_network) * 2 / nv(model.social_network))
-    push!(metrics.max_degrees, maximum(keyss))
+    push!(diffusion_metrics.min_degrees, minimum(keyss))
+    push!(diffusion_metrics.avg_degrees, ne(social_network) * 2 / nv(social_network))
+    push!(diffusion_metrics.max_degrees, maximum(keyss))
     
-    votes = get_votes(model.voters)
-    push!(metrics.plurality_votings, plurality_voting(votes, can_count, true))
-    push!(metrics.borda_votings, borda_voting(votes, can_count, true))
-    push!(metrics.copeland_votings, copeland_voting(votes, can_count))
+    votes = get_votes(experiment.model.voters)
+    push!(diffusion_metrics.plurality_votings, plurality_voting(votes, can_count, true))
+    push!(diffusion_metrics.borda_votings, borda_voting(votes, can_count, true))
+    push!(diffusion_metrics.copeland_votings, copeland_voting(votes, can_count))
  end
 
- 
+function log(experiment::Experiment)
+    jldsave("$(experiment.exp_dir)/model_$(experiment.diff_counter[1]).jld2"; experiment.model)
+end
