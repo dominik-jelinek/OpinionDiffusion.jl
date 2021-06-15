@@ -44,35 +44,6 @@ function evolvePrefs!(g, encodedDB, vertexDiffConfig)
     end
 end
 
-function averageAll!(voter1, voter2)
-    distance = (voter1 - voter2) / 2
-        
-    if rand() < 0.5 # could be a parameter
-        # attract
-        voter1 .-= distance # * (1 - voter1.stubbornness)
-        voter2 .+= distance # * (1 - voter2.stubbornness)
-    else
-        # repel
-        voter1 .+= distance # * (1 - voter1.stubbornness)
-        voter2 .-= distance # * (1 - voter2.stubbornness)
-    end
-end
-
-function averageOne!(voter1, voter2)
-    can = rand(1:length(voter1))
-    distance = (voter1[can] - voter2[can]) / 2
-        
-    if rand() < 0.5 # could be a parameter
-        # attract
-        voter1[can] -= distance # * (1 - voter1.stubbornness)
-        voter2[can] += distance # * (1 - voter2.stubbornness)
-    else
-        # repel
-        voter1[can] += distance # * (1 - voter1.stubbornness)
-        voter2[can] -= distance # * (1 - voter2.stubbornness)
-    end
-end
-
 #=
 function evolvePrefs!(g, database, encodedDB, distances, vertexDiffConfig)
     vertexes = rand(1:size(database, 2), vertexDiffConfig["evolveVertices"])

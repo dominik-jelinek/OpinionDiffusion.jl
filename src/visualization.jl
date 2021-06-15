@@ -29,49 +29,6 @@ function visualize_voters(projections, clusters, dim_red_method, clust_method, e
     display(plot)
 end
 
-function visualize_metrics(election, timesteps::Vector{Metrics}, log_dir=Nothing)
-    println("Analysis:")
-    println()
-    println("Candidates: ", size(database, 1))
-    println("Voters: ", size(database, 2))
- 
-    averagePrefLengths = drawStat([step.averagePrefLength for step in steps], "Average pref. lengths")
-    averageDistances = drawStat([step.averageDistance for step in steps], "Average distances")
-    longestDistances = drawStat([step.longestDistance for step in steps], "Longest distances")
-    edgeCounts = drawStat([step.edgeCount for step in steps], "Edge counts")
-    
-    #prefLengthDist = drawPrefLengthDistribution(database)
-    #degreeDist = drawDegreeDistribution(g)
-    plots = plot(averagePrefLengths, averageDistances, longestDistances, edgeCounts, layout = (2, 2), size = (980,1200))
-    if logdir != Nothing
-       savefig(plots, "$(logdir)/statistics.png")
-    end
-    display(plots)
-end
- 
-function visualize_voting_rules(candidates, parties, steps::Vector{Metrics}, logdir=Nothing)
-    #stackedResult = drawElectionResult(candidates, parties, getElectionResult(database))
- 
-    plurality = zeros(Float64, length(candidates), length(steps))
-    for i in 1:length(steps)
-       plurality[:, i] .= steps[i].pluralityVoting
-    end
- 
-    borda = zeros(Float64, length(candidates), length(steps))
-    for i in 1:length(steps)
-       borda[:, i] .= steps[i].bordaVoting
-    end
- 
-    plurality = drawVotingResult(candidates, parties, plurality', "Plurality count")
-    borda = drawVotingResult(candidates, parties, borda', "Borda count")
-    
-    plots = plot(plurality, borda, layout = (1, 2), size = (1000,500))
-    if logdir != Nothing
-       savefig(plots, "$(logdir)/elections.png")
-    end
-    display(plots)
-end
-
 function reduce_dim(sampled_opinions, reduce_dim_Config)
     if reduce_dim_Config["method"] == "PCA"
         config = reduce_dim_Config["PCA"]
@@ -88,6 +45,41 @@ function reduce_dim(sampled_opinions, reduce_dim_Config)
     return projection
 end
 
+function visualize_metrics(experiment)
+    metrics = experiment.diffusion_metrics
+    degrees = draw_range(metrics.min_degrees, metrics.avg_degrees, metrics.max_degrees, title="Degree range", xlabel="Diffusions", ylabel="Degree", value_label="avg")
+
+    plurality = drawVotingResult(experiment.candidates, experiment.parties, reduce(hcat, metrics.plurality_votings)', "Plurality voting")
+    borda = drawVotingResult(experiment.candidates, experiment.parties, reduce(hcat, metrics.borda_votings)', "Borda voting")
+    copeland = drawVotingResult(experiment.candidates, experiment.parties, reduce(hcat, metrics.copeland_votings)', "Copeland voting")
+
+    plots = plot(degrees, plurality, borda, copeland, layout = (2, 2), size = (980,1200))
+    
+    savefig(plots, "$(experiment.exp_dir)/images/metrics.png")
+    display(plots)
+end
+
+function draw_range(min, value, max; title, xlabel, ylabel, value_label)
+    degrees = plot(1:length(min), min, fillrange = max, fillalpha = 0.25, c = 1, linewidth = 3, 
+    label = "range", legend = :topleft, title=title, xlabel=xlabel, ylabel=ylabel)
+    
+    plot!(degrees, 1:length(value), value, linewidth = 3, label = value_label)
+    
+    return degrees
+end
+
+function draw_metric(values, title::String)
+    plot(values,
+    title=title,
+    xlabel="Diffusions",
+    ylabel="Value",
+    xticks=(1:length(values)),
+    linewidth = 3,
+    legend = true,
+    yformatter = :plain
+    )
+end
+
 function drawDegreeDistribution(g)
     dict = degree_histogram(g)
     keyss = collect(keys(dict))
@@ -102,28 +94,18 @@ function drawDegreeDistribution(g)
              xlabel = "Num. of edges")
  end
  
- function drawStat(values, title::String)
-    plot(values,
-    title=title,
-    xlabel="Steps",
-    ylabel="Value",
-    xticks=(1:length(values)),
-    linewidth = 3,
-    legend = true,
-    yformatter = :plain
-    )
- end
+
  
  function drawVotingResult(candidates, parties, result, title::String)
+    names = [candidate.name * " - " * parties[candidate.party] for candidate in candidates]
     plot(result,
     title=title,
-    xlabel="Steps",
+    xlabel="Diffusions",
     ylabel="Percentage",
-    xticks=(1:size(result, 2)),
-    #yticks=(1:size(result,1)),
-    label = [candidate.name * "-" * parties[candidate.party] for candidate in candidates],
+    xticks=(1:size(result, 1)),
+    label = reshape(names, 1, length(names)),
     linewidth = 3,
-    legend = true,
+    legend = false,
     yformatter = :plain
     )
  end

@@ -48,8 +48,7 @@ function Experiment(model, parties, candidates, exp_config)
 
     metrics = Spearman_metrics(model.voters, model.social_network, length(candidates))
 
-    #visualize_voters(projections, clusters, expConfig["reduceDimConfig"]["method"], expConfig["clusteringConfig"]["method"], expDir, counter)
-    #visualizeVoters(model.voters([sampled_voter_ids]), candidates, parties, expConfig, expDir * "/images", 0)
+    
 
     return Experiment(model, parties, candidates, sampled_voter_ids, metrics, exp_dir, diff_counter)
 end
@@ -65,6 +64,8 @@ function run_experiment!(experiment, diffusion_config)
         #if expConfig["reduce_dim_config"]["used"]
         #    visualizeVoters(sampled_opinions, sampled_voters, candidates, parties, exp_config, exp_dir * "/images", diff_counter)      
         #end
+        #visualize_voters(projections, clusters, expConfig["reduceDimConfig"]["method"], expConfig["clusteringConfig"]["method"], expDir, counter)
+        #visualizeVoters(model.voters([sampled_voter_ids]), candidates, parties, expConfig, expDir * "/images", 0)
 
         if i % diffusion_config["checkpoint"] == 0
             log(experiment)
@@ -73,7 +74,6 @@ function run_experiment!(experiment, diffusion_config)
     end
 
     jldsave("$(experiment.exp_dir)/diffusion_metrics.jld2"; experiment.diffusion_metrics)
-    return experiment.diffusion_metrics
 end
 
 
