@@ -1,0 +1,4 @@
+name = "OpinionDiffusion"
+uuid = "8a824c69-2f4a-47fa-94c7-8095e16cc636"
+authors = ["Dominik Jelínek <dominikjelinek98@gmail.com>"]
+version = "0.1.0"
