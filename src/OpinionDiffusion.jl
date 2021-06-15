@@ -1,6 +1,5 @@
 module OpinionDiffusion
     
-
 using Distances: metrics
 using MultivariateStats: pairwise, length
 using LightGraphs
@@ -18,9 +17,6 @@ using ScikitLearn
 using Distributions
 using JLD2
 
-using Profile
-using BenchmarkTools
-using Printf
 using Dates
 import YAML
 

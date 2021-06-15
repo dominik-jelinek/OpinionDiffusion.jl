@@ -74,7 +74,7 @@ function copeland_voting(votes::Vector{Vector{Vector{Int64}}}, can_count)
             end
         end
     end
-    return result, scores
+    return scores
 end
 
 # OLD ___________________________________________

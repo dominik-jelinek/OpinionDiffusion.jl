@@ -80,18 +80,20 @@ function Spearman_metrics(voters, social_network, can_count)
     dict = degree_histogram(social_network)
     keyss = collect(keys(dict))
     votes = get_votes(voters)
-
-    return Spearman_metrics([minimum(keyss)], [sum(keyss) / length(keyss)], [maximum(keyss)], 
-        plurality_voting(votes, can_count, true), 
-        borda_voting(votes, can_count, true), 
-        copeland_voting(votes, can_count))
+    
+    return Spearman_metrics([minimum(keyss)], 
+                            [ne(social_network) * 2 / nv(social_network)], 
+                            [maximum(keyss)], 
+                            [plurality_voting(votes, can_count, true)], 
+                            [borda_voting(votes, can_count, true)], 
+                            [copeland_voting(votes, can_count)])
 end
 
 function update_metrics!(model::Spearman_model)
     dict = degree_histogram(model.social_network)
     keyss = collect(keys(dict))
     push!(metrics.min_degrees, minimum(keyss))
-    push!(metrics.avg_degrees, sum(keyss) / length(keyss))
+    push!(metrics.avg_degrees, ne(model.social_network) * 2 / nv(model.social_network))
     push!(metrics.max_degrees, maximum(keyss))
     
     votes = get_votes(model.voters)
