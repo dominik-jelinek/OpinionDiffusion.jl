@@ -48,7 +48,7 @@ function spearman_encoding(vote::Vector{Vector{Int64}}, weights)
         end
     end
     
-    return opinion
+    return opinion ./ sum(opinion)
 end
 #=
 function spearman_encoding(vote, weights)

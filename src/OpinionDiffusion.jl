@@ -16,6 +16,7 @@ import StatsBase.sample
 using ScikitLearn
 using Distributions
 using JLD2
+using Images
 
 using Dates
 import YAML
@@ -26,7 +27,8 @@ include("utils.jl")
 
 include("analysis.jl")
 include("voting.jl")
-include("visualization.jl")
+include("clustering.jl")
+
 
 include("voters/Abstract_voter.jl")
 include("voters/Kendall_voter.jl")
@@ -37,6 +39,8 @@ include("models/Abstract_model.jl")
 include("models/Spearman_model.jl")
 
 include("experiment/Experiment.jl")
+
+include("visualization.jl")
 
 export parse_data2
 export Spearman_model

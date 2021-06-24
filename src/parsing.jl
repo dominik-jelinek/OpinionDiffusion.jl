@@ -130,18 +130,49 @@ function parse_votes(lines, can_count)
    return database
 end
 
-function parse_function(functionConfig::Dict{String, Any})
-   if functionConfig["type"] == "exp"
-      @assert haskey(functionConfig, "base")
-      func = x -> (functionConfig["base"])^(x - (haskey(functionConfig, "offset") ? functionConfig["offset"] : 0.0))
-   elseif functionConfig["type"] == "id"
-      func = x -> x
-   elseif functionConfig["type"] == "power"
-      @assert haskey(functionConfig, "power")
-      func = x -> x^functionConfig["power"]
-   else
-      error("Unknown function type [exp | id | power]")
+function expr2fun(ex)
+   vars = getvars(ex)
+   return eval(:($Expr(:meta, :inline); $vars -> $ex) )
+end
+
+getvars(ex) = Expr(:tuple, _getvars(ex)...)
+_getvars(ex::Symbol) = [ex]
+function _getvars(ex::Expr)
+   vars = Symbol[]
+   if ex.head == :call
+       for arg in ex.args[2:end]
+           append!(vars, _getvars(arg) )
+       end
    end
+   return unique(vars)
+end
+_getvars(ex) = Symbol[]
+
+function parse_function(function_config::Dict{String})
+   if function_config["type"] == "exp"
+      func = x -> (function_config["base"])^(x - (haskey(function_config, "offset") ? function_config["offset"] : 0.0))
+
+   elseif function_config["type"] == "id"
+      func = x -> x
+
+   elseif function_config["type"] == "power"
+      func = x -> x^function_config["power"]
+
+   elseif function_config["type"] == "constant"
+      func = x -> function_config["val"]
+
+   elseif function_config["type"] == "inverse"
+      func = x -> 1/x
+
+   elseif function_config["type"] == "compound"
+      func = x -> parse_function["f"](parse_function["g"](x))
+
+   elseif function_config["type"] == "expr"
+      func = Base.invokelatest(Meta.parse(function_config["lambda"]))
+   else
+      error("Unknown function type [exp | id | power | expr]")
+   end
+
    return func
 end
 
@@ -170,7 +201,7 @@ function parse_distribution(distribution_config::Dict{String, Any})
    elseif distribution_config["type"] == "exponential"
       @assert haskey(distribution_config, "scale")
       distr = Exponential(distribution_config["scale"])
-      
+   
    else 
       error("Unknown distribution, supported: [normal | uniform | exponential]")
    end

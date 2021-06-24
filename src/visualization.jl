@@ -1,18 +1,13 @@
-function visualize_voters(sampled_opinions, sampled_election, candidates, parties, expConfig, expDir, counter) 
+#=
+function draw_voter_visualization(sampled_opinions, sampled_election, candidates, parties, expConfig, expDir, counter) 
     projections = reduce_dim(sampled_opinions, expConfig["reduceDimConfig"])
     _, clusters = clustering(sampled_opinions, sampled_election, candidates, parties, expConfig["clusteringConfig"])
     
-    visualize_voters(projections, clusters, expConfig["reduceDimConfig"]["method"], expConfig["clusteringConfig"]["method"], expDir, counter)
+    draw_voter_visualization(projections, clusters, expConfig["reduceDimConfig"]["method"], expConfig["clusteringConfig"]["method"], expDir, counter)
 end
+=#
 
-function visualize_voters(sampled_opinions, candidates, parties, expConfig, expDir, counter) 
-    projections = reduceDim(sampled_opinions, expConfig["reduceDimConfig"])
-    _, clusters = clustering(sampled_opinions, candidates, parties, expConfig["clusteringConfig"])
-    
-    visualize_voters(projections, clusters, expConfig["reduceDimConfig"]["method"], expConfig["clusteringConfig"]["method"], expDir, counter)
-end
-
-function visualize_voters(projections, clusters, dim_red_method, clust_method, exp_dir=Nothing, counter=0)
+function draw_voter_visualization(projections, clusters, dim_red_method, clust_method, exp_dir=Nothing, counter=[0])
     cluster_colors  = distinguishable_colors(length(clusters), colorant"blue")
     title = dim_red_method * "_" * clust_method * "_" * string(size(projections, 2))
 
@@ -23,21 +18,32 @@ function visualize_voters(projections, clusters, dim_red_method, clust_method, e
         scatter!(plot, Tuple(eachrow(projections[:, idxes])), c=cluster_colors[i], label=length(clusters[i]))
     end
    
-    if logdir != Nothing
-        savefig(plot, "$(exp_dir)/voters/$(title)_$(counter).png")
+    if exp_dir != Nothing
+        savefig(plot, "$(exp_dir)/images/$(title)_$(counter[1]).png")
     end
-    display(plot)
+
+    return plot
+end
+
+function draw_voter_visualization(voters, sampled_voter_ids, candidates::Vector{Candidate}, parties::Vector{String}, exp_dir::String, diff_counter, voter_visualization_config)
+    sampled_voters = voters[sampled_voter_ids]
+    sampled_opinions = get_opinions(sampled_voters)
+
+    projections = reduce_dim(sampled_opinions, voter_visualization_config["reduce_dim_config"])
+    _, clusters = clustering(sampled_opinions, candidates, voter_visualization_config["clustering_config"])
+
+    draw_voter_visualization(projections, clusters, voter_visualization_config["reduce_dim_config"]["method"], voter_visualization_config["clustering_config"]["method"], exp_dir, diff_counter)
 end
 
 function reduce_dim(sampled_opinions, reduce_dim_Config)
     if reduce_dim_Config["method"] == "PCA"
         config = reduce_dim_Config["PCA"]
-        model = MultivariateStats.fit(PCA, sampled_opinions; maxoutdim=config["outDim"])
+        model = MultivariateStats.fit(PCA, sampled_opinions; maxoutdim=config["out_dim"])
         projection = MultivariateStats.transform(model, sampled_opinions)
 
     elseif reduceDimConfig["method"] == "tsne"
         config = reduce_dim_Config["tsne"]
-        projection = permutedims(tsne(sampled_opinions, config["outDim"], config["reduce_dims"], config["max_iter"], config["perplexity"]))
+        projection = permutedims(tsne(sampled_opinions, config["out_dim"], config["reduce_dims"], config["max_iter"], config["perplexity"]))
     else
         error("Unknown dimensionality reduction method")
     end
@@ -45,13 +51,13 @@ function reduce_dim(sampled_opinions, reduce_dim_Config)
     return projection
 end
 
-function visualize_metrics(experiment)
+function visualize_metrics(experiment, candidates, parties)
     metrics = experiment.diffusion_metrics
     degrees = draw_range(metrics.min_degrees, metrics.avg_degrees, metrics.max_degrees, title="Degree range", xlabel="Diffusions", ylabel="Degree", value_label="avg")
 
-    plurality = drawVotingResult(experiment.candidates, experiment.parties, reduce(hcat, metrics.plurality_votings)', "Plurality voting")
-    borda = drawVotingResult(experiment.candidates, experiment.parties, reduce(hcat, metrics.borda_votings)', "Borda voting")
-    copeland = drawVotingResult(experiment.candidates, experiment.parties, reduce(hcat, metrics.copeland_votings)', "Copeland voting")
+    plurality = drawVotingResult(candidates, parties, reduce(hcat, metrics.plurality_votings)', "Plurality voting")
+    borda = drawVotingResult(candidates, parties, reduce(hcat, metrics.borda_votings)', "Borda voting")
+    copeland = drawVotingResult(candidates, parties, reduce(hcat, metrics.copeland_votings)', "Copeland voting")
 
     plots = plot(degrees, plurality, borda, copeland, layout = (2, 2), size = (980,1200))
     
@@ -80,18 +86,23 @@ function draw_metric(values, title::String)
     )
 end
 
-function drawDegreeDistribution(g)
-    dict = degree_histogram(g)
+function draw_degree_distribution(dict, exp_dir=Nothing, diff_counter=[0])
     keyss = collect(keys(dict))
     vals = collect(values(dict))
- 
-    histogram(keyss,
-             weights = vals,
-             bins = length(keyss),
-             title = "Degree distribution",
-             legend = false,
-             ylabel = "Num. of vertices",
-             xlabel = "Num. of edges")
+
+    plot = histogram(keyss,
+                        weights = vals,
+                        bins = length(keyss),
+                        title = "Degree distribution",
+                        legend = false,
+                        ylabel = "Num. of vertices",
+                        xlabel = "Num. of edges")
+
+    if exp_dir != Nothing
+        savefig(plot, "$(exp_dir)/images/degree_distribution_$(diff_counter[1]).png")
+    end
+
+    return plot
  end
  
 

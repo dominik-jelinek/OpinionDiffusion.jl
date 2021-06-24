@@ -1,4 +1,4 @@
-#For kendall encoded
+#=For kendall encoded
 function clustering(sampled_opinions, sampled_election, candidates, parties, clusteringConfig)
     
     if clusteringConfig["method"] == "Party"
@@ -21,27 +21,23 @@ function clustering(sampled_opinions, sampled_election, candidates, parties, clu
     
     return labels, clusters
 end
-
-function clustering(sampled_opinions, candidates, clusteringConfig)
+=#
+function clustering(sampled_opinions, candidates, clustering_config)
     
-    if clusteringConfig["method"] == "Party"
-        labels = [candidates[argmin(col)].party for col in eachcol(sampled_opinions)]
-        clusters = clusterize(labels)
-        
-    elseif clusteringConfig["method"] == "K-means"
-        KmeansRes = kmeans(sampled_opinions, clusteringConfig["K-means"]["cluster_count"]; maxiter=200)
-        labels = KmeansRes.assignments
-        clusters = clusterize(labels)
-        
-    elseif clusteringConfig["method"] == "GM"
+    if clustering_config["method"] == "Party"
+        labels = [candidates[argmin(col)].party for col in eachcol(sampled_opinions)] 
+    elseif clustering_config["method"] == "K-means"
+        KmeansRes = kmeans(sampled_opinions, clustering_config["K-means"]["cluster_count"]; maxiter=200)
+        labels = KmeansRes.assignments 
+    elseif clustering_config["method"] == "GM"
         data_T = permutedims(sampled_opinions)
-        gm = GaussianMixture(n_components=clusteringConfig["GM"]["cluster_count"]).fit(data_T)
+        gm = GaussianMixture(n_components=clustering_config["GM"]["cluster_count"]).fit(data_T)
         labels = gm.predict(data_T) .+ 1
-        clusters = clusterize(labels)
     else
         error("Unknown clustering method")
     end
-    
+
+    clusters = clusterize(labels)
     return labels, clusters
 end
 

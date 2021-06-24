@@ -10,6 +10,8 @@ function Spearman_model(election, can_count, model_config)
     #init voters
     println("Initializing voters:")
     weight_func = parse_function(model_config["weight_func"])
+    
+    
     weights = map(weight_func, 1:can_count)
     openmindedness_distr = Truncated(Normal(0.5, 0.1), 0.0, 1.0)
     stubbornness_distr = Truncated(Normal(0.5, 0.1), 0.0, 1.0)
