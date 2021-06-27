@@ -1,24 +1,22 @@
 module OpinionDiffusion
     
-using Distances: metrics
-using MultivariateStats: pairwise, length
+using Distances
 using LightGraphs
 using Plots
-plotlyjs()
+
 using MetaGraphs
+
 using StatsPlots
 using Clustering
-using Distances
 using GraphPlot
 using TSne
 using MultivariateStats
 import StatsBase.sample
 using ScikitLearn
 using Distributions
-using JLD2
-using Images
 
 using Dates
+using JLD2
 import YAML
 
 include("parsing.jl")
@@ -46,4 +44,6 @@ export parse_data2
 export Spearman_model
 export Experiment
 export run_experiment!
+export visualize_metrics
+
 end

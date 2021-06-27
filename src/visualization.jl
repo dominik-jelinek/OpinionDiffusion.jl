@@ -51,8 +51,7 @@ function reduce_dim(sampled_opinions, reduce_dim_Config)
     return projection
 end
 
-function visualize_metrics(experiment, candidates, parties)
-    metrics = experiment.diffusion_metrics
+function visualize_metrics(metrics, candidates, parties, exp_dir=Nothing)
     degrees = draw_range(metrics.min_degrees, metrics.avg_degrees, metrics.max_degrees, title="Degree range", xlabel="Diffusions", ylabel="Degree", value_label="avg")
 
     plurality = drawVotingResult(candidates, parties, reduce(hcat, metrics.plurality_votings)', "Plurality voting")
@@ -61,8 +60,11 @@ function visualize_metrics(experiment, candidates, parties)
 
     plots = plot(degrees, plurality, borda, copeland, layout = (2, 2), size = (980,1200))
     
-    savefig(plots, "$(experiment.exp_dir)/images/metrics.png")
-    display(plots)
+    if exp_dir != Nothing
+        savefig(plots, "$(exp_dir)/images/metrics.png")
+    end
+    
+    return plots
 end
 
 function draw_range(min, value, max; title, xlabel, ylabel, value_label)

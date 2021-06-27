@@ -77,6 +77,8 @@ function run_experiment!(experiment, candidates, parties, diffusion_config)
     end
 
     jldsave("$(experiment.exp_dir)/diffusion_metrics.jld2"; experiment.diffusion_metrics)
+
+    return experiment.diffusion_metrics, experiment.visualizations
 end
 
 

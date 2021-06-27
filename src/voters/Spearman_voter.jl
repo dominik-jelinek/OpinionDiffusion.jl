@@ -105,6 +105,7 @@ function average_all!(voter_1::Spearman_voter, voter_2::Spearman_voter)
         voter_1.opinion .+= distance * (1 - voter_1.stubbornness)
         voter_2.opinion .-= distance * (1 - voter_2.stubbornness)
     end
+
 end
 
 function average_one!(voter_1::Spearman_voter, voter_2::Spearman_voter)
