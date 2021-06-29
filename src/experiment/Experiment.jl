@@ -62,13 +62,6 @@ function run_experiment!(experiment, candidates, parties, diffusion_config)
         
         update_metrics!(experiment, length(candidates))
         update_visualizations!(experiment, candidates, parties)
-        #cluster_labels, clusters = clustering(sampled_opinions, candidates, parties, exp_config["clustering_config"])
-        #projections = reduceDim(sampled_opinions, expConfig["reduceDimConfig"])
-        #if expConfig["reduce_dim_config"]["used"]
-        #    visualizeVoters(sampled_opinions, sampled_voters, candidates, parties, exp_config, exp_dir * "/images", diff_counter)      
-        #end
-        #visualize_voters(projections, clusters, expConfig["reduceDimConfig"]["method"], expConfig["clusteringConfig"]["method"], expDir, counter)
-        #visualizeVoters(model.voters([sampled_voter_ids]), candidates, parties, expConfig, expDir * "/images", 0)
 
         if i % diffusion_config["checkpoint"] == 0
             log(experiment)

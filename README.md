@@ -12,7 +12,7 @@
 (OpinionDiffusion) pkg> instantiate
 ```
 - press backspace to exit package manager
-
+## Execution
 ### VS code:
 - [VS code and Julia guide](https://www.julia-vscode.org/docs/dev/gettingstarted/#Installation-and-Configuration-1)
 
@@ -31,7 +31,7 @@ notebook(dir=@__DIR__)
 - Installation :
 ``` 
 julia> ]
-(v1.6) pkg> add Pluto
+(v1.6) pkg> add Pluto PlutoUI
 ```
 - backspace to exit package manager
 ```

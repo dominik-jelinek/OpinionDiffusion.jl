@@ -23,7 +23,7 @@ using PlutoUI
 using OpinionDiffusion
 
 # ╔═╡ fc5a5935-8f4e-47ad-8568-70cd61656e06
-input_filename = "ED-00001-00000003.toc"
+input_filename = "ED-00001-00000002.toc"
 
 # ╔═╡ 76c03bc8-72b9-4fae-9310-3eb61d593896
 @time parties, candidates, election = parse_data2(input_filename)
@@ -89,7 +89,7 @@ begin
 end
 
 # ╔═╡ 0a01a7ff-b15e-4039-bd16-c053b4b33f8e
-experiment = Experiment(loaded_model, candidates, parties, backend, exp_config)
+experiment = Experiment(model, candidates, parties, backend, exp_config)
 
 # ╔═╡ f43b3b4c-9075-414b-9694-83e7c841605f
 diffusion_config = Dict(
