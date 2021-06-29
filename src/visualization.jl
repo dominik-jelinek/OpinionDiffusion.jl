@@ -63,7 +63,7 @@ function visualize_metrics(metrics, candidates, parties, exp_dir=Nothing)
     if exp_dir != Nothing
         savefig(plots, "$(exp_dir)/images/metrics.png")
     end
-    
+
     return plots
 end
 
@@ -115,7 +115,6 @@ function draw_degree_distribution(dict, exp_dir=Nothing, diff_counter=[0])
     title=title,
     xlabel="Diffusions",
     ylabel="Percentage",
-    xticks=(1:size(result, 1)),
     label = reshape(names, 1, length(names)),
     linewidth = 3,
     legend = false,

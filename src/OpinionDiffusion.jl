@@ -1,5 +1,6 @@
 module OpinionDiffusion
     
+using MetaGraphs
 using Distances
 using LightGraphs
 using Plots

@@ -26,6 +26,9 @@ function Spearman_model(election, can_count, model_config)
     @time edges = generate_edges(voters, dist_metric, init_edge_func)
     
     println("Initializing graph:")
+    
+    edge_limit = 200*length(voters)
+    #@time social_network = init_graph(voters, edge_limit, dist_metric, init_edge_func)
     @time social_network = init_graph(length(voters), edges)
 
     #init logging

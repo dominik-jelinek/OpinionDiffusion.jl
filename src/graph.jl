@@ -13,42 +13,66 @@ function generate_edges(voters::Vector{T}, dist_metric::Metric, edge_init_func::
    return edges
 end
 
-function generate_edges(opinions::AbstractMatrix, distances::AbstractMatrix, edgeInitFunc::Function)::Vector{LightGraphs.SimpleGraphs.SimpleEdge{Int64}}
-   vertices = size(opinions, 2)
-   edges = Vector{LightGraphs.SimpleGraphs.SimpleEdge{Int64}}()
+function init_graph(voters::Vector{T}, edge_limit, dist_metric::Metric, edge_init_func::Function) where T <: Abstract_voter
+   social_network = SimpleGraph(length(voters))
 
-   @inbounds for i in 1:(vertices - 1)
-      @inbounds for j in (i + 1):vertices
-         
-         if rand() <= edgeInitFunc(distances(i, j))
-            push!(edges, LightGraphs.SimpleGraphs.SimpleEdge(i, j))
+   edge_counter = 0
+   while edge_counter != edge_limit
+      self = rand(voters)
+      neighbors_ = neighbors(social_network, self.ID)
+
+      #singleton
+      if length(neighbors_) == 0
+         voter = rand(voters)
+         while self.ID == voter.ID 
+            voter = rand(voters)
+         end
+
+         if rand() <= edge_init_func(Distances.evaluate(dist_metric, self.opinion, voter.opinion))
+            if add_edge!(social_network, self.ID, voter.ID)
+               edge_counter += 1
+            end
+         end
+
+         continue
+      end
+
+      #pick random neighbor
+      neighbor_ID = rand(neighbors_)
+      mutual_neighbors = neighbors(social_network, neighbor_ID)
+
+      #path of length one
+      if length(mutual_neighbors) == 1
+         voter = rand(voters)
+         while self.ID == voter.ID 
+            voter = rand(voters)
+         end
+
+         if rand() <= edge_init_func(Distances.evaluate(dist_metric, self.opinion, voter.opinion))
+            if add_edge!(social_network, self.ID, voter.ID) 
+               edge_counter += 1
+            end
+         end
+
+         continue
+      end
+
+      #general case
+      mutual_neighbor_ID = rand(mutual_neighbors)
+      while self.ID == mutual_neighbor_ID
+         mutual_neighbor_ID = rand(mutual_neighbors)
+      end
+
+      mutual_neighbor = voters[mutual_neighbor_ID]
+
+      if rand() <= edge_init_func(Distances.evaluate(dist_metric, self.opinion, mutual_neighbor.opinion))
+         if add_edge!(social_network, self.ID, mutual_neighbor.ID) 
+            edge_counter += 1
          end
       end
    end
 
-   return edges
-end
-
-function generate_edges(opinions::AbstractMatrix, distMetric::Metric, minFriends, maxFriends)
-   vertices = size(opinions, 2)
-   lowerFriendProb = minFriends/vertices
-   upperFriendProb = maxFriends/vertices
-
-   @inbounds for i in 1:vertices - 1
-      voter_1 = getCol(opinions, i)
-
-      @inbounds for j in i + 1:vertices
-         voter_2 = getCol(opinions, j)
-
-         distance = Distances.evaluate(distMetric, voter_1, voter_2)
-         prob = translateRange(0.0, 1.0, lowerFriendProb, upperFriendProb, 1 - distance)
-         if rand() <= prob
-            push!(edges, LightGraphs.SimpleGraphs.SimpleEdge(i, j))
-         end
-      end
-   end
-
-   return edges
+   return social_network
 end
 
 function init_graph(vert_count::Int, edges::Vector{LightGraphs.SimpleGraphs.SimpleEdge{Int64}})

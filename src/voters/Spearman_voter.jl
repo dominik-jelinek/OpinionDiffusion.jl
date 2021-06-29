@@ -85,40 +85,40 @@ function step!(self::Spearman_voter, voters, graph, voter_diff_config)
     neighbor = voters[neighbor_id]
 
     if voter_diff_config["method"] == "averageOne"
-        average_one!(self, neighbor)
+        average_one!(self, neighbor, voter_diff_config["change_rate"])
     elseif voter_diff_config["method"] == "averageAll"
-        average_all!(self, neighbor)
+        average_all!(self, neighbor, voter_diff_config["change_rate"])
     else
         error("Unknown vertex diffusion method, [averageOne | averageAll]")
     end
 end
 
-function average_all!(voter_1::Spearman_voter, voter_2::Spearman_voter)
+function average_all!(voter_1::Spearman_voter, voter_2::Spearman_voter, change_rate)
     distance = (voter_1.opinion - voter_2.opinion) / 2
         
     if rand() < 0.5 # could be a parameter
         # attract
-        voter_1.opinion .-= distance * (1 - voter_1.stubbornness)
-        voter_2.opinion .+= distance * (1 - voter_2.stubbornness)
+        voter_1.opinion .-= distance * (1 - voter_1.stubbornness) * change_rate
+        voter_2.opinion .+= distance * (1 - voter_2.stubbornness) * change_rate
     else
         # repel
-        voter_1.opinion .+= distance * (1 - voter_1.stubbornness)
-        voter_2.opinion .-= distance * (1 - voter_2.stubbornness)
+        voter_1.opinion .+= distance * (1 - voter_1.stubbornness) * change_rate
+        voter_2.opinion .-= distance * (1 - voter_2.stubbornness) * change_rate
     end
 
 end
 
-function average_one!(voter_1::Spearman_voter, voter_2::Spearman_voter)
+function average_one!(voter_1::Spearman_voter, voter_2::Spearman_voter, change_rate)
     can = rand(1:length(voter_1.opinion))
     distance = (voter_1.opinion[can] - voter_2.opinion[can]) / 2
         
     if rand() < 0.5 # could be a parameter
         # attract
-        voter_1.opinion[can] -= distance * (1 - voter_1.stubbornness)
-        voter_2.opinion[can] += distance * (1 - voter_2.stubbornness)
+        voter_1.opinion[can] -= distance * (1 - voter_1.stubbornness) * change_rate
+        voter_2.opinion[can] += distance * (1 - voter_2.stubbornness) * change_rate
     else
         # repel
-        voter_1.opinion[can] += distance * (1 - voter_1.stubbornness)
-        voter_2.opinion[can] -= distance * (1 - voter_2.stubbornness)
+        voter_1.opinion[can] += distance * (1 - voter_1.stubbornness) * change_rate
+        voter_2.opinion[can] -= distance * (1 - voter_2.stubbornness) * change_rate
     end
 end
