@@ -78,7 +78,7 @@ function copeland_voting(votes::Vector{Vector{Vector{Int64}}}, can_count)
 end
 
 # OLD ___________________________________________
-
+#=
 function getPluralityScores(electionResult, normalize::Bool)
     res = electionResult[1, :]
     if normalize
@@ -139,3 +139,4 @@ function getElectionResult(database)
     end
     return result
 end
+=#

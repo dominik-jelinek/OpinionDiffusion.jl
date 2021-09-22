@@ -11,7 +11,6 @@ function Spearman_model(election, can_count, model_config)
     println("Initializing voters:")
     weight_func = parse_function(model_config["weight_func"])
     
-    
     weights = map(weight_func, 1:can_count)
     openmindedness_distr = Truncated(Normal(0.5, 0.1), 0.0, 1.0)
     stubbornness_distr = Truncated(Normal(0.5, 0.1), 0.0, 1.0)
@@ -19,17 +18,18 @@ function Spearman_model(election, can_count, model_config)
     @time voters = init_voters(election, weights, openmindedness_distr, stubbornness_distr)
 
     #init graph
-    println("Initializing edges:")
+    #println("Initializing edges:")
     #init_edge_func = parse_function(initConfig["init_edge_func"]) 10x slower
-    init_edge_func = x->(1/2)^(x + 5.14)
-    dist_metric = parse_metric(model_config["dist_metric"])
-    @time edges = generate_edges(voters, dist_metric, init_edge_func)
+    #init_edge_func = x->(1/2)^(x + 5.14)
+    #dist_metric = parse_metric(model_config["dist_metric"])
+    #edge_limit = 100*length(voters)
+    #@time edges = generate_edges(voters, dist_metric, init_edge_func)
     
     println("Initializing graph:")
     
-    edge_limit = 200*length(voters)
-    #@time social_network = init_graph(voters, edge_limit, dist_metric, init_edge_func)
-    @time social_network = init_graph(length(voters), edges)
+    @time social_network = init_graph(voters, model_config["m"])
+    
+    #@time social_network = init_graph(length(voters), edges)
 
     #init logging
     println("Initializing logging")

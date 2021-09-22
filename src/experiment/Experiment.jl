@@ -32,6 +32,9 @@ struct Experiment{Backend <: AbstractBackend}
 end
 
 function Experiment(model, candidates, parties, backend::Type{Backend}, exp_config) where Backend <: AbstractBackend
+    if model.exp_counter != 1
+        reset_model!(model)
+    end
     exp_dir = "$(model.log_dir)/experiment_$(model.exp_counter[1])"
     mkpath(exp_dir)
     YAML.write_file("$(exp_dir)/exp_config.yml", exp_config)
@@ -46,7 +49,7 @@ function Experiment(model, candidates, parties, backend::Type{Backend}, exp_conf
 
     sampled_voter_ids = Nothing
     if exp_config["sample_size"] != 0
-        sampled_voter_ids = sample(1:length(model.voters), exp_config["sample_size"], replace=false)
+        sampled_voter_ids = StatsBase.sample(1:length(model.voters), exp_config["sample_size"], replace=false)
         jldsave("$(exp_dir)/sampled_voter_ids.jld2"; sampled_voter_ids)
     end
     

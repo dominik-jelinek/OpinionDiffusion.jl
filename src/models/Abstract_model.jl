@@ -26,3 +26,7 @@ function voter_diffusion!(model::T, voter_diff_config) where T <: Abstract_model
         step!(model.voters[v], model.voters, model.social_network, voter_diff_config)
     end
 end
+
+function reset_model!(model::T) where T <: Abstract_model
+    model = load("$(model.log_dir)/model.jld2", "model")
+end

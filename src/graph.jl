@@ -13,6 +13,66 @@ function generate_edges(voters::Vector{T}, dist_metric::Metric, edge_init_func::
    return edges
 end
 
+function generate_edges(voters::Vector{T}, edge_limit::Int64, dist_metric::Metric, edge_init_func::Function) where T <: Abstract_voter
+   edges = Set{LightGraphs.SimpleGraphs.SimpleEdge{Int64}}()
+   proba = ones(Float64, length(voters))
+
+   while length(edges) != edge_limit + 1
+      v_1 = rand(1:length(voters))
+      v_1_proba = proba[v_1] 
+      proba[v_1] = 0.0
+
+      v_2 = rand(Categorical(proba ./ sum(proba)))
+
+      if rand() <= edge_init_func(Distances.evaluate(dist_metric, voters[v_1].opinion, voters[v_2].opinion))
+         edge = LightGraphs.SimpleGraphs.SimpleEdge{Int64}(v_1, v_2)
+         if edge ∉ edges
+            push!(edges, edge)
+            proba[v_1] += 1
+            proba[v_2] += 1
+         end
+      end
+
+      proba[v_1] += v_1_proba
+      println(length(edges))
+   end
+
+   return edges
+end
+
+function init_graph(voters::Vector{T}, m::Integer) where T <: Abstract_voter
+   social_network = SimpleGraph(length(voters))
+   rand_perm = Random.shuffle(1:length(voters))
+   
+   degrees = zeros(Float64, length(voters))
+   for i in 1:m
+      degrees[i] = 1.0
+   end
+
+   probs = zeros(Float64, length(voters))
+   for i in m+1:length(voters)
+      
+      #calculate distribution of probabilities for each vertex
+      for j in 1:i-1
+         probs[j] = degrees[j] * 1.0/(1.0 + get_distance(voters[i], voters[j]))
+      end
+      edge_ends = StatsBase.sample(1:length(voters), StatsBase.Weights(probs), m, replace=false)
+      
+      #add edges
+      self = rand_perm[i]
+      for j in edge_ends
+         add_edge!(social_network, self, rand_perm[j])
+         #println(self, "=", rand_perm[j])
+         degrees[j] += 1
+      end
+      degrees[i] += 1.0 + m 
+      #println("degrees", degrees)
+
+   end
+
+   return social_network
+end
+
 function init_graph(voters::Vector{T}, edge_limit, dist_metric::Metric, edge_init_func::Function) where T <: Abstract_voter
    social_network = SimpleGraph(length(voters))
 

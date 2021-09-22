@@ -1,5 +1,7 @@
 module OpinionDiffusion
-    
+using Base: Float64
+using Random
+
 using MetaGraphs
 using Distances
 using LightGraphs
@@ -12,13 +14,14 @@ using Clustering
 using GraphPlot
 using TSne
 using MultivariateStats
-import StatsBase.sample
+import StatsBase
 using ScikitLearn
 using Distributions
 
 using Dates
 using JLD2
 import YAML
+import Base.@kwdef
 
 include("parsing.jl")
 include("utils.jl")

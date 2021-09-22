@@ -31,7 +31,9 @@ function parse_data(input_filename::String)
 
    return parties, candidates, database
 end
-
+"""
+Parses data
+"""
 function parse_data2(input_filename::String)
    f = open("data/$input_filename","r")
    lines = readlines(f)

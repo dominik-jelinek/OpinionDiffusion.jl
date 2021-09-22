@@ -94,7 +94,7 @@ function draw_degree_distribution(dict, exp_dir=Nothing, diff_counter=[0])
 
     plot = histogram(keyss,
                         weights = vals,
-                        bins = length(keyss),
+                        nbins = length(keyss),
                         title = "Degree distribution",
                         legend = false,
                         ylabel = "Num. of vertices",
