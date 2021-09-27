@@ -30,7 +30,7 @@ function borda_voting(votes::Vector{Vector{Vector{Int64}}}, can_count, normalize
     for vote in votes
         points = can_count
         for bucket in vote
-            score = mean((points - length(bucket)):points-1)
+            score = StatsBase.mean((points - length(bucket)):points-1)
             points -= length(bucket)
             
             for can in bucket

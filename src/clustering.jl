@@ -27,11 +27,11 @@ function clustering(sampled_opinions, candidates, clustering_config)
     if clustering_config["method"] == "Party"
         labels = [candidates[argmin(col)].party for col in eachcol(sampled_opinions)] 
     elseif clustering_config["method"] == "K-means"
-        KmeansRes = kmeans(sampled_opinions, clustering_config["K-means"]["cluster_count"]; maxiter=200)
-        labels = KmeansRes.assignments 
+        kmeans_res = Clustering.kmeans(sampled_opinions, clustering_config["K-means"]["cluster_count"]; maxiter=200)
+        labels = kmeans_res.assignments 
     elseif clustering_config["method"] == "GM"
         data_T = permutedims(sampled_opinions)
-        gm = GaussianMixture(n_components=clustering_config["GM"]["cluster_count"]).fit(data_T)
+        gm = ScikitLearn.GaussianMixture(n_components=clustering_config["GM"]["cluster_count"]).fit(data_T)
         labels = gm.predict(data_T) .+ 1
     else
         error("Unknown clustering method")
@@ -43,7 +43,7 @@ end
 
 function clusterize(labels)
     cluster_count = length(unique(labels))
-    clusters = Vector{Set{Int}}(undef, cluster_count)
+    clusters = Vector{Set{Int64}}(undef, cluster_count)
     for i in 1:cluster_count
         clusters[i] = Set(findall(x->x==i, labels))
     end

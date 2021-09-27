@@ -1,6 +1,6 @@
 struct Spearman_model <: Abstract_model
     voters::Vector{Spearman_voter}
-    social_network::SimpleGraph
+    social_network::LightGraphs.SimpleGraph
 
     log_dir::String
     exp_counter::Vector{Int}
@@ -12,8 +12,8 @@ function Spearman_model(election, can_count, model_config)
     weight_func = parse_function(model_config["weight_func"])
     
     weights = map(weight_func, 1:can_count)
-    openmindedness_distr = Truncated(Normal(0.5, 0.1), 0.0, 1.0)
-    stubbornness_distr = Truncated(Normal(0.5, 0.1), 0.0, 1.0)
+    openmindedness_distr = Distributions.Truncated(Distributions.Normal(0.5, 0.1), 0.0, 1.0)
+    stubbornness_distr = Distributions.Truncated(Distributions.Normal(0.5, 0.1), 0.0, 1.0)
 
     @time voters = init_voters(election, weights, openmindedness_distr, stubbornness_distr)
 
@@ -53,7 +53,7 @@ function init_voters(election, weights, openmindedness_distr, stubbornness_distr
     return voters
 end
 
-function graph_diffusion!(model, edge_diff_config)
+function graph_diffusion!(model::Spearman_model, edge_diff_config)
     edge_diff_func = parse_function(edge_diff_config["edge_diff_func"])
     dist_metric = parse_metric(edge_diff_config["dist_metric"])
     
@@ -66,7 +66,7 @@ function graph_diffusion!(model, edge_diff_config)
     end
 end
 
-function edge_diffusion!(voter_1, voter_2, g, edgeDiffFunc, distMetric)
+function edge_diffusion!(voter_1, voter_2, g, edgeDiffFunc, distMetric::Distances.Metric)
     if voter_1.ID == voter_2.ID
         return
     end
@@ -75,11 +75,11 @@ function edge_diffusion!(voter_1, voter_2, g, edgeDiffFunc, distMetric)
 
     if has_edge(g, voter_1.ID, voter_2.ID)
         if edgeDiffFunc(distance) * openmindedness < rand()
-            rem_edge!(g, voter_1.ID, voter_2.ID)
+            LightGraphs.rem_edge!(g, voter_1.ID, voter_2.ID)
         end
     else
         if edgeDiffFunc(distance) * openmindedness > rand()
-            add_edge!(g, voter_1.ID, voter_2.ID)
+            LightGraphs.add_edge!(g, voter_1.ID, voter_2.ID)
         end
     end
 end

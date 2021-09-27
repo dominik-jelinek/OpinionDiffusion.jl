@@ -1,24 +1,24 @@
 module OpinionDiffusion
 using Base: Float64
 using Random
-
-using MetaGraphs
-using Distances
-using LightGraphs
-using Plots
-
-using MetaGraphs
-
-using StatsPlots
-using Clustering
-using GraphPlot
-using TSne
-using MultivariateStats
-import StatsBase
-using ScikitLearn
-using Distributions
-
 using Dates
+import Colors
+
+using MetaGraphs
+import Distances
+using LightGraphs
+import Plots
+
+import StatsPlots
+import Clustering
+import GraphPlot
+import TSne
+import MultivariateStats
+import StatsBase
+import ScikitLearn
+import Distributions
+
+
 using JLD2
 import YAML
 import Base.@kwdef

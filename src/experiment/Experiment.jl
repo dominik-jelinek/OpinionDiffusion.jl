@@ -13,25 +13,26 @@ struct Spearman_metrics
     borda_votings::Vector{Vector{Float64}}
     copeland_votings::Vector{Vector{Float64}}
     #STV
-end
-struct Visualizations{Backend <: AbstractBackend}
-    voter_visualizations::Vector{Plots.Plot{Backend}}
-    degree_distributions::Vector{Plots.Plot{Backend}}
+
+    projections::Vector{Matrix{Float64}}
+    labels::Vector{Vector{Int64}} 
+    clusters::Vector{Vector{Set{Int}}}
+    degree_distributions::Vector{Dict{Int64, Int64}}
+    edge_distances::Vector{Vector{Float64}}
 end
 
-struct Experiment{Backend <: AbstractBackend} 
+struct Experiment
     model::Spearman_model
 
     sampled_voter_ids::Vector{Int64}
     diffusion_metrics::Spearman_metrics
-    visualizations::Visualizations{Backend}
 
     voter_visualization_config
     exp_dir::String
     diff_counter::Vector{Int64}
 end
 
-function Experiment(model, candidates, parties, backend::Type{Backend}, exp_config) where Backend <: AbstractBackend
+function Experiment(model, candidates, exp_config)
     if model.exp_counter != 1
         reset_model!(model)
     end
@@ -53,18 +54,23 @@ function Experiment(model, candidates, parties, backend::Type{Backend}, exp_conf
         jldsave("$(exp_dir)/sampled_voter_ids.jld2"; sampled_voter_ids)
     end
     
-    metrics = Spearman_metrics(model, length(candidates))
-    visualizations = Visualizations(model, sampled_voter_ids, candidates, parties,  exp_dir, [0], exp_config["voter_visualization_config"])
-
-    return Experiment{backend}(model, sampled_voter_ids, metrics, visualizations, exp_config["voter_visualization_config"], exp_dir, diff_counter)
+    metrics = Spearman_metrics(model, candidates, sampled_voter_ids, exp_config["voter_visualization_config"])
+    
+    return Experiment(model, sampled_voter_ids, metrics, exp_config["voter_visualization_config"], exp_dir, diff_counter)
 end
 
-function run_experiment!(experiment, candidates, parties, diffusion_config)
+function run_experiment!(experiment, candidates, diffusion_config)
+    changes = Vector{Vector{Float64}}()
     for i in 1:diffusion_config["diffusions"]
+        prev_opinions = get_opinions(experiment.model.voters)
         diffusion!(experiment.model, diffusion_config)
+        opinion_change = get_opinions(experiment.model.voters) - prev_opinions
         
-        update_metrics!(experiment, length(candidates))
-        update_visualizations!(experiment, candidates, parties)
+        #normalized_change = mapslices(normalize, opinion_change; dims=1)*2 .- 1.0
+        #push!(changes, vec(sum(normalized_change, dims=2)))
+        push!(changes, vec(sum(sign.(opinion_change), dims=2)))
+
+        update_metrics!(experiment, candidates)
 
         if i % diffusion_config["checkpoint"] == 0
             log(experiment)
@@ -74,49 +80,51 @@ function run_experiment!(experiment, candidates, parties, diffusion_config)
 
     jldsave("$(experiment.exp_dir)/diffusion_metrics.jld2"; experiment.diffusion_metrics)
 
-    return experiment.diffusion_metrics, experiment.visualizations
+    return experiment.diffusion_metrics, changes
 end
 
-
-function Spearman_metrics(model::Spearman_model, can_count)
-    dict = degree_histogram(model.social_network)
+function Spearman_metrics(model, candidates, sampled_voter_ids, voter_visualization_config)
+    dict = LightGraphs.degree_histogram(model.social_network)
     keyss = collect(keys(dict))
     votes = get_votes(model.voters)
+    projections, labels, clusters = get_voter_vis(model.voters, sampled_voter_ids, candidates, voter_visualization_config)
 
+    can_count = length(candidates)
     return Spearman_metrics([minimum(keyss)], 
-                            [ne(model.social_network) * 2 / nv(model.social_network)], 
+                            [LightGraphs.ne(model.social_network) * 2 / LightGraphs.LightGraphs.nv(model.social_network)], 
                             [maximum(keyss)], 
                             [plurality_voting(votes, can_count, true)], 
                             [borda_voting(votes, can_count, true)], 
-                            [copeland_voting(votes, can_count)])
+                            [copeland_voting(votes, can_count)],
+                            [projections],
+                            [labels],
+                            [clusters], 
+                            [LightGraphs.degree_histogram(model.social_network)],
+                            [get_edge_distances(model.social_network, model.voters)])
 end
 
-function Visualizations(model, sampled_voter_ids, candidates, parties, exp_dir::String, diff_counter, voter_visualization_config)
-
-    return Visualizations(  [draw_voter_visualization(model.voters, sampled_voter_ids, candidates, parties, exp_dir::String, diff_counter, voter_visualization_config)], 
-                            [draw_degree_distribution(degree_histogram(model.social_network), exp_dir, diff_counter)]
-                            )
-end
-
-function update_visualizations!(experiment::Experiment, candidates, parties)
-    push!(experiment.visualizations.voter_visualizations, draw_voter_visualization(experiment.model.voters, experiment.sampled_voter_ids, candidates, parties, experiment.exp_dir, experiment.diff_counter, experiment.voter_visualization_config))
-    push!(experiment.visualizations.degree_distributions, draw_degree_distribution(degree_histogram(experiment.model.social_network), experiment.exp_dir, experiment.diff_counter))
-end
-
-function update_metrics!(experiment::Experiment, can_count)
+function update_metrics!(experiment::Experiment, candidates)
     social_network = experiment.model.social_network
     diffusion_metrics = experiment.diffusion_metrics
 
     dict = degree_histogram(social_network)
     keyss = collect(keys(dict))
     push!(diffusion_metrics.min_degrees, minimum(keyss))
-    push!(diffusion_metrics.avg_degrees, ne(social_network) * 2 / nv(social_network))
+    push!(diffusion_metrics.avg_degrees, LightGraphs.ne(social_network) * 2 / LightGraphs.nv(social_network))
     push!(diffusion_metrics.max_degrees, maximum(keyss))
     
     votes = get_votes(experiment.model.voters)
+    can_count = length(candidates)
     push!(diffusion_metrics.plurality_votings, plurality_voting(votes, can_count, true))
     push!(diffusion_metrics.borda_votings, borda_voting(votes, can_count, true))
     push!(diffusion_metrics.copeland_votings, copeland_voting(votes, can_count))
+
+    projections, labels, clusters = get_voter_vis(experiment.model.voters, experiment.sampled_voter_ids, candidates, experiment.voter_visualization_config)
+    push!(diffusion_metrics.projections, projections)
+    push!(diffusion_metrics.labels, labels)
+    push!(diffusion_metrics.clusters, clusters)
+    push!(diffusion_metrics.degree_distributions, LightGraphs.degree_histogram(experiment.model.social_network))
+    push!(diffusion_metrics.edge_distances, get_edge_distances(experiment.model.social_network, experiment.model.voters))
  end
 
 function log(experiment::Experiment)

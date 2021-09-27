@@ -8,7 +8,6 @@ function get_votes(voters::Vector{T}) where T <: Abstract_voter
     
     return votes
 end
-#[get_vote(voter) for voter in voters]
 
 function get_opinions(voters::Vector{T}) where T <: Abstract_voter
     return reduce(hcat, [voter.opinion for voter in voters])
@@ -25,6 +24,10 @@ function voter_diffusion!(model::T, voter_diff_config) where T <: Abstract_model
     for v in vertexes
         step!(model.voters[v], model.voters, model.social_network, voter_diff_config)
     end
+end
+
+function graph_diffusion!(model::T, edge_diff_config) where T <: Abstract_model
+    throw(NotImplementedError("step!"))
 end
 
 function reset_model!(model::T) where T <: Abstract_model

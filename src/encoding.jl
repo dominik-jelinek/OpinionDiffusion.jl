@@ -71,7 +71,7 @@ end
 
 
 
-function update_distances(opinions, distances, v, metric::Metric) #not used
+function update_distances(opinions, distances, v, metric::Distances.Metric) #not used
    for i in 1:size(distances, 2)
        new_distance = metric(getCol(opinions, i), getCol(opinions, v))
        distances[i, v] = new_distance

@@ -84,29 +84,23 @@ exp_config = Dict(
 )
 
 # ╔═╡ 90b8efaf-ce7e-4878-bf55-93f5e2a1b802
-begin
-	OpinionDiffusion.gr()
-	backend = OpinionDiffusion.Plots.GRBackend
-end
-
-# ╔═╡ bf41eeb9-121d-44d0-a95d-07ac0aaf5671
-
+OpinionDiffusion.Plots.gr()
 
 # ╔═╡ 0a01a7ff-b15e-4039-bd16-c053b4b33f8e
-experiment = Experiment(model, candidates, parties, backend, exp_config)
+experiment = Experiment(model, candidates, exp_config)
 
 # ╔═╡ f43b3b4c-9075-414b-9694-83e7c841605f
 diffusion_config = Dict(
-        "diffusions" => 100,
+        "diffusions" => 10,
         "checkpoint" => 100,
         "voter_diff_config" => Dict(
-            "evolve_vertices" => 10000,
+            "evolve_vertices" => 1000,
 			"attract_proba" => 0.8,
 			"change_rate" => 0.5,
             "method" => "averageAll"
         ),
         "edge_diff_config" => Dict(
-            "evolve_edges" => 10000,
+            "evolve_edges" => 5000,
             "dist_metric" => "L1",
             "edge_diff_func" => Dict(
                 "type" => "exp",
@@ -117,17 +111,24 @@ diffusion_config = Dict(
     )
 
 # ╔═╡ f6b4ba47-f9d2-42f0-9c86-e9810be7b810
-diffusion_metrics, visualizations = run_experiment!(experiment, candidates, parties, diffusion_config)
+diffusion_metrics, changes = run_experiment!(experiment, candidates, diffusion_config)
 
 # ╔═╡ 7f138d72-419a-4642-b163-6ec58ce42d24
-visualize_metrics(diffusion_metrics, candidates, parties, experiment.exp_dir)
+OpinionDiffusion.metrics_vis(diffusion_metrics, candidates, parties, experiment.exp_dir)
 
 # ╔═╡ 86659fc0-af7e-4498-8388-3e79349e9eb4
-@bind step Slider(1 : length(visualizations.degree_distributions), show_value=true)
+@bind step Slider(1 : length(diffusion_metrics.degree_distributions), show_value=true)
 
 # ╔═╡ 43976886-9b44-4152-bb43-88e24f6c98f9
 
-OpinionDiffusion.plot(experiment.visualizations.voter_visualizations[step], experiment.visualizations.degree_distributions[step], layout = (2, 1), size = (980,1200))
+OpinionDiffusion.Plots.plot(
+
+OpinionDiffusion.draw_voter_vis(
+	diffusion_metrics.projections[step], diffusion_metrics.clusters[step], 				experiment.voter_visualization_config),
+	
+OpinionDiffusion.draw_degree_distr(diffusion_metrics.degree_distributions[step]),
+
+OpinionDiffusion.draw_edge_distances(diffusion_metrics.edge_distances[step]), size = (1800,1920))
 
 # ╔═╡ Cell order:
 # ╠═86c32615-cdba-41aa-bfca-e5b90563f7f7
@@ -143,10 +144,9 @@ OpinionDiffusion.plot(experiment.visualizations.voter_visualizations[step], expe
 # ╠═26be9903-64f3-487f-af3f-dd1fc26c3665
 # ╠═b5d93a4e-539f-499d-b0e3-7be9053a1572
 # ╠═90b8efaf-ce7e-4878-bf55-93f5e2a1b802
-# ╠═bf41eeb9-121d-44d0-a95d-07ac0aaf5671
 # ╠═0a01a7ff-b15e-4039-bd16-c053b4b33f8e
 # ╠═f43b3b4c-9075-414b-9694-83e7c841605f
 # ╠═f6b4ba47-f9d2-42f0-9c86-e9810be7b810
 # ╟─7f138d72-419a-4642-b163-6ec58ce42d24
 # ╟─86659fc0-af7e-4498-8388-3e79349e9eb4
-# ╟─43976886-9b44-4152-bb43-88e24f6c98f9
+# ╠═43976886-9b44-4152-bb43-88e24f6c98f9

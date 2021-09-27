@@ -180,9 +180,9 @@ end
 
 function parse_metric(metric::String)
    if metric == "L1"
-      distMetric = Cityblock()
+      distMetric = Distances.Cityblock()
    elseif metric == "L2"
-      distMetric = Euclidean()
+      distMetric = Distances.Euclidean()
    else
       error("Unknown metric, supported: [L1 | L2]")
    end

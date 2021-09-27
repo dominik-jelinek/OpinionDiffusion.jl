@@ -6,7 +6,7 @@ struct Spearman_voter <: Abstract_voter
     stubbornness::Float64
 end
 
-function Spearman_voter(ID, vote, weights, openmindedness_distr::ContinuousUnivariateDistribution, stubbornness_distr::ContinuousUnivariateDistribution)
+function Spearman_voter(ID, vote, weights, openmindedness_distr::Distributions.ContinuousUnivariateDistribution, stubbornness_distr::Distributions.ContinuousUnivariateDistribution)
     opinion = spearman_encoding(vote, weights)
     openmindedness = rand(openmindedness_distr)
     stubbornness = rand(stubbornness_distr)

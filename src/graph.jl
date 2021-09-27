@@ -1,4 +1,4 @@
-function generate_edges(voters::Vector{T}, dist_metric::Metric, edge_init_func::Function) where T <: Abstract_voter
+function generate_edges(voters::Vector{T}, dist_metric::Distances.Metric, edge_init_func::Function) where T <: Abstract_voter
    edges = Vector{LightGraphs.SimpleGraphs.SimpleEdge{Int64}}()
 
    @inbounds for i in 1:(length(voters) - 1)
@@ -13,35 +13,12 @@ function generate_edges(voters::Vector{T}, dist_metric::Metric, edge_init_func::
    return edges
 end
 
-function generate_edges(voters::Vector{T}, edge_limit::Int64, dist_metric::Metric, edge_init_func::Function) where T <: Abstract_voter
-   edges = Set{LightGraphs.SimpleGraphs.SimpleEdge{Int64}}()
-   proba = ones(Float64, length(voters))
-
-   while length(edges) != edge_limit + 1
-      v_1 = rand(1:length(voters))
-      v_1_proba = proba[v_1] 
-      proba[v_1] = 0.0
-
-      v_2 = rand(Categorical(proba ./ sum(proba)))
-
-      if rand() <= edge_init_func(Distances.evaluate(dist_metric, voters[v_1].opinion, voters[v_2].opinion))
-         edge = LightGraphs.SimpleGraphs.SimpleEdge{Int64}(v_1, v_2)
-         if edge ∉ edges
-            push!(edges, edge)
-            proba[v_1] += 1
-            proba[v_2] += 1
-         end
-      end
-
-      proba[v_1] += v_1_proba
-      println(length(edges))
+function init_graph(voters::Vector{T}, m::Integer) where T <: Abstract_voter
+   if m > length(voters)
+      throw(ArgumentError("Argument m for Barabasi-Albert graph creation is higher than number of voters."))
    end
 
-   return edges
-end
-
-function init_graph(voters::Vector{T}, m::Integer) where T <: Abstract_voter
-   social_network = SimpleGraph(length(voters))
+   social_network = LightGraphs.SimpleGraph(length(voters))
    rand_perm = Random.shuffle(1:length(voters))
    
    degrees = zeros(Float64, length(voters))
@@ -61,7 +38,7 @@ function init_graph(voters::Vector{T}, m::Integer) where T <: Abstract_voter
       #add edges
       self = rand_perm[i]
       for j in edge_ends
-         add_edge!(social_network, self, rand_perm[j])
+         LightGraphs.add_edge!(social_network, self, rand_perm[j])
          #println(self, "=", rand_perm[j])
          degrees[j] += 1
       end
@@ -73,72 +50,10 @@ function init_graph(voters::Vector{T}, m::Integer) where T <: Abstract_voter
    return social_network
 end
 
-function init_graph(voters::Vector{T}, edge_limit, dist_metric::Metric, edge_init_func::Function) where T <: Abstract_voter
-   social_network = SimpleGraph(length(voters))
-
-   edge_counter = 0
-   while edge_counter != edge_limit
-      self = rand(voters)
-      neighbors_ = neighbors(social_network, self.ID)
-
-      #singleton
-      if length(neighbors_) == 0
-         voter = rand(voters)
-         while self.ID == voter.ID 
-            voter = rand(voters)
-         end
-
-         if rand() <= edge_init_func(Distances.evaluate(dist_metric, self.opinion, voter.opinion))
-            if add_edge!(social_network, self.ID, voter.ID)
-               edge_counter += 1
-            end
-         end
-
-         continue
-      end
-
-      #pick random neighbor
-      neighbor_ID = rand(neighbors_)
-      mutual_neighbors = neighbors(social_network, neighbor_ID)
-
-      #path of length one
-      if length(mutual_neighbors) == 1
-         voter = rand(voters)
-         while self.ID == voter.ID 
-            voter = rand(voters)
-         end
-
-         if rand() <= edge_init_func(Distances.evaluate(dist_metric, self.opinion, voter.opinion))
-            if add_edge!(social_network, self.ID, voter.ID) 
-               edge_counter += 1
-            end
-         end
-
-         continue
-      end
-
-      #general case
-      mutual_neighbor_ID = rand(mutual_neighbors)
-      while self.ID == mutual_neighbor_ID
-         mutual_neighbor_ID = rand(mutual_neighbors)
-      end
-
-      mutual_neighbor = voters[mutual_neighbor_ID]
-
-      if rand() <= edge_init_func(Distances.evaluate(dist_metric, self.opinion, mutual_neighbor.opinion))
-         if add_edge!(social_network, self.ID, mutual_neighbor.ID) 
-            edge_counter += 1
-         end
-      end
-   end
-
-   return social_network
-end
-
 function init_graph(vert_count::Int, edges::Vector{LightGraphs.SimpleGraphs.SimpleEdge{Int64}})
-   g = SimpleGraphFromIterator(edges)
+   g = LightGraphs.SimpleGraphFromIterator(edges)
    
-   add_vertices!(g, vert_count - nv(g))
+   LightGraphs.add_vertices!(g, vert_count - LightGraphs.nv(g))
    
    return g
 end
@@ -167,9 +82,9 @@ function createClusteredMetaGraph(g, clusters, labels)
 end
 
 function drawGraph(g, clustering, K)
-   ClusterColor  = distinguishable_colors(K, colorant"blue")
+   ClusterColor  = Colors.distinguishable_colors(K)
    nodefillc = ClusterColor[clustering]
-   display(gplot(g,
+   display(GraphPlot.gplot(g,
       nodefillc=nodefillc,
       layout=random_layout))
 end
@@ -180,8 +95,8 @@ function drawClusteredMetaGraph(G)
    edgesizes = [1000*get_prop(G, e, :weight) / (get_prop(G, src(e), :size) * get_prop(G, dst(e), :size)) for e in edges(G)]
    
    display(edgesizes)
-   display(gplot(G,
-      nodelabel=1:nv(G), 
+   display(GraphPlot.gplot(G,
+      nodelabel=1:LightGraphs.nv(G), 
       nodesize=nodesize,
       edgelinewidth=edgesizes,
       layout=circular_layout))
