@@ -1,20 +1,20 @@
 Metrics(g::LightGraphs.AbstractGraph, distances::Matrix{Float64}, result::Matrix{Int}) = Metrics(
-   sum(result) / nv(g),
+   sum(result) / LightGraphs.nv(g),
    sum(distances) / length(distances),
    maximum(distances),
-   2*ne(g) / (nv(g) * (nv(g) - 1)),
-   2*ne(g) / nv(g),
+   2*LightGraphs.ne(g) / (LightGraphs.nv(g) * (LightGraphs.nv(g) - 1)),
+   2*LightGraphs.ne(g) / LightGraphs.nv(g),
    getPluralityScores(result, true),
    getBordaScores(result, true)
 )
 
 Metrics(g::LightGraphs.AbstractGraph, result::Matrix{Int}) = Metrics(
    result,
-   sum(result) / nv(g),
+   sum(result) / LightGraphs.nv(g),
    0.0,
    0.0,
-   2*ne(g) / (nv(g) * (nv(g) - 1)),
-   2*ne(g) / nv(g),
+   2*LightGraphs.ne(g) / (LightGraphs.nv(g) * (LightGraphs.nv(g) - 1)),
+   2*LightGraphs.ne(g) / LightGraphs.nv(g),
    getPluralityScores(result, true),
    getBordaScores(result, true)
 )

@@ -22,6 +22,9 @@ Pkg.activate()
 # ╔═╡ 9284976e-d474-11eb-2b94-dbe906a08bd7
 using Revise
 
+# ╔═╡ 6634c18e-35a2-43e7-aa71-1d0b07980e5b
+using HypertextLiteral
+
 # ╔═╡ 09ed6ee3-c46e-4223-9757-bb01d58f13f4
 using PlutoUI
 
@@ -35,13 +38,7 @@ input_filename = "ED-00001-00000002.toc"
 @time parties, candidates, election = parse_data2(input_filename)
 
 # ╔═╡ 228f2e5e-cf91-4c00-9c92-6ebbcdc4c69a
-model_config = Dict(
-    "weight_func" => Dict(
-        "type" => "exp",
-        "base" => 1/2
-    ),
-    "m" => 30
-)
+model_config = Spearman_model_config(dist -> (1/2)^dist, 30)
 
 # ╔═╡ 4a2b607d-947d-47e9-b73f-93eab1fb07a5
 model = Spearman_model(election, length(candidates), model_config)
@@ -84,7 +81,7 @@ exp_config = Dict(
 )
 
 # ╔═╡ 90b8efaf-ce7e-4878-bf55-93f5e2a1b802
-OpinionDiffusion.Plots.gr()
+OpinionDiffusion.Plots.plotly()
 
 # ╔═╡ 0a01a7ff-b15e-4039-bd16-c053b4b33f8e
 experiment = Experiment(model, candidates, exp_config)
@@ -95,7 +92,7 @@ diffusion_config = Dict(
         "checkpoint" => 100,
         "voter_diff_config" => Dict(
             "evolve_vertices" => 1000,
-			"attract_proba" => 0.8,
+			"attract_proba" => 0.4,
 			"change_rate" => 0.5,
             "method" => "averageAll"
         ),
@@ -114,7 +111,7 @@ diffusion_config = Dict(
 diffusion_metrics, changes = run_experiment!(experiment, candidates, diffusion_config)
 
 # ╔═╡ 7f138d72-419a-4642-b163-6ec58ce42d24
-OpinionDiffusion.metrics_vis(diffusion_metrics, candidates, parties, experiment.exp_dir)
+OpinionDiffusion.metrics_vis(diffusion_metrics, candidates, parties)
 
 # ╔═╡ 86659fc0-af7e-4498-8388-3e79349e9eb4
 @bind step Slider(1 : length(diffusion_metrics.degree_distributions), show_value=true)
@@ -132,6 +129,7 @@ OpinionDiffusion.draw_edge_distances(diffusion_metrics.edge_distances[step]), si
 
 # ╔═╡ Cell order:
 # ╠═86c32615-cdba-41aa-bfca-e5b90563f7f7
+# ╠═6634c18e-35a2-43e7-aa71-1d0b07980e5b
 # ╠═481f2e27-0f88-482a-846a-6a31bf38f3ba
 # ╠═9284976e-d474-11eb-2b94-dbe906a08bd7
 # ╠═09ed6ee3-c46e-4223-9757-bb01d58f13f4
@@ -147,6 +145,6 @@ OpinionDiffusion.draw_edge_distances(diffusion_metrics.edge_distances[step]), si
 # ╠═0a01a7ff-b15e-4039-bd16-c053b4b33f8e
 # ╠═f43b3b4c-9075-414b-9694-83e7c841605f
 # ╠═f6b4ba47-f9d2-42f0-9c86-e9810be7b810
-# ╟─7f138d72-419a-4642-b163-6ec58ce42d24
+# ╠═7f138d72-419a-4642-b163-6ec58ce42d24
 # ╟─86659fc0-af7e-4498-8388-3e79349e9eb4
 # ╠═43976886-9b44-4152-bb43-88e24f6c98f9

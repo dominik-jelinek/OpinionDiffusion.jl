@@ -80,7 +80,7 @@ function step!(self::Kendall_voter, voters, graph, voter_diff_config)
    if length(neighbors_) == 0
       return
    end
-        
+
    neighbor_id = neighbors_[rand(1:end)]
    neighbor = voters[neighbor_id]
    if rand() <= voter_diff_config["attract_proba"]
@@ -90,7 +90,13 @@ function step!(self::Kendall_voter, voters, graph, voter_diff_config)
    end
    
 end
-
+#=
+Choose pair of candidates that is flipped and make a one step of candidate position towards the other voter for each voter in pair.
+   There are multiple ways how to do such an operation as there can be more than one candidate at each position in the preference.
+   [[1], [2, 3], [4]]    [[1], [2], [3], [4]] pair 2, 3
+   [[1], [2], [3], [4]]  [[1], [2], [4], [3]] pair 3, 4
+   
+=#
 function attract_flip!(self, neighbor, can_count)
    swaps = get_all_swaps(self.opinion, neighbor.opinion)
    if length(swaps) == 0

@@ -2,20 +2,20 @@ function get_voter_vis(voters, sampled_voter_ids, candidates::Vector{Candidate},
     sampled_voters = voters[sampled_voter_ids]
     sampled_opinions = get_opinions(sampled_voters)
 
-    projections = reduce_dim(sampled_opinions, voter_visualization_config["reduce_dim_config"])
-    labels, clusters = clustering(sampled_opinions, candidates, voter_visualization_config["clustering_config"])
+    projections = reduce_dim(sampled_opinions, voter_visualization_config.reduce_dim_config)
+    labels, clusters = clustering(sampled_opinions, candidates, voter_visualization_config.clustering_config)
     return projections, labels, clusters
 end
 
 function reduce_dim(sampled_opinions, reduce_dim_Config)
-    if reduce_dim_Config["method"] == "PCA"
-        config = reduce_dim_Config["PCA"]
-        model = MultivariateStats.fit(MultivariateStats.PCA, sampled_opinions; maxoutdim=config["out_dim"])
+    if reduce_dim_Config.method == "PCA"
+        config = reduce_dim_Config.PCA
+        model = MultivariateStats.fit(MultivariateStats.PCA, sampled_opinions; maxoutdim=config.out_dim)
         projection = MultivariateStats.transform(model, sampled_opinions)
 
-    elseif reduceDimConfig["method"] == "tsne"
-        config = reduce_dim_Config["tsne"]
-        projection = permutedims(TSne.tsne(sampled_opinions, config["out_dim"], config["reduce_dims"], config["max_iter"], config["perplexity"]))
+    elseif reduceDimConfig.method == "tsne"
+        config = reduce_dim_Config.tsne
+        projection = permutedims(TSne.tsne(sampled_opinions, config.out_dim, config.reduce_dims, config.max_iter, config.perplexity))
     else
         error("Unknown dimensionality reduction method")
     end
@@ -25,7 +25,7 @@ end
 
 function draw_voter_vis(projections, clusters, voter_visualization_config, exp_dir=Nothing, counter=[0])
     cluster_colors  = Colors.distinguishable_colors(length(clusters))
-    title = voter_visualization_config["reduce_dim_config"]["method"] * "_" * voter_visualization_config["clustering_config"]["method"] * "_" * string(size(projections, 2))
+    title = voter_visualization_config.reduce_dim_config.method * "_" * voter_visualization_config.clustering_config.method * "_" * string(size(projections, 2))
 
     idxes = collect(clusters[1])
     plot = Plots.scatter(Tuple(eachrow(projections[:, idxes])), c=cluster_colors[1], label=length(clusters[1]), title=title)

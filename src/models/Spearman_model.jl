@@ -9,9 +9,8 @@ end
 function Spearman_model(election, can_count, model_config)
     #init voters
     println("Initializing voters:")
-    weight_func = parse_function(model_config["weight_func"])
     
-    weights = map(weight_func, 1:can_count)
+    weights = map(model_config.weight_func, 1:can_count)
     openmindedness_distr = Distributions.Truncated(Distributions.Normal(0.5, 0.1), 0.0, 1.0)
     stubbornness_distr = Distributions.Truncated(Distributions.Normal(0.5, 0.1), 0.0, 1.0)
 
@@ -19,15 +18,15 @@ function Spearman_model(election, can_count, model_config)
 
     #init graph
     #println("Initializing edges:")
-    #init_edge_func = parse_function(initConfig["init_edge_func"]) 10x slower
+    #init_edge_func = parse_function(initConfig.init_edge_func"]) 10x slower
     #init_edge_func = x->(1/2)^(x + 5.14)
-    #dist_metric = parse_metric(model_config["dist_metric"])
+    #dist_metric = parse_metric(model_config.dist_metric"])
     #edge_limit = 100*length(voters)
     #@time edges = generate_edges(voters, dist_metric, init_edge_func)
     
     println("Initializing graph:")
     
-    @time social_network = init_graph(voters, model_config["m"])
+    @time social_network = init_graph(voters, model_config.m)
     
     #@time social_network = init_graph(length(voters), edges)
 
@@ -40,7 +39,7 @@ function Spearman_model(election, can_count, model_config)
 
     YAML.write_file("$(log_dir)/model_config.yml", model_config)
     model = Spearman_model(voters, social_network, log_dir, exp_counter)
-    @time log(model)
+    log(model)
     return model
 end
 
@@ -54,10 +53,10 @@ function init_voters(election, weights, openmindedness_distr, stubbornness_distr
 end
 
 function graph_diffusion!(model::Spearman_model, edge_diff_config)
-    edge_diff_func = parse_function(edge_diff_config["edge_diff_func"])
-    dist_metric = parse_metric(edge_diff_config["dist_metric"])
+    edge_diff_func = edge_diff_config.edge_diff_func
+    dist_metric = edge_diff_config.dist_metric
     
-    n = edge_diff_config["evolve_edges"]
+    n = edge_diff_config.evolve_edges
     start = rand(1:length(model.voters), n)
     finish = rand(1:length(model.voters), n)
 

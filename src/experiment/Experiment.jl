@@ -44,24 +44,24 @@ function Experiment(model, candidates, exp_config)
     diff_counter = [1]
     model.exp_counter[1] += 1
 
-    if exp_config["voter_visualization_config"]["used"]
+    if exp_config.voter_visualization_config.used
         mkpath(exp_dir * "/images")
     end
 
     sampled_voter_ids = Nothing
-    if exp_config["sample_size"] != 0
-        sampled_voter_ids = StatsBase.sample(1:length(model.voters), exp_config["sample_size"], replace=false)
+    if exp_config.sample_size != 0
+        sampled_voter_ids = StatsBase.sample(1:length(model.voters), exp_config.sample_size, replace=false)
         jldsave("$(exp_dir)/sampled_voter_ids.jld2"; sampled_voter_ids)
     end
     
-    metrics = Spearman_metrics(model, candidates, sampled_voter_ids, exp_config["voter_visualization_config"])
+    metrics = Spearman_metrics(model, candidates, sampled_voter_ids, exp_config.voter_visualization_config)
     
-    return Experiment(model, sampled_voter_ids, metrics, exp_config["voter_visualization_config"], exp_dir, diff_counter)
+    return Experiment(model, sampled_voter_ids, metrics, exp_config.voter_visualization_config, exp_dir, diff_counter)
 end
 
 function run_experiment!(experiment, candidates, diffusion_config)
     changes = Vector{Vector{Float64}}()
-    for i in 1:diffusion_config["diffusions"]
+    for i in 1:diffusion_config.diffusions
         prev_opinions = get_opinions(experiment.model.voters)
         diffusion!(experiment.model, diffusion_config)
         opinion_change = get_opinions(experiment.model.voters) - prev_opinions
@@ -72,7 +72,7 @@ function run_experiment!(experiment, candidates, diffusion_config)
 
         update_metrics!(experiment, candidates)
 
-        if i % diffusion_config["checkpoint"] == 0
+        if i % diffusion_config.checkpoint == 0
             log(experiment)
         end
         experiment.diff_counter[1] += 1
