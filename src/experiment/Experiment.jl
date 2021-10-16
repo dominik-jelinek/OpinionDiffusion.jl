@@ -25,28 +25,23 @@ struct Experiment
     model::Spearman_model
 
     sampled_voter_ids::Vector{Int64}
-    diffusion_metrics::Spearman_metrics
 
+    diffusion_metrics::Spearman_metrics
     voter_visualization_config
+
     exp_dir::String
     diff_counter::Vector{Int64}
 end
 
 function Experiment(model, candidates, exp_config)
-    if model.exp_counter != 1
-        reset_model!(model)
+    if model.exp_counter[1] != 1
+        model = load_log(model)
     end
-    exp_dir = "$(model.log_dir)/experiment_$(model.exp_counter[1])"
+    exp_dir = "$(model.log_dir)/experiment_" * Dates.format(now(), "yyyy-mm-dd_HH-MM-SS")
     mkpath(exp_dir)
-    YAML.write_file("$(exp_dir)/exp_config.yml", exp_config)
-    jldsave("$(exp_dir)/model_0.jld2"; model)
     
     diff_counter = [1]
     model.exp_counter[1] += 1
-
-    if exp_config.voter_visualization_config.used
-        mkpath(exp_dir * "/images")
-    end
 
     sampled_voter_ids = Nothing
     if exp_config.sample_size != 0
@@ -54,33 +49,32 @@ function Experiment(model, candidates, exp_config)
         jldsave("$(exp_dir)/sampled_voter_ids.jld2"; sampled_voter_ids)
     end
     
-    metrics = Spearman_metrics(model, candidates, sampled_voter_ids, exp_config.voter_visualization_config)
-    
-    return Experiment(model, sampled_voter_ids, metrics, exp_config.voter_visualization_config, exp_dir, diff_counter)
+    metrics = Spearman_metrics(model, candidates, sampled_voter_ids, exp_config.voter_vis_config)
+    experiment = Experiment(model, sampled_voter_ids, metrics, exp_config.voter_vis_config, exp_dir, diff_counter)
+    save_log(experiment)
+    return experiment
 end
 
 function run_experiment!(experiment, candidates, diffusion_config)
-    changes = Vector{Vector{Float64}}()
+    #changes = Vector{Vector{Float64}}()
     for i in 1:diffusion_config.diffusions
-        prev_opinions = get_opinions(experiment.model.voters)
         diffusion!(experiment.model, diffusion_config)
-        opinion_change = get_opinions(experiment.model.voters) - prev_opinions
         
         #normalized_change = mapslices(normalize, opinion_change; dims=1)*2 .- 1.0
         #push!(changes, vec(sum(normalized_change, dims=2)))
-        push!(changes, vec(sum(sign.(opinion_change), dims=2)))
+        #push!(changes, vec(sum(sign.(opinion_change), dims=2)))
 
-        update_metrics!(experiment, candidates)
+        @time update_metrics!(experiment, candidates)
 
         if i % diffusion_config.checkpoint == 0
-            log(experiment)
+            save_log(experiment)
         end
         experiment.diff_counter[1] += 1
     end
 
-    jldsave("$(experiment.exp_dir)/diffusion_metrics.jld2"; experiment.diffusion_metrics)
+    #jldsave("$(experiment.exp_dir)/diffusion_metrics.jld2"; experiment.diffusion_metrics)
 
-    return experiment.diffusion_metrics, changes
+    return experiment.diffusion_metrics
 end
 
 function Spearman_metrics(model, candidates, sampled_voter_ids, voter_visualization_config)
@@ -125,8 +119,12 @@ function update_metrics!(experiment::Experiment, candidates)
     push!(diffusion_metrics.clusters, clusters)
     push!(diffusion_metrics.degree_distributions, LightGraphs.degree_histogram(experiment.model.social_network))
     push!(diffusion_metrics.edge_distances, get_edge_distances(experiment.model.social_network, experiment.model.voters))
- end
+end
 
-function log(experiment::Experiment)
+function save_log(experiment::Experiment)
     jldsave("$(experiment.exp_dir)/model_$(experiment.diff_counter[1]).jld2"; experiment.model)
+end
+
+function load_log(experiment::Experiment)
+    return load("$(experiment.exp_dir)/model_$(experiment.diff_counter[0]).jld2", "model")
 end

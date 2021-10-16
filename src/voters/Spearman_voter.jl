@@ -88,10 +88,10 @@ function step!(self::Spearman_voter, voters, graph, voter_diff_config)
     neighbor_id = neighbors_[rand(1:end)]
     neighbor = voters[neighbor_id]
 
-    if voter_diff_config["method"] == "averageOne"
-        average_one!(self, neighbor, voter_diff_config["attract_proba"], voter_diff_config["change_rate"])
-    elseif voter_diff_config["method"] == "averageAll"
-        average_all!(self, neighbor, voter_diff_config["attract_proba"], voter_diff_config["change_rate"])
+    if voter_diff_config.method == "averageOne"
+        average_one!(self, neighbor, voter_diff_config.attract_proba, voter_diff_config.change_rate)
+    elseif voter_diff_config.method == "averageAll"
+        average_all!(self, neighbor, voter_diff_config.attract_proba, voter_diff_config.change_rate)
     else
         error("Unknown vertex diffusion method, [averageOne | averageAll]")
     end

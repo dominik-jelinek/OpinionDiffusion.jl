@@ -3,43 +3,27 @@ struct Spearman_model <: Abstract_model
     social_network::LightGraphs.SimpleGraph
 
     log_dir::String
-    exp_counter::Vector{Int}
+    exp_counter
 end
 
-function Spearman_model(election, can_count, model_config)
-    #init voters
+function Spearman_model(election, can_count::Int64, model_config)
     println("Initializing voters:")
-    
     weights = map(model_config.weight_func, 1:can_count)
-    openmindedness_distr = Distributions.Truncated(Distributions.Normal(0.5, 0.1), 0.0, 1.0)
-    stubbornness_distr = Distributions.Truncated(Distributions.Normal(0.5, 0.1), 0.0, 1.0)
+    openmindedness_distr = Distributions.Truncated(model_config.openmindedness_distr, 0.0, 1.0)
+    stubbornness_distr = Distributions.Truncated(model_config.stubbornness_distr, 0.0, 1.0)
 
     @time voters = init_voters(election, weights, openmindedness_distr, stubbornness_distr)
-
-    #init graph
-    #println("Initializing edges:")
-    #init_edge_func = parse_function(initConfig.init_edge_func"]) 10x slower
-    #init_edge_func = x->(1/2)^(x + 5.14)
-    #dist_metric = parse_metric(model_config.dist_metric"])
-    #edge_limit = 100*length(voters)
-    #@time edges = generate_edges(voters, dist_metric, init_edge_func)
     
     println("Initializing graph:")
-    
     @time social_network = init_graph(voters, model_config.m)
-    
-    #@time social_network = init_graph(length(voters), edges)
 
-    #init logging
     println("Initializing logging")
-    
-    exp_counter = [1]
-    log_dir = "logs/" * Dates.format(now(), "yyyy-mm-dd_HH-MM-SS")
+    log_dir = "logs/" * model_config.log_name * "_" * Dates.format(now(), "yyyy-mm-dd_HH-MM-SS")
     mkpath(log_dir)
 
     YAML.write_file("$(log_dir)/model_config.yml", model_config)
-    model = Spearman_model(voters, social_network, log_dir, exp_counter)
-    log(model)
+    model = Spearman_model(voters, social_network, log_dir, [0])
+    save_log(model)
     return model
 end
 
@@ -81,8 +65,4 @@ function edge_diffusion!(voter_1, voter_2, g, edgeDiffFunc, distMetric::Distance
             LightGraphs.add_edge!(g, voter_1.ID, voter_2.ID)
         end
     end
-end
-
-function log(model::Spearman_model)
-    jldsave("$(model.log_dir)/model.jld2"; model)
 end

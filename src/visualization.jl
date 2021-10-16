@@ -9,12 +9,12 @@ end
 
 function reduce_dim(sampled_opinions, reduce_dim_Config)
     if reduce_dim_Config.method == "PCA"
-        config = reduce_dim_Config.PCA
+        config = reduce_dim_Config.pca_config
         model = MultivariateStats.fit(MultivariateStats.PCA, sampled_opinions; maxoutdim=config.out_dim)
         projection = MultivariateStats.transform(model, sampled_opinions)
 
     elseif reduceDimConfig.method == "tsne"
-        config = reduce_dim_Config.tsne
+        config = reduce_dim_Config.tsne_config
         projection = permutedims(TSne.tsne(sampled_opinions, config.out_dim, config.reduce_dims, config.max_iter, config.perplexity))
     else
         error("Unknown dimensionality reduction method")

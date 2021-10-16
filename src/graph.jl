@@ -38,12 +38,10 @@ function init_graph(voters::Vector{T}, m::Integer) where T <: Abstract_voter
       #add edges
       self = rand_perm[i]
       for j in edge_ends
-         LightGraphs.add_edge!(social_network, self, rand_perm[j])
-         #println(self, "=", rand_perm[j])
+         LightGraphs.add_edge!(social_network, self, rand_perm[j]) #probs[j] - 1.0
          degrees[j] += 1
       end
       degrees[i] += 1.0 + m 
-      #println("degrees", degrees)
 
    end
 
