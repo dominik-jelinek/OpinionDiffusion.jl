@@ -30,3 +30,15 @@ struct NotImplementedError{M} <: Exception
 end
 
 Base.showerror(io::IO, ie::NotImplementedError) = print(io, "method $(ie.m) not implemented.")
+
+function last_log_idx(exp_dir)
+   idx = -1
+   for filename in readdir(exp_dir)
+      val = parse(Int64, chop(split(filename, "_")[end], tail=5))
+      if  val > idx
+         idx = val
+      end
+   end
+   
+   return idx
+end

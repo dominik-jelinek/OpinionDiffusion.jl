@@ -45,5 +45,9 @@ end
 
 #load
 function load_log(exp_dir::String, idx::Int64)
+    if idx == -1
+        idx = last_log_idx(exp_dir)
+    end
+    
     return load("$(exp_dir)/model_$(idx).jld2", "model")
 end

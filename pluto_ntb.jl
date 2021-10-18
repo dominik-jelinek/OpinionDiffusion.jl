@@ -45,30 +45,37 @@ model_config = Spearman_model_config(
 	stubbornness_distr = Distributions.Normal(0.5, 0.1)
 )
 
+# ╔═╡ 985131a7-7c11-4f9d-ae00-ef031002592d
+model_dir = "logs/model_2021-10-18_21-46-20"
+
+# ╔═╡ d8b613c5-7276-466d-a54a-7670f0921b35
+exp_dir = model_dir * "/" * "experiment_2021-10-18_22-06-26"
+
+# ╔═╡ 571e7a33-20b7-4432-b553-c07b9081c68d
+idx = -1
+
+# ╔═╡ 1937642e-7f63-4ffa-b01f-22208a716dac
+md"""
+Barrier $(@bind cb_barrier CheckBox())
+"""
+
 # ╔═╡ 72450aaf-c6c4-458e-9555-39c31345116b
 md"""
 Model source $(@bind model_source Select(["restart_model" => "Restart", "load_model" => "Load", "new_model" => "New (takes time)"]))
 """
 
-# ╔═╡ 985131a7-7c11-4f9d-ae00-ef031002592d
-model_dir = "logs/model_2021-10-18_20-50-46"
-
-# ╔═╡ d8b613c5-7276-466d-a54a-7670f0921b35
-exp_dir = "logs/model_2021-10-18_20-50-46/experiment_2021-10-18_20-50-46"
-
-# ╔═╡ 571e7a33-20b7-4432-b553-c07b9081c68d
-idx = 10
-
 # ╔═╡ 4a2b607d-947d-47e9-b73f-93eab1fb07a5
-if model_source == "new_model"
-	model = Spearman_model(election, length(candidates), model_config)
-	logger = Logger(model)
-elseif model_source == "load_model"
-	model = load_log(exp_dir, idx)
-	logger = Logger(model, model_dir, exp_dir, idx)
-else #restart
-	model = load_log(model_dir)
-	logger = Logger(model, model_dir)
+if cb_barrier 
+	if model_source == "new_model"
+		model = Spearman_model(election, length(candidates), model_config)
+		logger = Logger(model)
+	elseif model_source == "load_model"
+		model = load_log(exp_dir, idx)
+		logger = Logger(model, model_dir, exp_dir, idx)
+	else #restart
+		model = load_log(model_dir)
+		logger = Logger(model, model_dir)
+	end
 end
 
 # ╔═╡ 776f99ea-6e44-4eb6-b2dd-3552bbb39954
@@ -86,7 +93,7 @@ diffusion_config = Diffusion_config(
         checkpoint = 1,
         voter_diff_config = Voter_diff_config(
             evolve_vertices = 1000,
-			attract_proba = 0.4,
+			attract_proba = 0.8,
 			change_rate = 0.5,
             method = "averageAll"
         ),
@@ -146,11 +153,12 @@ OpinionDiffusion.draw_edge_distances(diffusion_metrics.edge_distances[step]), si
 # ╠═fc5a5935-8f4e-47ad-8568-70cd61656e06
 # ╠═76c03bc8-72b9-4fae-9310-3eb61d593896
 # ╠═228f2e5e-cf91-4c00-9c92-6ebbcdc4c69a
-# ╟─72450aaf-c6c4-458e-9555-39c31345116b
 # ╠═776f99ea-6e44-4eb6-b2dd-3552bbb39954
 # ╠═985131a7-7c11-4f9d-ae00-ef031002592d
 # ╠═d8b613c5-7276-466d-a54a-7670f0921b35
 # ╠═571e7a33-20b7-4432-b553-c07b9081c68d
+# ╟─1937642e-7f63-4ffa-b01f-22208a716dac
+# ╟─72450aaf-c6c4-458e-9555-39c31345116b
 # ╠═4a2b607d-947d-47e9-b73f-93eab1fb07a5
 # ╠═4079d722-1201-4b10-a2a2-9aa420089d67
 # ╠═26be9903-64f3-487f-af3f-dd1fc26c3665
