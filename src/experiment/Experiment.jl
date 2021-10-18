@@ -21,60 +21,71 @@ struct Spearman_metrics
     edge_distances::Vector{Vector{Float64}}
 end
 
-struct Experiment
+struct Logger
     model::Spearman_model
 
-    sampled_voter_ids::Vector{Int64}
-
-    diffusion_metrics::Spearman_metrics
-    voter_visualization_config
-
+    model_dir::String
     exp_dir::String
     diff_counter::Vector{Int64}
 end
 
-function Experiment(model, candidates, exp_config)
-    if model.exp_counter[1] != 1
-        model = load_log(model)
-    end
-    exp_dir = "$(model.log_dir)/experiment_" * Dates.format(now(), "yyyy-mm-dd_HH-MM-SS")
+#new
+function Logger(model)
+    model_dir = "logs/model_" * Dates.format(now(), "yyyy-mm-dd_HH-MM-SS")
+    mkpath(model_dir)
+    exp_dir = "$(model_dir)/experiment_" * Dates.format(now(), "yyyy-mm-dd_HH-MM-SS")
     mkpath(exp_dir)
     
+    save_log(model, model_dir)
+    save_log(model, exp_dir, 0)
     diff_counter = [1]
-    model.exp_counter[1] += 1
 
-    sampled_voter_ids = Nothing
-    if exp_config.sample_size != 0
-        sampled_voter_ids = StatsBase.sample(1:length(model.voters), exp_config.sample_size, replace=false)
-        jldsave("$(exp_dir)/sampled_voter_ids.jld2"; sampled_voter_ids)
-    end
-    
-    metrics = Spearman_metrics(model, candidates, sampled_voter_ids, exp_config.voter_vis_config)
-    experiment = Experiment(model, sampled_voter_ids, metrics, exp_config.voter_vis_config, exp_dir, diff_counter)
-    save_log(experiment)
-    return experiment
+    return Logger(model, model_dir, exp_dir, diff_counter)
 end
 
-function run_experiment!(experiment, candidates, diffusion_config)
-    #changes = Vector{Vector{Float64}}()
-    for i in 1:diffusion_config.diffusions
-        diffusion!(experiment.model, diffusion_config)
-        
-        #normalized_change = mapslices(normalize, opinion_change; dims=1)*2 .- 1.0
-        #push!(changes, vec(sum(normalized_change, dims=2)))
-        #push!(changes, vec(sum(sign.(opinion_change), dims=2)))
+#restart
+function Logger(model, model_dir)
+    exp_dir = "$(model_dir)/experiment_" * Dates.format(now(), "yyyy-mm-dd_HH-MM-SS")
+    mkpath(exp_dir)
+    
+    save_log(model, exp_dir, 0)    
+    diff_counter = [1]
+    return Logger(model, model_dir, exp_dir, diff_counter)
+end
 
-        @time update_metrics!(experiment, candidates)
-
-        if i % diffusion_config.checkpoint == 0
-            save_log(experiment)
+#load
+function Logger(model, model_dir, exp_dir, idx::Int64)
+    #remove logs of models that were created after loaded log 
+    for file in readdir(exp_dir)
+        if parse(Int64, chop(split(file, "_")[end], tail=5)) > idx
+            rm(exp_dir * "/" * file)
         end
-        experiment.diff_counter[1] += 1
     end
 
-    #jldsave("$(experiment.exp_dir)/diffusion_metrics.jld2"; experiment.diffusion_metrics)
+    return new(model, model_dir, exp_dir, [idx])
+end
 
-    return experiment.diffusion_metrics
+function run!(logger::Logger, diffusion_config)
+    models = Vector{typeof(logger.model)}(undef, diffusion_config.diffusions)
+    for i in 1:diffusion_config.diffusions
+        diffusion!(logger.model, diffusion_config)
+        models[i] = deepcopy(logger.model)
+        
+        save_log(logger)
+        logger.diff_counter[1] += 1
+    end
+
+    return models
+end
+
+function run!(model::T, diffusion_config) where T<:Abstract_model
+    models = Vector{T}(undef, diffusion_config.diffusions)
+    for i in 1:diffusion_config.diffusions
+        diffusion!(model, diffusion_config)
+        models[i] = deepcopy(model)
+    end
+
+    return models
 end
 
 function Spearman_metrics(model, candidates, sampled_voter_ids, voter_visualization_config)
@@ -97,7 +108,7 @@ function Spearman_metrics(model, candidates, sampled_voter_ids, voter_visualizat
                             [get_edge_distances(model.social_network, model.voters)])
 end
 
-function update_metrics!(experiment::Experiment, candidates)
+function update_metrics!(experiment::Logger, candidates)
     social_network = experiment.model.social_network
     diffusion_metrics = experiment.diffusion_metrics
 
@@ -121,10 +132,10 @@ function update_metrics!(experiment::Experiment, candidates)
     push!(diffusion_metrics.edge_distances, get_edge_distances(experiment.model.social_network, experiment.model.voters))
 end
 
-function save_log(experiment::Experiment)
-    jldsave("$(experiment.exp_dir)/model_$(experiment.diff_counter[1]).jld2"; experiment.model)
+function save_log(logger::Logger)
+    save_log(logger.model, logger.exp_dir, logger.diff_counter[1])
 end
 
-function load_log(experiment::Experiment)
-    return load("$(experiment.exp_dir)/model_$(experiment.diff_counter[0]).jld2", "model")
+function load_log(logger::Logger)
+    return load("$(logger.exp_dir)/model_$(logger.diff_counter[1]).jld2", "model")
 end

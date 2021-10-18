@@ -27,10 +27,12 @@ import YAML
 
 export parse_data2
 export Spearman_model
-export Experiment
-export run_experiment!
+export Logger
+export run!
+export save_log, load_log
 export visualize_metrics
-
+export get_opinion, get_vote
+export get_votes, get_opinions
 export Spearman_model_config, Kmeans_config, GM_config, Clustering_config, PCA_config, Tsne_config, Reduce_dim_config, Voter_vis_config, Exp_config, Voter_diff_config, Edge_diff_config, Diffusion_config
 
 include("configs.jl")

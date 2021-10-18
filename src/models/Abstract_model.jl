@@ -30,10 +30,20 @@ function graph_diffusion!(model::T, edge_diff_config) where T <: Abstract_model
     throw(NotImplementedError("step!"))
 end
 
-function save_log(model::T) where T<:Abstract_model
-    jldsave("$(model.log_dir)/model_init.jld2"; model)
+function save_log(model::T, model_dir) where T<:Abstract_model
+    jldsave("$(model_dir)/model_init.jld2"; model)
 end
 
-function load_log(model::T) where T<:Abstract_model
-    return load("$(model.log_dir)/model_init.jld2", "model")
+function save_log(model::T, exp_dir::String, idx::Int64) where T<:Abstract_model
+    jldsave("$(exp_dir)/model_$(idx).jld2"; model)
+end
+
+#restart
+function load_log(model_dir::String)
+    return load("$(model_dir)/model_init.jld2", "model")
+end
+
+#load
+function load_log(exp_dir::String, idx::Int64)
+    return load("$(exp_dir)/model_$(idx).jld2", "model")
 end

@@ -1,9 +1,6 @@
 struct Spearman_model <: Abstract_model
     voters::Vector{Spearman_voter}
     social_network::LightGraphs.SimpleGraph
-
-    log_dir::String
-    exp_counter
 end
 
 function Spearman_model(election, can_count::Int64, model_config)
@@ -17,13 +14,7 @@ function Spearman_model(election, can_count::Int64, model_config)
     println("Initializing graph:")
     @time social_network = init_graph(voters, model_config.m)
 
-    println("Initializing logging")
-    log_dir = "logs/" * model_config.log_name * "_" * Dates.format(now(), "yyyy-mm-dd_HH-MM-SS")
-    mkpath(log_dir)
-
-    YAML.write_file("$(log_dir)/model_config.yml", model_config)
-    model = Spearman_model(voters, social_network, log_dir, [0])
-    save_log(model)
+    model = Spearman_model(voters, social_network)
     return model
 end
 

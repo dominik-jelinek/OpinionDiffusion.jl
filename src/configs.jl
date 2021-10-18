@@ -1,5 +1,4 @@
 @kwdef struct Spearman_model_config
-    log_name::String
     weight_func::Function
     m::Integer
     openmindedness_distr::Distributions.Distribution{Distributions.Univariate, Distributions.Continuous}

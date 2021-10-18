@@ -15,7 +15,7 @@ function Spearman_voter(ID, vote, weights, openmindedness_distr::Distributions.C
 end
 
 function get_vote(voter::Spearman_voter) :: Vector{Vector{Int64}}
-    can_ranking = sortperm(voter.opinion)
+    can_ranking = sortperm(voter.opinion, rev=true)
     sorted_scores = voter.opinion[can_ranking]
     
     vote = Vector{Vector{Int64}}()
