@@ -79,7 +79,7 @@ function spearman_encoding(vote, weights)
     return opinion
 end
 =#
-function step!(self::Spearman_voter, voters, graph, voter_diff_config)
+function step!(self::Spearman_voter, voters, graph, voter_diff_config::Spearman_voter_diff_config)
     neighbors_ = neighbors(graph, self.ID)
     if length(neighbors_) == 0
         return

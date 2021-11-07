@@ -1,7 +1,7 @@
 abstract type Abstract_model end
 
-function graph_diffusion!(model::T, graph_diff_config) where T <: Abstract_model
-    throw(NotImplementedError("step!"))
+function graph_diffusion!(model::T, graph_diff_config::U) where {T <: Abstract_model, U <: Abstract_graph_diff_config}
+    throw(NotImplementedError("graph_diffusion!"))
 end
 
 function get_votes(voters::Vector{T}) where T <: Abstract_voter
@@ -30,7 +30,8 @@ function diffusion!(model::T, diffusion_config) where T <: Abstract_model
     graph_diffusion!(model, diffusion_config.graph_diff_config)
 end
 
-function voter_diffusion!(model::T, voter_diff_config) where T <: Abstract_model
+function voter_diffusion!(model::T, voter_diff_config::U) where 
+    {T <: Abstract_model, U <: Abstract_voter_diff_config}
     vertexes = rand(1:length(model.voters), voter_diff_config.evolve_vertices)
 
     for v in vertexes

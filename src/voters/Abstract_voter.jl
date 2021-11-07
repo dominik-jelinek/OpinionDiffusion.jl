@@ -12,7 +12,8 @@ function get_vote(voter::Abstract_voter) :: Vector{Int}
     throw(NotImplementedError("get_vote"))
 end
 
-function step!(self::T, voters, graph, voter_diff_config) where T <: Abstract_voter
+function step!(self::T, voters, graph, voter_diff_config::U) where 
+    {T <: Abstract_voter, U <: Abstract_voter_diff_config}
     throw(NotImplementedError("step!"))
 end
 
