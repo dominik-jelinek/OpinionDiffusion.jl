@@ -1,6 +1,6 @@
 abstract type Abstract_model end
 
-function graph_diffusion!(model::T, edge_diff_config) where T <: Abstract_model
+function graph_diffusion!(model::T, graph_diff_config) where T <: Abstract_model
     throw(NotImplementedError("step!"))
 end
 
@@ -18,22 +18,16 @@ function get_opinions(voters::Vector{T}) where T <: Abstract_voter
 end
 
 function run!(model::T, diffusion_config, logger=nothing::Union{Nothing, Logger}) where T<:Abstract_model
-    models = Vector{T}(undef, diffusion_config.diffusions)
-    for i in 1:diffusion_config.diffusions
-        diffusion!(model, diffusion_config)
-        models[i] = deepcopy(model)
+    diffusion!(model, diffusion_config)
 
-        if logger !== nothing
-            save_log(logger, model)
-        end
+    if logger !== nothing && logger.diff_counter[1] % diffusion_config.diffusions == 0
+        save_log(logger, model)
     end
-
-    return models
 end
 
 function diffusion!(model::T, diffusion_config) where T <: Abstract_model
     voter_diffusion!(model, diffusion_config.voter_diff_config)
-    graph_diffusion!(model, diffusion_config.edge_diff_config)
+    graph_diffusion!(model, diffusion_config.graph_diff_config)
 end
 
 function voter_diffusion!(model::T, voter_diff_config) where T <: Abstract_model
