@@ -47,23 +47,11 @@ function Logger(model, model_dir, exp_dir, idx::Int64)
     return Logger(model, model_dir, exp_dir, [idx])
 end
 
-function run!(logger::Logger, diffusion_config)
-    models = Vector{typeof(logger.model)}(undef, diffusion_config.diffusions)
-    for i in 1:diffusion_config.diffusions
-        diffusion!(logger.model, diffusion_config)
-        models[i] = deepcopy(logger.model)
-        
-        logger.diff_counter[1] += 1
-        save_log(logger)
-    end
-
-    return models
-end
-
-function save_log(logger::Logger)
-    save_log(logger.model, logger.exp_dir, logger.diff_counter[1])
+function save_log(logger::Logger, model)
+    logger.diff_counter[1] += 1
+    save_log(model, logger.exp_dir, logger.diff_counter[1])
 end
 
 function load_log(logger::Logger)
-    return load("$(logger.exp_dir)/model_$(logger.diff_counter[1]).jld2", "model")
+    return load_log(logger.exp_dir, logger.diff_counter[1])
 end

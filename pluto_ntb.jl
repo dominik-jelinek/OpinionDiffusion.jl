@@ -41,7 +41,7 @@ input_filename = "madeUp"#"ED-00001-00000002.toc"
 # ╔═╡ 228f2e5e-cf91-4c00-9c92-6ebbcdc4c69a
 model_config = General_model_config( 
 	m = 2,
-	voter_config = OpinionDiffusion.Spearman_voter_config(
+	voter_config = Spearman_voter_config(
 		weight_func = dist -> (1/2)^dist, 
 		openmindedness_distr = Distributions.Normal(0.5, 0.1),
 		stubbornness_distr = Distributions.Normal(0.5, 0.1)
@@ -117,7 +117,7 @@ Run experiment $(@bind cb CheckBox())
 
 # ╔═╡ f6b4ba47-f9d2-42f0-9c86-e9810be7b810
 if cb
-	models = run!(logger, diffusion_config)
+	models = run!(model, diffusion_config, logger)
 end
 
 # ╔═╡ ff873978-d93f-4ba2-aadd-6cfd3b136e3d
