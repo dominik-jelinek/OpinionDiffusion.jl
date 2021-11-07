@@ -56,7 +56,7 @@ function init_graph(vert_count::Int, edges::Vector{LightGraphs.SimpleGraphs.Simp
    return g
 end
 
-#___________________________________________________________________
+# Not used below___________________________________________________________________
 
 function createClusteredMetaGraph(g, clusters, labels)
    G = MetaGraph(length(clusters))

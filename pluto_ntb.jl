@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.16.1
+# v0.17.1
 
 using Markdown
 using InteractiveUtils
@@ -7,8 +7,9 @@ using InteractiveUtils
 # This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
 macro bind(def, element)
     quote
+        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
         local el = $(esc(element))
-        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : missing
+        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
         el
     end
 end
@@ -38,11 +39,13 @@ input_filename = "madeUp"#"ED-00001-00000002.toc"
 @time parties, candidates, election = parse_data2(input_filename)
 
 # ╔═╡ 228f2e5e-cf91-4c00-9c92-6ebbcdc4c69a
-model_config = Spearman_model_config( 
-	weight_func = dist -> (1/2)^dist, 
-	m = 2, 
-	openmindedness_distr = Distributions.Normal(0.5, 0.1),
-	stubbornness_distr = Distributions.Normal(0.5, 0.1)
+model_config = General_model_config( 
+	m = 2,
+	voter_config = OpinionDiffusion.Spearman_voter_config(
+		weight_func = dist -> (1/2)^dist, 
+		openmindedness_distr = Distributions.Normal(0.5, 0.1),
+		stubbornness_distr = Distributions.Normal(0.5, 0.1)
+	)
 )
 
 # ╔═╡ 985131a7-7c11-4f9d-ae00-ef031002592d
@@ -67,13 +70,16 @@ Model source $(@bind model_source Select(["restart_model" => "Restart", "load_mo
 # ╔═╡ 4a2b607d-947d-47e9-b73f-93eab1fb07a5
 if cb_barrier 
 	if model_source == "new_model"
-		model = Spearman_model(election, length(candidates), model_config)
+		model = General_model(election, length(candidates), model_config)
+		model_states = [model]
 		logger = Logger(model)
 	elseif model_source == "load_model"
 		model = load_log(exp_dir, idx)
+		model_states = load_logs(exp_dir, 0, idx)
 		logger = Logger(model, model_dir, exp_dir, idx)
 	else #restart
 		model = load_log(model_dir)
+		model_states = [model]
 		logger = Logger(model, model_dir)
 	end
 end
@@ -115,10 +121,69 @@ if cb
 end
 
 # ╔═╡ ff873978-d93f-4ba2-aadd-6cfd3b136e3d
+OpinionDiffusion.Plots.plotly()
 
+# ╔═╡ a85f9e15-453a-4387-a214-194dc019ef0f
+
+
+# ╔═╡ 688e9359-623d-467e-843d-033498e84c29
+function update_metrics!(model, diffusion_metrics, candidates)
+    dict = degree_histogram(model.social_network)
+    keyss = collect(keys(dict))
+    push!(diffusion_metrics.min_degrees, minimum(keyss))
+    push!(diffusion_metrics.avg_degrees, LightGraphs.ne(model.social_network) * 2 / LightGraphs.nv(model.social_network))
+    push!(diffusion_metrics.max_degrees, maximum(keyss))
+    
+    votes = get_votes(model.voters)
+    can_count = length(candidates)
+    push!(diffusion_metrics.plurality_votings, plurality_voting(votes, can_count, true))
+    push!(diffusion_metrics.borda_votings, borda_voting(votes, can_count, true))
+    push!(diffusion_metrics.copeland_votings, copeland_voting(votes, can_count))
+end
+
+# ╔═╡ c39a365b-926a-4759-b1a6-7ff85ae032a0
+for model in models
+	update_metrics!(model)
+end
 
 # ╔═╡ 97ea949c-d291-43cb-8f71-1fba22560e1e
+voter_vis_config = Voter_vis_config(
+        used = true,
+        reduce_dim_config = Reduce_dim_config(
+            method = "PCA",
+            pca_config = PCA_config(
+                out_dim = 2
+            ),
+            tsne_config = Tsne_config(
+                out_dim = 2,
+                reduce_dims = 0,
+                max_iter = 3000,
+                perplexity = 100.0
+            )
+        ),
+        clustering_config = Clustering_config(
+            used = true,
+            method = "Party",
+            kmeans_config = Kmeans_config(
+                cluster_count = 8
+            ),
+            gm_config = GM_config(
+                cluster_count = 8
+            )
+        )
+)
 
+# ╔═╡ 228f2d0b-b964-4133-b0bc-fee7d9fe298f
+sample_size = 5
+
+# ╔═╡ ea2d9183-07d1-454b-8e0a-1715528dc13e
+sampled_voter_ids = OpinionDiffusion.StatsBase.sample(1:length(model.voters), sample_size, replace=false)
+
+# ╔═╡ b8be568b-8cc1-47a1-83b8-a5b423a7b08d
+projections, labels, clusters = get_voter_vis(model.voters, sampled_voter_ids, candidates, voter_visualization_config)
+
+# ╔═╡ 4eb56ee4-04e9-40cd-90fc-1495215f2928
+OpinionDiffusion.draw_voter_vis(projections, clusters, voter_visualization_config)
 
 # ╔═╡ 83b3e762-0aeb-4037-a723-d66f20540c2c
 Base.summarysize(models[10])
@@ -139,9 +204,42 @@ OpinionDiffusion.Plots.plot(
 OpinionDiffusion.draw_voter_vis(
 	diffusion_metrics.projections[step], diffusion_metrics.clusters[step], 				experiment.voter_visualization_config),
 	
-OpinionDiffusion.draw_degree_distr(diffusion_metrics.degree_distributions[step]),
+OpinionDiffusion.draw_degree_distr(LightGraphs.degree_histogram(model.social_network)),
 
-OpinionDiffusion.draw_edge_distances(diffusion_metrics.edge_distances[step]), size = (1800,1920))
+OpinionDiffusion.draw_edge_distances(get_edge_distances(model.social_network, model.voters)), size = (1800,1920))
+
+# ╔═╡ 6e8ec73b-59b7-4bf5-8c32-0c8b6911fef9
+function Spearman_metrics(model, can_count)
+    dict = LightGraphs.degree_histogram(model.social_network)
+    keyss = collect(keys(dict))
+    votes = get_votes(model.voters)
+
+    return Spearman_metrics([minimum(keyss)], 
+                            [LightGraphs.ne(model.social_network) * 2 / LightGraphs.LightGraphs.nv(model.social_network)], 
+                            [maximum(keyss)], 
+                            [plurality_voting(votes, can_count, true)], 
+                            [borda_voting(votes, can_count, true)], 
+                            [copeland_voting(votes, can_count)]
+                            )
+end
+
+# ╔═╡ 93aa822a-1be4-45c0-a6a0-65a3d8f08bbf
+struct Spearman_metrics
+    #min_distance::Vector{Int64}
+    #avg_distance::Vector{Float64}
+    #max_distance::Vector{Int64}
+    
+    #graph metrics
+    min_degrees::Vector{Int}
+    avg_degrees::Vector{Float64}
+    max_degrees::Vector{Int}
+ 
+    #election results
+    plurality_votings::Vector{Vector{Float64}}
+    borda_votings::Vector{Vector{Float64}}
+    copeland_votings::Vector{Vector{Float64}}
+    #STV
+end
 
 # ╔═╡ Cell order:
 # ╠═86c32615-cdba-41aa-bfca-e5b90563f7f7
@@ -166,7 +264,16 @@ OpinionDiffusion.draw_edge_distances(diffusion_metrics.edge_distances[step]), si
 # ╟─20819900-1129-4ff1-b97e-d079ffce8ab8
 # ╠═f6b4ba47-f9d2-42f0-9c86-e9810be7b810
 # ╠═ff873978-d93f-4ba2-aadd-6cfd3b136e3d
+# ╠═c39a365b-926a-4759-b1a6-7ff85ae032a0
+# ╠═93aa822a-1be4-45c0-a6a0-65a3d8f08bbf
+# ╠═6e8ec73b-59b7-4bf5-8c32-0c8b6911fef9
+# ╠═a85f9e15-453a-4387-a214-194dc019ef0f
+# ╠═688e9359-623d-467e-843d-033498e84c29
 # ╠═97ea949c-d291-43cb-8f71-1fba22560e1e
+# ╠═228f2d0b-b964-4133-b0bc-fee7d9fe298f
+# ╠═ea2d9183-07d1-454b-8e0a-1715528dc13e
+# ╠═b8be568b-8cc1-47a1-83b8-a5b423a7b08d
+# ╠═4eb56ee4-04e9-40cd-90fc-1495215f2928
 # ╠═83b3e762-0aeb-4037-a723-d66f20540c2c
 # ╠═d4896d75-6c3e-4a7d-ac83-7d6c255da941
 # ╠═7f138d72-419a-4642-b163-6ec58ce42d24

@@ -15,3 +15,7 @@ end
 function step!(self::T, voters, graph, voter_diff_config) where T <: Abstract_voter
     throw(NotImplementedError("step!"))
 end
+
+function init_voters(election, can_count, voter_config::T) where T <: Abstract_voter_config
+    throw(NotImplementedError("init_voters"))
+end

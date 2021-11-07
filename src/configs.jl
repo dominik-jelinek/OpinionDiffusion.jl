@@ -1,6 +1,10 @@
-@kwdef struct Spearman_model_config
-    weight_func::Function
+abstract type Abstract_voter_config end
+@kwdef struct General_model_config
     m::Integer
+    voter_config::Abstract_voter_config
+end
+@kwdef struct Spearman_voter_config <: Abstract_voter_config
+    weight_func::Function
     openmindedness_distr::Distributions.Distribution{Distributions.Univariate, Distributions.Continuous}
     stubbornness_distr::Distributions.Distribution{Distributions.Univariate, Distributions.Continuous}
 end
