@@ -7,7 +7,7 @@ import Colors
 import Base.@kwdef
 
 using MetaGraphs
-using LightGraphs
+using Graphs
 
 import Plots
 import StatsPlots
@@ -25,15 +25,20 @@ using JLD2
 import YAML
 
 
-export parse_data2
+export parse_data
 export General_model
 export Logger
 export run!
 export save_log, load_log, load_logs
-export visualize_metrics
 export get_opinion, get_vote
 export get_votes, get_opinions
-export General_model_config, Spearman_voter_config, Kmeans_config, GM_config, Clustering_config, PCA_config, Tsne_config, Reduce_dim_config, Voter_vis_config, Exp_config, Voter_diff_config, Edge_diff_config, Diffusion_config
+
+export Spearman_voter_config, Spearman_voter_diff_config, General_model_config, General_graph_diff_config, Diffusion_config
+export Kmeans_config, GM_config, Clustering_config, PCA_config, Tsne_config, Reduce_dim_config, Voter_vis_config
+export plurality_voting, borda_voting, copeland_voting
+export reduce_dim, clustering, draw_voter_vis, unify_projections!
+export get_edge_distances, draw_degree_distr, draw_edge_distances
+export metrics_vis
 
 include("configs.jl")
 

@@ -1,11 +1,11 @@
 function generate_edges(voters::Vector{T}, dist_metric::Distances.Metric, edge_init_func::Function) where T <: Abstract_voter
-   edges = Vector{LightGraphs.SimpleGraphs.SimpleEdge{Int64}}()
+   edges = Vector{Graphs.SimpleGraphs.SimpleEdge{Int64}}()
 
    @inbounds for i in 1:(length(voters) - 1)
 
       @inbounds for j in (i + 1):length(voters)
          if rand() <= edge_init_func(Distances.evaluate(dist_metric, voters[i].opinion, voters[j].opinion))
-            push!(edges, LightGraphs.SimpleGraphs.SimpleEdge{Int64}(i, j))
+            push!(edges, Graphs.SimpleGraphs.SimpleEdge{Int64}(i, j))
          end
       end
    end
@@ -18,7 +18,7 @@ function init_graph(voters::Vector{T}, m::Integer) where T <: Abstract_voter
       throw(ArgumentError("Argument m for Barabasi-Albert graph creation is higher than number of voters."))
    end
 
-   social_network = LightGraphs.SimpleGraph(length(voters))
+   social_network = Graphs.SimpleGraph(length(voters))
    rand_perm = Random.shuffle(1:length(voters))
    
    degrees = zeros(Float64, length(voters))
@@ -38,7 +38,7 @@ function init_graph(voters::Vector{T}, m::Integer) where T <: Abstract_voter
       #add edges
       self = rand_perm[i]
       for j in edge_ends
-         LightGraphs.add_edge!(social_network, self, rand_perm[j]) #probs[j] - 1.0
+         Graphs.add_edge!(social_network, self, rand_perm[j]) #probs[j] - 1.0
          degrees[j] += 1
       end
       degrees[i] += 1.0 + m 
@@ -48,10 +48,10 @@ function init_graph(voters::Vector{T}, m::Integer) where T <: Abstract_voter
    return social_network
 end
 
-function init_graph(vert_count::Int, edges::Vector{LightGraphs.SimpleGraphs.SimpleEdge{Int64}})
-   g = LightGraphs.SimpleGraphFromIterator(edges)
+function init_graph(vert_count::Int, edges::Vector{Graphs.SimpleGraphs.SimpleEdge{Int64}})
+   g = Graphs.SimpleGraphFromIterator(edges)
    
-   LightGraphs.add_vertices!(g, vert_count - LightGraphs.nv(g))
+   Graphs.add_vertices!(g, vert_count - Graphs.nv(g))
    
    return g
 end
@@ -94,7 +94,7 @@ function drawClusteredMetaGraph(G)
    
    display(edgesizes)
    display(GraphPlot.gplot(G,
-      nodelabel=1:LightGraphs.nv(G), 
+      nodelabel=1:Graphs.nv(G), 
       nodesize=nodesize,
       edgelinewidth=edgesizes,
       layout=circular_layout))

@@ -48,7 +48,6 @@ function Logger(model, model_dir, exp_dir, idx::Int64)
 end
 
 function save_log(logger::Logger, model)
-    logger.diff_counter[1] += 1
     save_log(model, logger.exp_dir, logger.diff_counter[1])
 end
 

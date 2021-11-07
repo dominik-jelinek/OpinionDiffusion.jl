@@ -29,7 +29,7 @@ struct NotImplementedError{M} <: Exception
    NotImplementedError(m::M) where {M} = new{M}(m)
 end
 
-Base.showerror(io::IO, ie::NotImplementedError) = print(io, "method $(ie.m) not implemented.")
+Base.showerror(io::IO, ie::NotImplementedError) = print(io, "Method $(ie.m) not implemented.")
 
 function last_log_idx(exp_dir)
    idx = -1

@@ -20,9 +20,12 @@ end
 function run!(model::T, diffusion_config, logger=nothing::Union{Nothing, Logger}) where T<:Abstract_model
     diffusion!(model, diffusion_config)
 
-    if logger !== nothing && logger.diff_counter[1] % diffusion_config.diffusions == 0
+    if logger !== nothing && logger.diff_counter[1] % diffusion_config.checkpoint == 0
+        logger.diff_counter[1] += 1
         save_log(logger, model)
     end
+
+    return model, logger
 end
 
 function diffusion!(model::T, diffusion_config) where T <: Abstract_model
@@ -32,10 +35,11 @@ end
 
 function voter_diffusion!(model::T, voter_diff_config::U) where 
     {T <: Abstract_model, U <: Abstract_voter_diff_config}
-    vertexes = rand(1:length(model.voters), voter_diff_config.evolve_vertices)
+    sample_size = ceil(Int, voter_diff_config.evolve_vertices * length(model.voters))
+    vertex_ids = StatsBase.sample(1:length(model.voters), sample_size, replace=true)
 
-    for v in vertexes
-        step!(model.voters[v], model.voters, model.social_network, voter_diff_config)
+    for id in vertex_ids
+        step!(model.voters[id], model.voters, model.social_network, voter_diff_config)
     end
 end
 

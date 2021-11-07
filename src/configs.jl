@@ -9,7 +9,7 @@ end
 
 abstract type Abstract_voter_diff_config end
 @kwdef struct Spearman_voter_diff_config <: Abstract_voter_diff_config
-    evolve_vertices::Int64
+    evolve_vertices::Float64
 	attract_proba::Float64
 	change_rate::Float64
     method::String
@@ -24,16 +24,15 @@ end
 abstract type Abstract_graph_diff_config end
 
 @kwdef struct General_graph_diff_config <: Abstract_graph_diff_config
-    evolve_edges::Int64
+    evolve_edges::Float64
     dist_metric::Distances.Metric
     edge_diff_func::Function
 end
 
 @kwdef struct Diffusion_config
-    diffusions::Int64
     checkpoint::Int64
     voter_diff_config::Abstract_voter_diff_config
-    edge_diff_config::Abstract_graph_diff_config
+    graph_diff_config::Abstract_graph_diff_config
 end
 
 # visualizations ________________________________________________________________________

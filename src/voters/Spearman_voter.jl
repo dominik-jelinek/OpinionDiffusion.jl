@@ -14,6 +14,19 @@ function Spearman_voter(ID, vote, weights, openmindedness_distr::Distributions.C
     return Spearman_voter(ID, opinion, openmindedness, stubbornness)
 end
 
+function init_voters(election, can_count, voter_config::Spearman_voter_config)
+    weights = map(voter_config.weight_func, 1:can_count)
+    openmindedness_distr = Distributions.Truncated(voter_config.openmindedness_distr, 0.0, 1.0)
+    stubbornness_distr = Distributions.Truncated(voter_config.stubbornness_distr, 0.0, 1.0)
+
+    voters = Vector{Spearman_voter}(undef, length(election))
+    for (i, vote) in enumerate(election)
+        voters[i] = Spearman_voter(i, vote, weights, openmindedness_distr, stubbornness_distr)
+    end
+
+    return voters
+end
+
 function get_vote(voter::Spearman_voter) :: Vector{Vector{Int64}}
     can_ranking = sortperm(voter.opinion, rev=true)
     sorted_scores = voter.opinion[can_ranking]
@@ -125,17 +138,4 @@ function average_one!(voter_1::Spearman_voter, voter_2::Spearman_voter, attract_
         voter_1.opinion[can] += distance * (1 - voter_1.stubbornness) * change_rate
         voter_2.opinion[can] -= distance * (1 - voter_2.stubbornness) * change_rate
     end
-end
-
-function init_voters(election, can_count, voter_config::Spearman_voter_config)
-    weights = map(voter_config.weight_func, 1:can_count)
-    openmindedness_distr = Distributions.Truncated(voter_config.openmindedness_distr, 0.0, 1.0)
-    stubbornness_distr = Distributions.Truncated(voter_config.stubbornness_distr, 0.0, 1.0)
-
-    voters = Vector{Spearman_voter}(undef, length(election))
-    for (i, vote) in enumerate(election)
-        voters[i] = Spearman_voter(i, vote, weights, openmindedness_distr, stubbornness_distr)
-    end
-
-    return voters
 end
