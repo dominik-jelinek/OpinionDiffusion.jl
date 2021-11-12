@@ -1,6 +1,6 @@
 struct General_model <: Abstract_model
     voters::Vector{Abstract_voter}
-    social_network::Graphs.SimpleGraph
+    social_network::SimpleWeightedGraphs.SimpleWeightedGraph
 end
 
 function General_model(election, can_count::Int64, model_config)
@@ -8,8 +8,8 @@ function General_model(election, can_count::Int64, model_config)
     @time voters = init_voters(election, can_count, model_config.voter_config)
     
     println("Initializing graph:")
-    @time social_network = init_graph(voters, model_config.m)
-    
+    @time social_network = weighted_barabasi_albert_graph(voters, model_config.m)
+
     return General_model(voters, social_network)
 end
 

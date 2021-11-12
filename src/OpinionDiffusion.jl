@@ -8,6 +8,7 @@ import Base.@kwdef
 
 using MetaGraphs
 using Graphs
+using SimpleWeightedGraphs
 
 import Plots
 import StatsPlots
@@ -38,15 +39,13 @@ export Kmeans_config, GM_config, Clustering_config, PCA_config, Tsne_config, Red
 export plurality_voting, borda_voting, copeland_voting
 export reduce_dim, clustering, draw_voter_vis, unify_projections!
 export get_edge_distances, draw_degree_distr, draw_edge_distances
-export metrics_vis
+export draw_range, draw_voting_res
 
 include("configs.jl")
 
 include("parsing.jl")
 include("utils.jl")
 
-
-include("analysis.jl")
 include("voting.jl")
 include("clustering.jl")
 

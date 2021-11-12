@@ -48,22 +48,6 @@ function draw_edge_distances(distances)
                          xlabel = "Distance")
 end
 
-function metrics_vis(metrics, candidates, parties, exp_dir=Nothing)
-    degrees = draw_range(metrics["min_degrees"], metrics["avg_degrees"], metrics["max_degrees"], title="Degree range", xlabel="Diffusions", ylabel="Degree", value_label="avg")
-
-    plurality = draw_voting_res(candidates, parties, reduce(hcat, metrics["plurality_votings"])', "Plurality voting")
-    borda = draw_voting_res(candidates, parties, reduce(hcat, metrics["borda_votings"])', "Borda voting")
-    copeland = draw_voting_res(candidates, parties, reduce(hcat, metrics["copeland_votings"])', "Copeland voting")
-
-    plots = Plots.plot(degrees, plurality, borda, copeland, layout = (2, 2), size = (980,1200))
-    
-    if exp_dir != Nothing
-        Plots.savefig(plots, "$(exp_dir)/images/metrics.png")
-    end
-
-    return plots
-end
-
 function draw_range(min, value, max; title, xlabel, ylabel, value_label)
     degrees = Plots.plot(1:length(min), min, fillrange = max, fillalpha = 0.25, c = 1, linewidth = 3, 
     label = "range", legend = :topleft, title=title, xlabel=xlabel, ylabel=ylabel)
@@ -91,7 +75,7 @@ function draw_degree_distr(dict, exp_dir=Nothing, diff_counter=[0])
 
     plot = Plots.histogram(keyss,
                         weights = vals,
-                        nbins = length(keyss),
+                        nbins = maximum(keyss),
                         title = "Degree distribution",
                         legend = false,
                         ylabel = "Num. of vertices",

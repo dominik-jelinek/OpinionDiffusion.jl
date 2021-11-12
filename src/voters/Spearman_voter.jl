@@ -111,31 +111,31 @@ function step!(self::Spearman_voter, voters, graph, voter_diff_config::Spearman_
 end
 
 function average_all!(voter_1::Spearman_voter, voter_2::Spearman_voter, attract_proba, change_rate)
-    distance = (voter_1.opinion - voter_2.opinion) / 2
+    differences = (voter_1.opinion - voter_2.opinion) / 2
         
     if rand() < attract_proba
         # attract
-        voter_1.opinion .-= distance * (1.0 - voter_1.stubbornness) * change_rate
-        voter_2.opinion .+= distance * (1.0 - voter_2.stubbornness) * change_rate
+        voter_1.opinion .-= differences * (1.0 - voter_1.stubbornness) * change_rate
+        voter_2.opinion .+= differences * (1.0 - voter_2.stubbornness) * change_rate
     else
         # repel
-        voter_1.opinion .+= distance * (1.0 - voter_1.stubbornness) * change_rate
-        voter_2.opinion .-= distance * (1.0 - voter_2.stubbornness) * change_rate
+        voter_1.opinion .+= differences * (1.0 - voter_1.stubbornness) * change_rate
+        voter_2.opinion .-= differences * (1.0 - voter_2.stubbornness) * change_rate
     end
 
 end
 
 function average_one!(voter_1::Spearman_voter, voter_2::Spearman_voter, attract_proba, change_rate)
     can = rand(1:length(voter_1.opinion))
-    distance = (voter_1.opinion[can] - voter_2.opinion[can]) / 2
+    differences = (voter_1.opinion[can] - voter_2.opinion[can]) / 2
         
     if rand() < attract_proba
         # attract
-        voter_1.opinion[can] -= distance * (1 - voter_1.stubbornness) * change_rate
-        voter_2.opinion[can] += distance * (1 - voter_2.stubbornness) * change_rate
+        voter_1.opinion[can] -= differences * (1 - voter_1.stubbornness) * change_rate
+        voter_2.opinion[can] += differences * (1 - voter_2.stubbornness) * change_rate
     else
         # repel
-        voter_1.opinion[can] += distance * (1 - voter_1.stubbornness) * change_rate
-        voter_2.opinion[can] -= distance * (1 - voter_2.stubbornness) * change_rate
+        voter_1.opinion[can] += differences * (1 - voter_1.stubbornness) * change_rate
+        voter_2.opinion[can] -= differences * (1 - voter_2.stubbornness) * change_rate
     end
 end

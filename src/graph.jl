@@ -13,7 +13,7 @@ function generate_edges(voters::Vector{T}, dist_metric::Distances.Metric, edge_i
    return edges
 end
 
-function init_graph(voters::Vector{T}, m::Integer) where T <: Abstract_voter
+function barabasi_albert_graph(voters::Vector{T}, m::Integer) where T <: Abstract_voter
    if m > length(voters)
       throw(ArgumentError("Argument m for Barabasi-Albert graph creation is higher than number of voters."))
    end
@@ -28,18 +28,54 @@ function init_graph(voters::Vector{T}, m::Integer) where T <: Abstract_voter
 
    probs = zeros(Float64, length(voters))
    for i in m+1:length(voters)
+      self = rand_perm[i]
       
-      #calculate distribution of probabilities for each vertex
+      #calculate distribution of probabilities for each previously added vertex
       for j in 1:i-1
-         probs[j] = degrees[j] * 1.0/(1.0 + get_distance(voters[i], voters[j]))
+         probs[j] = degrees[j] * 1.0/(1.0 + get_distance(voters[self], voters[rand_perm[j]]))
       end
       edge_ends = StatsBase.sample(1:length(voters), StatsBase.Weights(probs), m, replace=false)
       
       #add edges
       self = rand_perm[i]
-      for j in edge_ends
-         Graphs.add_edge!(social_network, self, rand_perm[j]) #probs[j] - 1.0
-         degrees[j] += 1
+      for edge_end in edge_ends
+         Graphs.add_edge!(social_network, self, rand_perm[edge_end]) #probs[j] - 1.0
+         degrees[edge_end] += 1
+      end
+      degrees[i] += 1.0 + m 
+
+   end
+
+   return social_network
+end
+
+function weighted_barabasi_albert_graph(voters::Vector{T}, m::Integer) where T <: Abstract_voter
+   if m > length(voters)
+      throw(ArgumentError("Argument m for Barabasi-Albert graph creation is higher than number of voters."))
+   end
+
+   social_network = SimpleWeightedGraphs.SimpleWeightedGraph(length(voters))
+   rand_perm = Random.shuffle(1:length(voters))
+   
+   degrees = zeros(Float64, length(voters))
+   for i in 1:m
+      degrees[i] = 1.0
+   end
+
+   probs = zeros(Float64, length(voters))
+   for i in m+1:length(voters)
+      self = rand_perm[i]
+      
+      #calculate distribution of probabilities for each previously added vertex
+      for j in 1:i-1
+         probs[j] = degrees[j] * 1.0/(1.0 + get_distance(voters[self], voters[rand_perm[j]]))
+      end
+      edge_ends = StatsBase.sample(1:length(voters), StatsBase.Weights(probs), m, replace=false)
+      
+      #add edges
+      for edge_end in edge_ends
+         SimpleWeightedGraphs.add_edge!(social_network, self, rand_perm[edge_end], get_distance(voters[self], voters[rand_perm[edge_end]])) #probs[j] - 1.0
+         degrees[edge_end] += 1
       end
       degrees[i] += 1.0 + m 
 
