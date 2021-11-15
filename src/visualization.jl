@@ -31,6 +31,16 @@ function draw_voter_vis(projections, clusters, title, exp_dir=Nothing, counter=[
     return plot
 end
 
+function draw_heat_vis(projections, difference, title, exp_dir=Nothing, counter=[0])
+    plot = Plots.scatter(Tuple(eachrow(projections)), marker_z=difference, title=title)
+    
+    if exp_dir != Nothing
+        Plots.savefig(plot, "$(exp_dir)/images/$(title)_$(counter[1]).png")
+    end
+
+    return plot
+end
+
 function get_edge_distances(social_network, voters)
     distances = Vector{Float64}(undef, Graphs.ne(social_network))
     for (i, edge) in enumerate(Graphs.edges(social_network))

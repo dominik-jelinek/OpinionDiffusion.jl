@@ -26,6 +26,14 @@ function graph_diffusion!(model::General_model, graph_diff_config::General_graph
     end
 end
 
+
+"""
+Pick a random voter remove one edge based on inverse that it was created and the add one edge
+"""
+function edge_diffusion!(voter, g)
+    
+end
+
 function edge_diffusion!(voter_1, voter_2, g, edge_diff_func, dist_metric::Distances.Metric)
     if voter_1.ID == voter_2.ID
         return

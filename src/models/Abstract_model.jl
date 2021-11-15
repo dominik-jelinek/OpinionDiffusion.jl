@@ -1,5 +1,8 @@
 abstract type Abstract_model end
 
+voters(model::T) where T <: Abstract_model = model.voters 
+social_network(model::T) where T <: Abstract_model = model.social_network
+
 function graph_diffusion!(model::T, graph_diff_config::U) where {T <: Abstract_model, U <: Abstract_graph_diff_config}
     throw(NotImplementedError("graph_diffusion!"))
 end

@@ -10,6 +10,7 @@ using MetaGraphs
 using Graphs
 using SimpleWeightedGraphs
 
+import Gadfly
 import Plots
 import StatsPlots
 import GraphPlot
@@ -37,10 +38,10 @@ export get_votes, get_opinions
 export Spearman_voter_config, Spearman_voter_diff_config, General_model_config, General_graph_diff_config, Diffusion_config
 export Kmeans_config, GM_config, Clustering_config, PCA_config, Tsne_config, Reduce_dim_config, Voter_vis_config
 export plurality_voting, borda_voting, copeland_voting
-export reduce_dim, clustering, draw_voter_vis, unify_projections!
+export reduce_dim, clustering, draw_voter_vis, draw_heat_vis, unify_projections!
 export get_edge_distances, draw_degree_distr, draw_edge_distances
 export draw_range, draw_voting_res
-
+export voters, social_network
 include("configs.jl")
 
 include("parsing.jl")

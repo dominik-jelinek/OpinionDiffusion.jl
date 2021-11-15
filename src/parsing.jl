@@ -30,8 +30,10 @@ function parse_data(input_filename::String)
    parties, candidates = parse_candidates(lines)
    if split(input_filename, '.')[end] == "toc"
       election = parse_votes(lines, length(candidates))
-   else
+   elseif split(input_filename, '.')[end] == "soi"
       election = parse_votes2(lines, length(candidates))
+   else
+      throw(ArgumentError("Unsupported format of input data. Supported: [toc, soi]"))
    end
 
    return parties, candidates, election

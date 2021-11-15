@@ -27,23 +27,6 @@ function init_voters(election, can_count, voter_config::Spearman_voter_config)
     return voters
 end
 
-function get_vote(voter::Spearman_voter) :: Vector{Vector{Int64}}
-    can_ranking = sortperm(voter.opinion, rev=true)
-    sorted_scores = voter.opinion[can_ranking]
-    
-    vote = Vector{Vector{Int64}}()
-    counter = 1
-    push!(vote, [can_ranking[1]])
-    for i in 2:length(sorted_scores)
-        if sorted_scores[i-1] == sorted_scores[i]
-            push!(vote[counter], can_ranking[i])
-        else
-            push!(vote, [can_ranking[i]])
-            counter += 1
-        end
-    end
-    return vote 
-end
 """
     spearman_encoding(vote, weights)
 
@@ -65,33 +48,27 @@ function spearman_encoding(vote::Vector{Vector{Int64}}, weights)
         end
     end
     
-    return opinion ./ sum(opinion)
+    return opinion ./sum(opinion)
 end
-#=
-function spearman_encoding(vote, weights)
-    magic = -42.0
-    opinion = fill(magic, length(vote))
 
-    i = 1
-    while i <= length(vote) && vote[i] != 0
-       opinion[vote[i]] = weights[i]
-       i += 1
-    end
-    if i == length(vote) + 1
-       return opinion
-    end
- 
-    #if the last in ranking is 0 we know its exact weight
-    mean = (i == length(vote) && vote[i] == 0) ? weights[length(vote)] : (weights[length(vote)] + weights[i-1]) / 2
+function get_vote(voter::Spearman_voter) :: Vector{Vector{Int64}}
+    can_ranking = sortperm(voter.opinion, rev=true)
+    sorted_scores = voter.opinion[can_ranking]
     
-    for pos in 1:length(opinion)
-       if opinion[pos] == magic
-          opinion[pos] = mean
-       end
+    vote = Vector{Vector{Int64}}()
+    counter = 1
+    push!(vote, [can_ranking[1]])
+    for i in 2:length(sorted_scores)
+        if sorted_scores[i-1] == sorted_scores[i]
+            push!(vote[counter], can_ranking[i])
+        else
+            push!(vote, [can_ranking[i]])
+            counter += 1
+        end
     end
-    return opinion
+    return vote 
 end
-=#
+
 function step!(self::Spearman_voter, voters, graph, voter_diff_config::Spearman_voter_diff_config)
     neighbors_ = neighbors(graph, self.ID)
     if length(neighbors_) == 0
@@ -101,41 +78,45 @@ function step!(self::Spearman_voter, voters, graph, voter_diff_config::Spearman_
     neighbor_id = neighbors_[rand(1:end)]
     neighbor = voters[neighbor_id]
 
-    if voter_diff_config.method == "averageOne"
-        average_one!(self, neighbor, voter_diff_config.attract_proba, voter_diff_config.change_rate)
-    elseif voter_diff_config.method == "averageAll"
-        average_all!(self, neighbor, voter_diff_config.attract_proba, voter_diff_config.change_rate)
-    else
-        error("Unknown vertex diffusion method, [averageOne | averageAll]")
-    end
+    average_all!(self, neighbor, voter_diff_config.attract_proba, voter_diff_config.change_rate, voter_diff_config.normalize_shifts)
 end
 
-function average_all!(voter_1::Spearman_voter, voter_2::Spearman_voter, attract_proba, change_rate)
-    differences = (voter_1.opinion - voter_2.opinion) / 2
-        
-    if rand() < attract_proba
-        # attract
-        voter_1.opinion .-= differences * (1.0 - voter_1.stubbornness) * change_rate
-        voter_2.opinion .+= differences * (1.0 - voter_2.stubbornness) * change_rate
-    else
-        # repel
-        voter_1.opinion .+= differences * (1.0 - voter_1.stubbornness) * change_rate
-        voter_2.opinion .-= differences * (1.0 - voter_2.stubbornness) * change_rate
+function average_all!(voter_1::Spearman_voter, voter_2::Spearman_voter, attract_proba, change_rate, normalize=nothing)
+    shifts_1 = (voter_2.opinion - voter_1.opinion) / 2
+    shifts_2 = shifts_1 .* (-1.0)
+    
+    if rand() > attract_proba
+        #repel
+        shifts_1, shifts_2 = shifts_2, shifts_1
     end
 
+    if normalize !== nothing && normalize[1]
+        shifts_1 = normalize_shifts(shifts_1, voter_1.opinion, normalize[2], normalize[3])
+        shifts_2 = normalize_shifts(shifts_2, voter_2.opinion, normalize[2], normalize[3])
+    end
+
+    voter_1.opinion .+= shifts_1 * (1.0 - voter_1.stubbornness) * change_rate
+    voter_2.opinion .+= shifts_2 * (1.0 - voter_2.stubbornness) * change_rate
 end
 
-function average_one!(voter_1::Spearman_voter, voter_2::Spearman_voter, attract_proba, change_rate)
-    can = rand(1:length(voter_1.opinion))
-    differences = (voter_1.opinion[can] - voter_2.opinion[can]) / 2
-        
-    if rand() < attract_proba
-        # attract
-        voter_1.opinion[can] -= differences * (1 - voter_1.stubbornness) * change_rate
-        voter_2.opinion[can] += differences * (1 - voter_2.stubbornness) * change_rate
-    else
-        # repel
-        voter_1.opinion[can] += differences * (1 - voter_1.stubbornness) * change_rate
-        voter_2.opinion[can] -= differences * (1 - voter_2.stubbornness) * change_rate
+function normalize_shifts(shifts::Vector{Float64}, opinion::Vector{Float64}, min_opin, max_opin)
+    #safeguard
+    if max_opin < min_opin
+        min_opin, max_opin = max_opin, min_opin
     end
+
+    normalized = Vector{Float64}(undef, length(shifts))
+    for i in 1:length(shifts)
+        normalized[i] = normalize_shift(shifts[i], opinion[i], min_opin, max_opin)
+    end
+
+    return normalized
+end
+
+function normalize_shift(shift::Float64, can_opinion::Float64, min_opin, max_opin)
+    if shift == 0.0 || min_opin <= can_opinion || can_opinion <= max_opin
+        return shift
+    end  
+
+    return shift * (sign(shift) == 1.0 ? 2^(-can_opinion + max_opin) : 2^(can_opinion - min_opin))
 end

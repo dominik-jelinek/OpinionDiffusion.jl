@@ -74,7 +74,8 @@ function weighted_barabasi_albert_graph(voters::Vector{T}, m::Integer) where T <
       
       #add edges
       for edge_end in edge_ends
-         SimpleWeightedGraphs.add_edge!(social_network, self, rand_perm[edge_end], get_distance(voters[self], voters[rand_perm[edge_end]])) #probs[j] - 1.0
+         distance = get_distance(voters[self], voters[rand_perm[edge_end]])
+         SimpleWeightedGraphs.add_edge!(social_network, self, rand_perm[edge_end], distance == 0.0 ? 5.0e-324 : distance) #probs[j] - 1.0
          degrees[edge_end] += 1
       end
       degrees[i] += 1.0 + m 

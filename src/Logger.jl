@@ -1,6 +1,4 @@
 struct Logger
-    model::Abstract_model
-
     model_dir::String
     exp_dir::String
     diff_counter::Vector{Int64}

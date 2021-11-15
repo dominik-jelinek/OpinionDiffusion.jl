@@ -12,7 +12,7 @@ abstract type Abstract_voter_diff_config end
     evolve_vertices::Float64
 	attract_proba::Float64
 	change_rate::Float64
-    method::String
+    normalize_shifts::Union{Nothing, Tuple{Bool, Float64, Float64}}
 end
 
 #model configs __________________________________________________________________________
