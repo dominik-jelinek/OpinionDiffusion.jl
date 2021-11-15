@@ -68,7 +68,7 @@ function weighted_barabasi_albert_graph(voters::Vector{T}, m::Integer) where T <
       
       #calculate distribution of probabilities for each previously added vertex
       for j in 1:i-1
-         probs[j] = degrees[j] * 1.0/(1.0 + get_distance(voters[self], voters[rand_perm[j]]))
+         probs[j] = degrees[j] / (1.0 + get_distance(voters[self], voters[rand_perm[j]]))
       end
       edge_ends = StatsBase.sample(1:length(voters), StatsBase.Weights(probs), m, replace=false)
       

@@ -73,6 +73,9 @@ md"Index for loading specific model state inside of exp_dir. Insert -1 for the l
 # ╔═╡ 571e7a33-20b7-4432-b553-c07b9081c68d
 idx = -1
 
+# ╔═╡ e9169286-8d05-4bc9-8dc4-16ae6bd81038
+logging = true
+
 # ╔═╡ 98885ec6-7561-43d7-bdf6-7f58fb2720f6
 md"Choose source of the model and then check execution barrier for generation of the model"
 
@@ -91,14 +94,24 @@ if cb_model
 	parties, candidates, election = parse_data(input_filename)
 	can_count = length(candidates)
 	if model_source == "new_model"
-		model = General_model(election, can_count, model_config)
-		logger = Logger(model)
+		if logging
+			model = General_model(election, can_count, model_config)
+			logger = Logger(model)
+		else
+			model = General_model(election, can_count, model_config)
+		end
 	elseif model_source == "load_model"
-		model = load_log(exp_dir, idx)
-		logger = Logger(model, model_dir, exp_dir, idx)
-	else #restart
-		model = load_log(model_dir)
-		logger = Logger(model, model_dir)
+		if logging
+			model, logger = load_model(model_dir, exp_dir, idx, true)
+		else
+			model = load_log(exp_dir, idx)
+		end
+	else # restart
+		if logging
+			model, logger = restart_model(model_dir)
+		else
+			model = load_log(model_dir)
+		end
 	end
 end
 
@@ -340,6 +353,7 @@ metrics_vis(metrics, candidates, parties)
 # ╠═d8b613c5-7276-466d-a54a-7670f0921b35
 # ╟─4712586c-bc93-43df-ae66-1e75a21b6f85
 # ╠═571e7a33-20b7-4432-b553-c07b9081c68d
+# ╠═e9169286-8d05-4bc9-8dc4-16ae6bd81038
 # ╟─98885ec6-7561-43d7-bdf6-7f58fb2720f6
 # ╟─72450aaf-c6c4-458e-9555-39c31345116b
 # ╟─1937642e-7f63-4ffa-b01f-22208a716dac
