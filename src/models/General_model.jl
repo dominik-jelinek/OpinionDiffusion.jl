@@ -12,7 +12,7 @@ function General_model(election, can_count::Int64, model_config)
 
     return General_model(voters, social_network)
 end
-
+#=
 function graph_diffusion!(model::General_model, graph_diff_config::General_graph_diff_config)
     edge_diff_func = graph_diff_config.edge_diff_func
     dist_metric = graph_diff_config.dist_metric
@@ -43,7 +43,7 @@ function edge_diffusion!(voter_1, voter_2, g, edge_diff_func, dist_metric::Dista
         end
     end
 end
-
+=#
 """
 Pick a random voter remove one edge based on inverse that it was created and the add one edge
 """
@@ -60,14 +60,14 @@ function graph_diffusion!(model::General_model, graph_diff_config::General_graph
 end
 
 function edge_diffusion!(self, voters, social_network)
-    #remove edge
+    #remove one edge
     neibrs = neighbors(social_network, self.ID)
     
     probs = Vector{Float64}(undef, length(neibrs))
     for i in 1:length(neibrs)
-        probs[i] = degree(social_network, neibrs[i]) * (1.0 + get_distance(self, voters[neibrs[i]]))
+        probs[i] = 1.0 / (degree(social_network, neibrs[i]) * (1.0 + get_distance(self, voters[neibrs[i]])))
     end
-    
+
     probs = probs ./ sum(probs)
     to_remove = rand(Distributions.Categorical(probs))
     rem_edge!(social_network, (self.ID, neibrs[to_remove]))

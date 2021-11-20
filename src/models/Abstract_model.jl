@@ -28,7 +28,36 @@ function run!(model::T, diffusion_config, logger=nothing::Union{Nothing, Logger}
         save_log(logger, model)
     end
 
-    return model, logger
+    return model, loggers
+end
+
+function ensemble_model(model_dir, ensemble_size)
+	models = Vector{Abstract_model}(undef, ensemble_size)
+	loggers = Vector{Logger}(undef, ensemble_size)
+	
+	for i in 1:ensemble_size
+		models[i], loggers[i] = restart_model(model_dir)
+	end
+	
+	models, loggers
+end
+
+function ensemble_model(model::Abstract_model, ensemble_size)
+	models = Vector{Abstract_model}(undef, ensemble_size)
+	
+	for i in 1:ensemble_size
+		models[i] = deepcopy(model)
+	end
+	
+	models
+end
+
+function run_ensemble!(models::Vector{T}, diffusion_config, loggers=nothing::Union{Nothing, Vector{Logger}}) where T<:Abstract_model
+    for (model, logger) in zip(models, loggers)
+        run!(model, diffusion_config, logger)
+    end
+
+    return models, loggers
 end
 
 function diffusion!(model::T, diffusion_config) where T <: Abstract_model

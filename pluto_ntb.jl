@@ -23,6 +23,9 @@ Pkg.activate()
 # ╔═╡ 9284976e-d474-11eb-2b94-dbe906a08bd7
 using Revise, PlutoUI, OpinionDiffusion
 
+# ╔═╡ c5aa2487-97aa-48bd-b357-4e806a4c41e9
+using Profile
+
 # ╔═╡ 957eb9d7-12d6-4a22-8338-4e8535b54c71
 md"## Opinion diffusion"
 
@@ -58,7 +61,7 @@ model_config = General_model_config(
 )
 
 # ╔═╡ fc5a5935-8f4e-47ad-8568-70cd61656e06
-input_filename = "ED-00001-00000002.toc"
+input_filename = "ED-00001-00000003.toc"
 #input_filename = "madeUp.toc"
 
 # ╔═╡ 985131a7-7c11-4f9d-ae00-ef031002592d
@@ -89,29 +92,29 @@ md"""
 Execution barrier $(@bind cb_model CheckBox())
 """
 
-# ╔═╡ 4a2b607d-947d-47e9-b73f-93eab1fb07a5
-if cb_model
+# ╔═╡ c6ccf2a8-e045-4da9-bbdb-270327c2d53f
+begin
 	parties, candidates, election = parse_data(input_filename)
 	can_count = length(candidates)
+end
+
+# ╔═╡ 93cb669f-6743-4b50-80de-c8594ea20497
+if cb_model && logging
 	if model_source == "new_model"
-		if logging
-			model = General_model(election, can_count, model_config)
-			logger = Logger(model)
-		else
-			model = General_model(election, can_count, model_config)
-		end
+		model = General_model(election, can_count, model_config)
+		logger = Logger(model)
 	elseif model_source == "load_model"
-		if logging
-			model, logger = load_model(model_dir, exp_dir, idx, true)
-		else
-			model = load_log(exp_dir, idx)
-		end
+		model, logger = load_model(model_dir, exp_dir, idx, true)
 	else # restart
-		if logging
-			model, logger = restart_model(model_dir)
-		else
-			model = load_log(model_dir)
-		end
+		model, logger = restart_model(model_dir)
+	end
+elseif cb_model && !logging
+	if model_source == "new_model"
+		model = General_model(election, can_count, model_config)
+	elseif model_source == "load_model"
+		model = load_log(exp_dir, idx)
+	else # restart
+		model = load_log(model_dir)
 	end
 end
 
@@ -140,7 +143,7 @@ diffusion_config = Diffusion_config(
             evolve_vertices = 0.1,
 			attract_proba = 0.8,
 			change_rate = 0.5,
-			normalize_shifts = (True, model_config.voter_config.weight_func(can_count), model_config.voter_config.weight_func(1))
+			normalize_shifts = (true, model_config.voter_config.weight_func(can_count), model_config.voter_config.weight_func(1))
         ),
         graph_diff_config = General_graph_diff_config(
             evolve_edges = 0.1,
@@ -157,11 +160,14 @@ Execution barrier $(@bind cb_run CheckBox())
 # ╔═╡ d877c5d0-89af-48b9-bcd0-c1602d58339f
 diffusions = 10
 
+# ╔═╡ 27a60724-5d19-419f-b208-ffa0c78e2505
+ensemble_size = 1
+
 # ╔═╡ aad0da61-59d2-4429-97fa-6612872bb863
 md"### Diffusion analyzation"
 
 # ╔═╡ 55836ee2-8ea9-4b42-bdcc-3f5dab0cef20
-md"Choose visualization backend:"
+md"Choose visualization backend from Plots library:"
 
 # ╔═╡ ff873978-d93f-4ba2-aadd-6cfd3b136e3d
 OpinionDiffusion.Plots.plotly()
@@ -275,7 +281,7 @@ draw_edge_distances(get_edge_distances(model_log.social_network, model_log.voter
 md"##### Compounded metrics for all diffusions"
 
 # ╔═╡ 93aa822a-1be4-45c0-a6a0-65a3d8f08bbf
-begin
+function init_metrics(model, can_count)
 	metrics = Dict()
 	histogram = Graphs.degree_histogram(model.social_network)
     keyss = collect(keys(histogram))
@@ -289,8 +295,12 @@ begin
     metrics["plurality_votings"] = [plurality_voting(votes, can_count, true)]
     metrics["borda_votings"] = [borda_voting(votes, can_count, true)]
     metrics["copeland_votings"] = [copeland_voting(votes, can_count)]
-	metrics
+	
+	return metrics
 end
+
+# ╔═╡ 109e1b7c-16f0-4450-87ea-2d0442df5589
+metrics = init_metrics(model, can_count)
 
 # ╔═╡ 8d259bcc-d54c-401f-b864-87701f2bcf46
 function update_metrics!(model, diffusion_metrics, can_count)
@@ -309,10 +319,23 @@ function update_metrics!(model, diffusion_metrics, can_count)
 end
 
 # ╔═╡ f6b4ba47-f9d2-42f0-9c86-e9810be7b810
-if cb_run
+if cb_run && ensemble_size == 1
 	for i in 1:diffusions
 		run!(model, diffusion_config, logger)
 		update_metrics!(model, metrics, can_count)
+	end
+end
+
+# ╔═╡ 805b55ad-c245-4140-84ce-c86e3b73a33c
+if cb_run && ensemble_size > 1
+	models, loggers = ensemble_model(logger.model_dir, ensemble_size)
+	ensemble_metrics = [init_metrics(model, can_count) for model in models]
+	
+	for i in 1:diffusions
+		run_ensemble!(models, diffusion_config, loggers)
+		for (model, ensemble_metric) in zip(models, ensemble_metrics)
+			update_metrics!(model, ensemble_metric, can_count)
+		end
 	end
 end
 
@@ -341,6 +364,7 @@ metrics_vis(metrics, candidates, parties)
 # ╟─d2923f02-66d7-47de-9801-d4ad99c1230f
 # ╟─70e131de-4e31-4deb-9346-641e067269e3
 # ╟─581dab76-bc3e-48f5-8740-6e8cccdcc8d8
+# ╠═c5aa2487-97aa-48bd-b357-4e806a4c41e9
 # ╠═86c32615-cdba-41aa-bfca-e5b90563f7f7
 # ╠═481f2e27-0f88-482a-846a-6a31bf38f3ba
 # ╠═9284976e-d474-11eb-2b94-dbe906a08bd7
@@ -357,7 +381,8 @@ metrics_vis(metrics, candidates, parties)
 # ╟─98885ec6-7561-43d7-bdf6-7f58fb2720f6
 # ╟─72450aaf-c6c4-458e-9555-39c31345116b
 # ╟─1937642e-7f63-4ffa-b01f-22208a716dac
-# ╠═4a2b607d-947d-47e9-b73f-93eab1fb07a5
+# ╠═c6ccf2a8-e045-4da9-bbdb-270327c2d53f
+# ╠═93cb669f-6743-4b50-80de-c8594ea20497
 # ╠═c207e0c2-8713-4d88-95e0-4de41ef39c36
 # ╠═a768d815-2584-46a8-9328-be6cc8c02c92
 # ╠═4079d722-1201-4b10-a2a2-9aa420089d67
@@ -366,7 +391,10 @@ metrics_vis(metrics, candidates, parties)
 # ╠═f43b3b4c-9075-414b-9694-83e7c841605f
 # ╟─20819900-1129-4ff1-b97e-d079ffce8ab8
 # ╠═d877c5d0-89af-48b9-bcd0-c1602d58339f
+# ╠═27a60724-5d19-419f-b208-ffa0c78e2505
+# ╠═109e1b7c-16f0-4450-87ea-2d0442df5589
 # ╠═f6b4ba47-f9d2-42f0-9c86-e9810be7b810
+# ╠═805b55ad-c245-4140-84ce-c86e3b73a33c
 # ╟─aad0da61-59d2-4429-97fa-6612872bb863
 # ╟─55836ee2-8ea9-4b42-bdcc-3f5dab0cef20
 # ╠═ff873978-d93f-4ba2-aadd-6cfd3b136e3d

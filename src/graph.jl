@@ -53,36 +53,48 @@ function weighted_barabasi_albert_graph(voters::Vector{T}, m::Integer) where T <
    if m > length(voters)
       throw(ArgumentError("Argument m for Barabasi-Albert graph creation is higher than number of voters."))
    end
+   srcs = Vector{Int64}(undef, m*(length(voters)-m))
+   dsts = Vector{Int64}(undef, m*(length(voters)-m))
+   weights = Vector{Float64}(undef, m*(length(voters)-m))
+   counter = 1
 
-   social_network = SimpleWeightedGraphs.SimpleWeightedGraph(length(voters))
    rand_perm = Random.shuffle(1:length(voters))
+   voters_perm = voters[rand_perm]
    
-   degrees = zeros(Float64, length(voters))
+   degrees = zeros(Float64, length(voters_perm))
    for i in 1:m
       degrees[i] = 1.0
    end
 
-   probs = zeros(Float64, length(voters))
-   for i in m+1:length(voters)
-      self = rand_perm[i]
-      
+   probs = zeros(Float64, length(voters_perm))
+   for i in m+1:length(voters_perm)
+      self = voters_perm[i]
+      distances = Vector{Float64}(undef, i-1)
+
+      Threads.@threads for j in 1:i-1
+         distances[j] = get_distance(self, voters_perm[j])
+      end
+
       #calculate distribution of probabilities for each previously added vertex
-      for j in 1:i-1
-         probs[j] = degrees[j] / (1.0 + get_distance(voters[self], voters[rand_perm[j]]))
+      @inbounds for j in eachindex(distances)
+         probs[j] = degrees[j] / (1.0 + distances[j])
       end
       edge_ends = StatsBase.sample(1:length(voters), StatsBase.Weights(probs), m, replace=false)
       
       #add edges
-      for edge_end in edge_ends
-         distance = get_distance(voters[self], voters[rand_perm[edge_end]])
-         SimpleWeightedGraphs.add_edge!(social_network, self, rand_perm[edge_end], distance == 0.0 ? 5.0e-324 : distance) #probs[j] - 1.0
-         degrees[edge_end] += 1
+      @inbounds for edge_end in edge_ends
+         srcs[counter] = rand_perm[i]
+         dsts[counter] = rand_perm[edge_end]
+         weights[counter] = distances[edge_end] == 0.0 ? 5.0e-324 : distances[edge_end]
+
+         degrees[edge_end] += 1.0
+         counter += 1
       end
       degrees[i] += 1.0 + m 
 
    end
 
-   return social_network
+   return SimpleWeightedGraph(srcs, dsts, weights)
 end
 
 function init_graph(vert_count::Int, edges::Vector{Graphs.SimpleGraphs.SimpleEdge{Int64}})
