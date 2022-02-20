@@ -64,7 +64,7 @@ function kendall_encoding(vote::Vector{Vector{Int64}}, can_count)
    return opinion
 end
 
-function step!(self::Kendall_voter, voters, graph, voter_diff_config)
+function step!(self::Kendall_voter, voters, graph, can_count, voter_diff_config)
    neighbors_ = neighbors(graph, self.ID)
    if length(neighbors_) == 0
       return
@@ -74,11 +74,12 @@ function step!(self::Kendall_voter, voters, graph, voter_diff_config)
    neighbor = voters[neighbor_id]
 
    if rand() <= voter_diff_config["attract_proba"]
-      attract_flip!(self, neighbor)
+      attract_flip!(self, neighbor, can_count)
    else
       repel_flip!(self, neighbor)
    end
 end
+
 #=
 Choose pair of candidates that is flipped and move them in both voters one step closer.
 If the choosen pair is one distance away flip the coin who wins.
@@ -95,104 +96,75 @@ If it is bigger than the stubborness of respective voter, it is executed.
    
 =#
 function attract_flip!(self, neighbor, can_count)
-   swaps = get_all_swaps(self.opinion, neighbor.opinion)
-   if length(swaps) == 0
+   if get_distance(self, neighbor) == 0.0
       return
    end
 
-   idx = swaps[rand(1:length(swaps))]
-   can_1, can_2 = get_candidates(idx, can_count)
-
    if rand() > self.stubborness
-      if self.opinion[idx] == -1
-         fst_can, snd_can = can_2, can_1
+      swaps = get_feasible_swaps(self, neighbor, can_count)
+      if length(swaps) == 0
+         print(self, neighbor)
+         error("No feasible swaps but non-zero distance")
+         return
       end
-
-      if rand() < 0.5
-         swap_fst!(self, fst_can, snd_can)
-      else
-         swap_snd!(self, fst_can, snd_can)
-      end
+   
+      swap = swaps[rand(1:length(swaps))]
+      self = apply_swap(swap, self, can_count)
    end
    
    if rand() > neighbor.stubborness
-      if neighbor.opinion[idx] == -1
-         fst_can, snd_can = can_2, can_1
+      swaps = get_feasible_swaps(neighbor, self, can_count)
+      if length(swaps) == 0
+         print(self, neighbor)
+         error("No feasible swaps but non-zero distance")
+         return      
       end
+   
+      swap = swaps[rand(1:length(swaps))]
+      neighbor = apply_swap(swap, neighbor, can_count)
+   end
+end
 
-      if rand() < 0.5
-         swap_right!(self, fst_can, snd_can)
+function apply_swap(swap, voter, can_count)
+   can, bucket_idx, type = swap
+   bucket = voter.vote[bucket_idx]
+   new_vote = deepcopy(voter.vote)
+   
+   if type == :unbucket_left
+      new_opinion = unbucket_left(can, voter.opinion, bucket, can_count)
+
+      delete!(new_vote[bucket_idx], can)
+      insert!(new_vote, bucket_idx, [can])
+
+   elseif type == :unbucket_right
+      new_opinion = unbucket_right(can, voter.opinion, bucket, can_count)
+    
+      delete!(new_vote[bucket_idx], can)
+      insert!(new_vote, bucket_idx + 1, [can])
+
+   elseif type == :rebucket_left
+      new_opinion = rebucket_left(can, voter.opinion, voter.vote[bucket_idx - 1], bucket, can_count)
+      
+      if length(new_vote[bucket_idx]) == 1
+         deleteat!(new_vote, bucket_idx)
       else
-         swap_left!(self, fst_can, snd_can)
+         delete!(new_vote[bucket_idx], can)
       end
-   end
-end
-
-function repel_flip!(voter_1, voter_2)
-
-end
-
-
-"""
-Move candidate that is first out of can1 and can2 in the preference one position to the right
-if can1 = 1 can2 = 3 (1,2,3) -> (2,1,3)
-if can1 = 1 can2 = 2 (1,0,0) -> (2,1,0)
-"""
-function swapRight!(toChange, can2, idxCan1)
-   # can1 or can2 must be in toChange
-
-   # move to right
-   if toChange[idxCan1 + 1] == 0
-       toChange[idxCan1], toChange[idxCan1 + 1] = can2, toChange[idxCan1]
+      
+      push!(new_vote[bucket_idx - 1], can)
    else
-       toChange[idxCan1], toChange[idxCan1 + 1] = toChange[idxCan1 + 1], toChange[idxCan1]
-   end
-end
+      new_opinion = rebucket_right(can, voter.opinion, bucket, voter.vote[bucket_idx + 1], can_count)
 
-"""
-Move candidate that is further in the preference one position to the left
-if can1 = 1 can2 = 3 (1,2,3) -> (2,3,1)
-if can1 = 1 can2 = 3 (1,2,0) -> (1,2,3)
-"""
-function swapLeft!(toChange, can, idxCan)
-   # can1 or can2 must be in toChange and idxCan1 < idxCan2
-
-   # move to left
-   if toChange[idxCan] == 0
-       toChange[idxCan] = can
-   else
-       toChange[idxCan - 1], toChange[idxCan] = toChange[idxCan], toChange[idxCan - 1]
-   end
-end
-
-# Utils _________________________________________________________________________________
-"""
-Gets all swapped candidate pairs indexes based on opinion difference.
-"""
-function get_all_swaps(voter_1, voter_2)
-   swaps = Vector{Int64}()
-   diff = voter_1.opinion - voter_2.opinion
-
-   for i in 1:length(diff)
-      if val != 0
-         push!(swaps, i)
+      if length(new_vote[bucket_idx]) == 1
+         deleteat!(new_vote, bucket_idx)
+      else
+         delete!(new_vote[bucket_idx], can)
       end
+      
+      push!(new_vote[bucket_idx + 1], can)
    end
 
-   return swaps
-end
-
-function invert_vote(vote, can_count)
-   pos = Vector{Int64}(undef, can_count)
-
-   for i in 1:length(vote)
-      # iterate bucket
-      for can in vote[i]
-         pos[can] = i
-      end
-   end
-
-   return pos
+   return Kendall_voter(voter.ID, new_vote, new_opinion, voter.openmindedness, voter.stubborness)
 end
 
 function get_feasible_swaps(u::Kendall_voter, v::Kendall_voter, can_count)
@@ -200,37 +172,36 @@ function get_feasible_swaps(u::Kendall_voter, v::Kendall_voter, can_count)
    feasible_swaps = Vector{Tuple{Int64, Float64, Symbol}}()
    
    if length(u.vote[1]) > 1
-      append!(feasible_swaps, unbucket(u.opinion, v.opinion, u.vote[1], can_count))
+      append!(feasible_swaps, unbucket(u.opinion, v.opinion, u.vote, 1, can_count))
    end
 
    for i in 2:length(u.vote)
-      bucket_l = u.vote[i - 1]
-      bucket_r = u.vote[i]
       #check for unbucket
-      if length(bucket_r) > 1
-         append!(feasible_swaps, unbucket(u.opinion, v.opinion, bucket_r, can_count))
+      if length(u.vote[i]) > 1
+         append!(feasible_swaps, unbucket(u.opinion, v.opinion, u.vote, i, can_count))
       end
 
-      append!(feasible_swaps, rebucket(u.opinion, v.opinion, bucket_l, bucket_r, can_count))
+      append!(feasible_swaps, rebucket(u.opinion, v.opinion, u.vote, i - 1, i, can_count))
    end
 
    return feasible_swaps
 end
 
-function unbucket(u_opinion, v_opinion, bucket, can_count)
+function unbucket(u_opinion, v_opinion, u_vote, bucket_idx, can_count)
    feasible_swaps = Vector{Tuple{Int64, Float64, Symbol}}()
+   bucket = u_vote[bucket_idx]
 
    for can in bucket
       opinion = unbucket_right(can, u_opinion, bucket, can_count)
       change = get_distance(opinion, v_opinion) - get_distance(u_opinion, v_opinion)
       if change < 0.0
-         push!(feasible_swaps, (can, change, :unbucket_right))
+         push!(feasible_swaps, (can, bucket_idx, :unbucket_right))
       end
 
       opinion = unbucket_left(can, u_opinion, bucket, can_count)
       change = get_distance(opinion, v_opinion) - get_distance(u_opinion, v_opinion)
       if change < 0.0
-         push!(feasible_swaps, (can, change, :unbucket_left))
+         push!(feasible_swaps, (can, bucket_idx, :unbucket_left))
       end
    end
 
@@ -259,14 +230,16 @@ function unbucket_left(can, opinion, bucket, can_count)
    return new_opinion
 end
 
-function rebucket(u_opinion, v_opinion, l_bucket, r_bucket, can_count)
+function rebucket(u_opinion, v_opinion, u_vote, r_bucket_idx, can_count)
    feasible_swaps = Vector{Tuple{Int64, Float64, Symbol}}()
+   l_bucket = u_vote[r_bucket_idx - 1]
+   r_bucket = u_vote[r_bucket_idx]
 
    for can in l_bucket
       opinion = rebucket_right(can, u_opinion, l_bucket, r_bucket, can_count)
       change = get_distance(opinion, v_opinion) - get_distance(u_opinion, v_opinion)
       if change < 0.0
-         push!(feasible_swaps, (can, change, :rebucket_right))
+         push!(feasible_swaps, (can, r_bucket_idx - 1, :rebucket_right))
       end
    end
 
@@ -274,7 +247,7 @@ function rebucket(u_opinion, v_opinion, l_bucket, r_bucket, can_count)
       opinion = rebucket_left(can, u_opinion, l_bucket, r_bucket, can_count)
       change = get_distance(opinion, v_opinion) - get_distance(u_opinion, v_opinion)
       if change < 0.0
-         push!(feasible_swaps, (can, change, :rebucket_left))
+         push!(feasible_swaps, (can, r_bucket_idx, :rebucket_left))
       end
    end
 
@@ -310,6 +283,36 @@ function rebucket_left(can, opinion, l_bucket, r_bucket, can_count)
    end
 
    return new_opinion
+end
+
+# Utils _________________________________________________________________________________
+"""
+Gets all swapped candidate pairs indexes based on opinion difference.
+"""
+function get_all_swaps(voter_1, voter_2)
+   swaps = Vector{Int64}()
+   diff = voter_1.opinion - voter_2.opinion
+
+   for i in 1:length(diff)
+      if val != 0
+         push!(swaps, i)
+      end
+   end
+
+   return swaps
+end
+
+function invert_vote(vote, can_count)
+   pos = Vector{Int64}(undef, can_count)
+
+   for i in 1:length(vote)
+      # iterate bucket
+      for can in vote[i]
+         pos[can] = i
+      end
+   end
+
+   return pos
 end
 
 """
