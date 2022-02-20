@@ -15,7 +15,11 @@ function Spearman_voter(ID, vote, weights, openmindedness_distr::Distributions.C
 end
 
 function init_voters(election, can_count, voter_config::Spearman_voter_config)
-    weights = map(voter_config.weight_func, 1:can_count)
+    weights = Vector{Float64}(undef, can_count)
+    weights[1] = 0.0
+    for i in 2:length(weights)
+        weights[i] = weights[i - 1] + voter_config.weight_func(i - 1)
+    end
     openmindedness_distr = Distributions.Truncated(voter_config.openmindedness_distr, 0.0, 1.0)
     stubbornness_distr = Distributions.Truncated(voter_config.stubbornness_distr, 0.0, 1.0)
 
@@ -52,7 +56,7 @@ function spearman_encoding(vote::Vector{Vector{Int64}}, weights)
 end
 
 function get_vote(voter::Spearman_voter) :: Vector{Vector{Int64}}
-    can_ranking = sortperm(voter.opinion, rev=true)
+    can_ranking = sortperm(voter.opinion)
     sorted_scores = voter.opinion[can_ranking]
     
     vote = Vector{Vector{Int64}}()

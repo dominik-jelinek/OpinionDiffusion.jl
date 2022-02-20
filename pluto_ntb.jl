@@ -47,22 +47,34 @@ md"### Initialize packages"
 # ╔═╡ 75588cfd-52c9-4406-975c-c03158db6e78
 import Distributions, Distances, Graphs
 
+# ╔═╡ 46e8650e-f57d-48d7-89de-1c72e12dea45
+md"### Load dataset"
+
+# ╔═╡ fc5a5935-8f4e-47ad-8568-70cd61656e06
+input_filename = "ED-00001-00000002.toc"
+#input_filename = "madeUp.toc"
+
+# ╔═╡ c6ccf2a8-e045-4da9-bbdb-270327c2d53f
+begin
+	parties, candidates, election = parse_data(input_filename)
+	can_count = length(candidates)
+end
+
 # ╔═╡ 20893df2-fa42-46bf-889e-582b9ac39164
 md"### Setup model"
+
+# ╔═╡ b988b084-6720-4533-8a28-028792101c66
+weighting_rate = 1.5
 
 # ╔═╡ 228f2e5e-cf91-4c00-9c92-6ebbcdc4c69a
 model_config = General_model_config( 
 	m = 32,
 	voter_config = Spearman_voter_config(
-		weight_func = position -> (1/2)^position, 
+		weight_func = position -> -(1.0/weighting_rate)^(position - 2) + weighting_rate, 
 		openmindedness_distr = Distributions.Normal(0.5, 0.1),
 		stubbornness_distr = Distributions.Normal(0.5, 0.1)
 	)
 )
-
-# ╔═╡ fc5a5935-8f4e-47ad-8568-70cd61656e06
-input_filename = "ED-00001-00000003.toc"
-#input_filename = "madeUp.toc"
 
 # ╔═╡ 985131a7-7c11-4f9d-ae00-ef031002592d
 model_dir = "logs/" * "model_2021-11-07_20-35-37"
@@ -91,12 +103,6 @@ Model source $(@bind model_source Select(["restart_model" => "Restart", "load_mo
 md"""
 Execution barrier $(@bind cb_model CheckBox())
 """
-
-# ╔═╡ c6ccf2a8-e045-4da9-bbdb-270327c2d53f
-begin
-	parties, candidates, election = parse_data(input_filename)
-	can_count = length(candidates)
-end
 
 # ╔═╡ 93cb669f-6743-4b50-80de-c8594ea20497
 if cb_model && logging
@@ -158,10 +164,16 @@ Execution barrier $(@bind cb_run CheckBox())
 """
 
 # ╔═╡ d877c5d0-89af-48b9-bcd0-c1602d58339f
-diffusions = 10
+diffusions = 1
 
 # ╔═╡ 27a60724-5d19-419f-b208-ffa0c78e2505
 ensemble_size = 1
+
+# ╔═╡ 6492a611-fe57-4279-8852-9271b91396cc
+Profile.print(format=:flat)
+
+# ╔═╡ 260af73d-28de-46da-8f80-54f4349e6fba
+Profile.clear()
 
 # ╔═╡ aad0da61-59d2-4429-97fa-6612872bb863
 md"### Diffusion analyzation"
@@ -265,7 +277,9 @@ title = reduce_dim_config.method * "_" * clustering_config.method * "_" * string
 if step > 0
 	prev_sampled_opinions = get_opinions(load_log(logger.exp_dir, step-1).voters[sampled_voter_ids])
 	difference = sampled_opinions - prev_sampled_opinions
-	draw_heat_vis(projections, vec(sum(abs.(difference), dims=1)), "Heat map")
+	changes = vec(sum(abs.(difference), dims=1))
+	println(sum(changes))
+	draw_heat_vis(projections, changes, "Heat map")
 end
 
 # ╔═╡ 4eb56ee4-04e9-40cd-90fc-1495215f2928
@@ -320,10 +334,10 @@ end
 
 # ╔═╡ f6b4ba47-f9d2-42f0-9c86-e9810be7b810
 if cb_run && ensemble_size == 1
-	for i in 1:diffusions
+	@profile (for i in 1:diffusions
 		run!(model, diffusion_config, logger)
 		update_metrics!(model, metrics, can_count)
-	end
+	end)
 end
 
 # ╔═╡ 805b55ad-c245-4140-84ce-c86e3b73a33c
@@ -369,9 +383,12 @@ metrics_vis(metrics, candidates, parties)
 # ╠═481f2e27-0f88-482a-846a-6a31bf38f3ba
 # ╠═9284976e-d474-11eb-2b94-dbe906a08bd7
 # ╠═75588cfd-52c9-4406-975c-c03158db6e78
-# ╟─20893df2-fa42-46bf-889e-582b9ac39164
-# ╠═228f2e5e-cf91-4c00-9c92-6ebbcdc4c69a
+# ╟─46e8650e-f57d-48d7-89de-1c72e12dea45
 # ╠═fc5a5935-8f4e-47ad-8568-70cd61656e06
+# ╠═c6ccf2a8-e045-4da9-bbdb-270327c2d53f
+# ╟─20893df2-fa42-46bf-889e-582b9ac39164
+# ╠═b988b084-6720-4533-8a28-028792101c66
+# ╠═228f2e5e-cf91-4c00-9c92-6ebbcdc4c69a
 # ╠═776f99ea-6e44-4eb6-b2dd-3552bbb39954
 # ╠═985131a7-7c11-4f9d-ae00-ef031002592d
 # ╠═d8b613c5-7276-466d-a54a-7670f0921b35
@@ -381,7 +398,6 @@ metrics_vis(metrics, candidates, parties)
 # ╟─98885ec6-7561-43d7-bdf6-7f58fb2720f6
 # ╟─72450aaf-c6c4-458e-9555-39c31345116b
 # ╟─1937642e-7f63-4ffa-b01f-22208a716dac
-# ╠═c6ccf2a8-e045-4da9-bbdb-270327c2d53f
 # ╠═93cb669f-6743-4b50-80de-c8594ea20497
 # ╠═c207e0c2-8713-4d88-95e0-4de41ef39c36
 # ╠═a768d815-2584-46a8-9328-be6cc8c02c92
@@ -394,6 +410,8 @@ metrics_vis(metrics, candidates, parties)
 # ╠═27a60724-5d19-419f-b208-ffa0c78e2505
 # ╠═109e1b7c-16f0-4450-87ea-2d0442df5589
 # ╠═f6b4ba47-f9d2-42f0-9c86-e9810be7b810
+# ╠═6492a611-fe57-4279-8852-9271b91396cc
+# ╠═260af73d-28de-46da-8f80-54f4349e6fba
 # ╠═805b55ad-c245-4140-84ce-c86e3b73a33c
 # ╟─aad0da61-59d2-4429-97fa-6612872bb863
 # ╟─55836ee2-8ea9-4b42-bdcc-3f5dab0cef20

@@ -42,3 +42,29 @@ function last_log_idx(exp_dir)
    
    return idx
 end
+
+function get_random_vote(can_count) :: Vector{Vector{Int64}}
+   # assign candidates to random bins
+   bins = rand(1:can_count, can_count)
+   sorted_cans = sortperm(bins)
+   sorted_bins = bins[sorted_cans]
+ 
+   vote = Vector{Vector{Int64}}()
+   curr_bin = 0
+   skip_bins = 0
+   for i in 1:length(sorted_cans)
+      if curr_bin != sorted_bins[i]
+         # lower bin index that candidates are assigned to as there might be bins without any candidates
+         if sorted_bins[i] - curr_bin > 1
+            skip_bins += sorted_bins[i] - curr_bin - 1
+         end
+         
+         curr_bin = sorted_bins[i]
+         push!(vote, [sorted_cans[i]])
+      else
+         push!(vote[curr_bin - skip_bins], sorted_cans[i])
+      end
+   end
+
+   return vote
+end

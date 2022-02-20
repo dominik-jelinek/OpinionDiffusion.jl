@@ -173,6 +173,107 @@ function get_all_swaps(voter_1, voter_2)
    return swaps
 end
 
+function invert_vote(vote, can_count)
+   pos = Vector{Int64}(undef, can_count)
+
+   for i in 1:length(vote)
+      # iterate bucket
+      for can in vote[i]
+         pos[can] = i
+      end
+   end
+
+   return pos
+end
+
+function get_feasible_swaps(u, v, can_count)
+   # invert v for faster lookup
+   pos_u = invert_vote(u, can_count)
+   pos_v = invert_vote(v, can_count)
+
+   # choose swaps that are in the same or neighboring bucket
+   diff = voter_1.opinion - voter_2.opinion
+   nei_swaps = Vector{Pair{Int64, Int64}}()
+   for i in 1:length(diff)
+      if diff[i] != 0
+         c_1, c_2 = get_candidates(i, can_count)
+         if abs(pos_v[c_1] - pos_v[c_2]) < 2
+            append!(nei_swaps, (c_1, c_2))
+         end
+      end
+   end
+
+   # filter unfeasible neighboring swaps
+   feasible_swaps = Vector{Pair{Int64, Symbol}}()
+   for (c_1, c_2) in nei_swaps   
+      if pos_u[c_1] == pos_u[c_2]
+         # indistinguishable in u and distinguishable in v
+         # unbucket left or right is possible only if either c_1 or c_2 are minimal or maximal elements in vote v out of shared bucket in u otherwise we would not decrease 
+         if pos_v[c_1] > pos_v[c_2]
+            c_1, c_2 = c_2, c_1
+         end
+         
+         # find minimum and maximum of the bucket in u in respect to the vote v
+         min_v = can_count
+         max_v = 0   
+         for can in u[pus_u[c_1]]
+            if pos_v[can] < min_v
+               min_v = can
+            elseif pos_v[can] > max_v
+               max_v = can
+            end
+         end
+
+         if c_1 == min_v
+            # unbucket left of c_1 is in feasible swaps as it is minimum of the bucket in respect to the vote v
+            append!(feasible_swaps, (c_1, :unbucket_left))
+         end
+
+         if c_2 == max_v
+            # unbucket right of c_2 is in feasible swaps as it is maximum of the bucket in respect to the vote v
+            append!(feasible_swaps, (c_2, :unbucket_right))
+         end
+      else
+         # swap is in neighboring bucket
+
+      end
+
+      # iterate bucket
+      bucket = u[i]
+      for j in 1:length(bucket)
+      # create new bucket left/right if comparable in the other
+         for k in j + 1:length(bucket)
+            if diff[get_index(bucket[j], bucket[k], can_count)] 
+            
+            end
+         end
+      end
+   end
+
+   return feasible_swaps
+end
+
+   # iterate vote
+   for i in 1:length(u)
+      
+   end
+
+end
+
+function get_action_space(voter_1, voter_2, can_count)
+   vote = voter_1.vote
+   for i in 1:length(vote) - 1
+      for j in 1:length(vote[i]) 
+         for k in 1:length(vote[i + 1]) 
+            idx = get_index(vote[i][j], vote[i + 1][k], can_count)
+            
+            if voter_1.opinion[idx] != voter_2.opinion[idx]
+               #possible neighboring swap
+            end
+         end
+   end
+end
+
 """
 Gets index of pair can_1 and can_2 in opinion
 """

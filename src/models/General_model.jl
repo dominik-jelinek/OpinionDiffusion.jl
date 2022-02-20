@@ -1,6 +1,6 @@
 struct General_model <: Abstract_model
     voters::Vector{Abstract_voter}
-    social_network::SimpleWeightedGraphs.SimpleWeightedGraph
+    social_network::MetaGraphs.MetaGraph
 end
 
 function General_model(election, can_count::Int64, model_config)
@@ -65,19 +65,24 @@ function edge_diffusion!(self, voters, social_network)
     
     probs = Vector{Float64}(undef, length(neibrs))
     for i in 1:length(neibrs)
-        probs[i] = 1.0 / (degree(social_network, neibrs[i]) * (1.0 + get_distance(self, voters[neibrs[i]])))
+        probs[i] = (1.0 + get_distance(self, voters[neibrs[i]])) / degree(social_network, neibrs[i])
     end
 
     probs = probs ./ sum(probs)
     to_remove = rand(Distributions.Categorical(probs))
-    rem_edge!(social_network, (self.ID, neibrs[to_remove]))
+    rem_edge!(social_network, self.ID, neibrs[to_remove])
     
     #add edge
     probs = Vector{Float64}(undef, length(voters))
     for i in 1:length(voters)
-        probs[i] = degree(social_network, voters[i]) / (1.0 + get_distance(self, voters[i]))
+        probs[i] = degree(social_network, voters[i].ID) / (1.0 + get_distance(self, voters[i]))
     end
+    
     probs[self.ID] = 0.0
+    for neibr in neibrs
+        probs[neibr] = 0.0
+    end
+
     probs = probs ./ sum(probs)
-    add_edge!(social_network, (self.ID, rand(Distributions.Categorical(probs))))
+    add_edge!(social_network, self.ID, rand(Distributions.Categorical(probs)))
 end

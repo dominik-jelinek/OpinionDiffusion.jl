@@ -28,7 +28,7 @@ function run!(model::T, diffusion_config, logger=nothing::Union{Nothing, Logger}
         save_log(logger, model)
     end
 
-    return model, loggers
+    return model, logger
 end
 
 function ensemble_model(model_dir, ensemble_size)

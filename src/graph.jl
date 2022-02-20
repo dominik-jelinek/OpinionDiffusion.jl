@@ -94,7 +94,7 @@ function weighted_barabasi_albert_graph(voters::Vector{T}, m::Integer) where T <
 
    end
 
-   return SimpleWeightedGraph(srcs, dsts, weights)
+   return MetaGraph(srcs, dsts, weights)
 end
 
 function init_graph(vert_count::Int, edges::Vector{Graphs.SimpleGraphs.SimpleEdge{Int64}})
