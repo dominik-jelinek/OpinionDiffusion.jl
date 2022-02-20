@@ -8,8 +8,12 @@ end
 #    return sum(abs.(get_opinion(voter1) - get_opinion(voter2)))
 #end
 
-function get_distance(voter1::Abstract_voter, voter2::Abstract_voter)
-    return Distances.evaluate(Distances.Cityblock(), get_opinion(voter1), get_opinion(voter2))
+function get_distance(voter_1::Abstract_voter, voter_2::Abstract_voter)
+    return Distances.evaluate(Distances.Cityblock(), get_opinion(voter_1), get_opinion(voter_2))
+end
+
+function get_distance(opinion_1::Vector{Real}, opinion_2::Vector{Real})
+    return Distances.evaluate(Distances.Cityblock(), opinion_1, opinion_2)
 end
 
 function get_vote(voter::Abstract_voter) :: Vector{Int}
