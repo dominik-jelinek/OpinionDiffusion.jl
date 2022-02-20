@@ -2,12 +2,21 @@
 struct Kendall_voter <: Abstract_voter
    ID::Int64
    vote::Vector{Vector{Int64}}
-   opinion::Vector{Int64}
+   opinion::Vector{Float64}
 
    openmindedness::Float64
    stubborness::Float64
 end
-
+#=
+struct Kendall_voter
+   vote::Vector{Vector{Int64}}
+   opinion::Vector{Float64}
+end
+function Kendall_voter(vote, can_count)
+   opinion = kendall_encoding(vote, can_count)
+   return Kendall_voter(vote, opinion)
+end
+=#
 function Kendall_voter(ID, vote, can_count, openmindedness_distr::Distributions.ContinuousUnivariateDistribution, stubbornness_distr::Distributions.ContinuousUnivariateDistribution)
    opinion = kendall_encoding(vote, can_count)
    openmindedness = rand(openmindedness_distr)
@@ -44,7 +53,7 @@ function kendall_encoding(vote::Vector{Vector{Int64}}, can_count)
       end
    end
 
-   opinion = Vector{Int64}(undef, choose2(can_count))
+   opinion = Vector{Float64}(undef, choose2(can_count))
    counter = 1
    for can_1 in 1:can_count-1
       for can_2 in can_1+1:can_count
@@ -186,7 +195,7 @@ function invert_vote(vote, can_count)
    return pos
 end
 
-function get_feasible_swaps(u::Kendall_voter, v::Kendall_voter)
+function get_feasible_swaps(u::Kendall_voter, v::Kendall_voter, can_count)
    # vector of new votes and opinions for voter u if we choose specific swap 
    feasible_swaps = Vector{Tuple{Int64, Float64, Symbol}}()
    
@@ -198,12 +207,11 @@ function get_feasible_swaps(u::Kendall_voter, v::Kendall_voter)
       bucket_l = u.vote[i - 1]
       bucket_r = u.vote[i]
       #check for unbucket
-      if length(bucket) > 1
+      if length(bucket_r) > 1
          append!(feasible_swaps, unbucket(u.opinion, v.opinion, bucket_r, can_count))
       end
 
-      append!(feasible_swaps, rebucket(u.opinion, v.opinion, bucket_l, bucket_r))
-      append!(feasible_swaps, rebucket(u.opinion, v.opinion, bucket_r, bucket_l))
+      append!(feasible_swaps, rebucket(u.opinion, v.opinion, bucket_l, bucket_r, can_count))
    end
 
    return feasible_swaps
@@ -215,14 +223,14 @@ function unbucket(u_opinion, v_opinion, bucket, can_count)
    for can in bucket
       opinion = unbucket_right(can, u_opinion, bucket, can_count)
       change = get_distance(opinion, v_opinion) - get_distance(u_opinion, v_opinion)
-      if change < 0
-         append!(feasible_swaps, (can, change, :unbucket_right))
+      if change < 0.0
+         push!(feasible_swaps, (can, change, :unbucket_right))
       end
 
       opinion = unbucket_left(can, u_opinion, bucket, can_count)
       change = get_distance(opinion, v_opinion) - get_distance(u_opinion, v_opinion)
-      if change < 0
-         append!(feasible_swaps, (can, change, :unbucket_left))
+      if change < 0.0
+         push!(feasible_swaps, (can, change, :unbucket_left))
       end
    end
 
@@ -245,6 +253,59 @@ function unbucket_left(can, opinion, bucket, can_count)
    for i in 1:length(bucket)
       if bucket[i] != can
          new_opinion[get_index(bucket[i], can, can_count)] = can < bucket[i] ? 0.0 : 1.0
+      end
+   end
+
+   return new_opinion
+end
+
+function rebucket(u_opinion, v_opinion, l_bucket, r_bucket, can_count)
+   feasible_swaps = Vector{Tuple{Int64, Float64, Symbol}}()
+
+   for can in l_bucket
+      opinion = rebucket_right(can, u_opinion, l_bucket, r_bucket, can_count)
+      change = get_distance(opinion, v_opinion) - get_distance(u_opinion, v_opinion)
+      if change < 0.0
+         push!(feasible_swaps, (can, change, :rebucket_right))
+      end
+   end
+
+   for can in r_bucket
+      opinion = rebucket_left(can, u_opinion, l_bucket, r_bucket, can_count)
+      change = get_distance(opinion, v_opinion) - get_distance(u_opinion, v_opinion)
+      if change < 0.0
+         push!(feasible_swaps, (can, change, :rebucket_left))
+      end
+   end
+
+   return feasible_swaps
+end
+
+function rebucket_right(can, opinion, l_bucket, r_bucket, can_count)
+   new_opinion = deepcopy(opinion)
+   for i in 1:length(l_bucket)
+      if l_bucket[i] != can
+         new_opinion[get_index(l_bucket[i], can, can_count)] = can < l_bucket[i] ? 1.0 : 0.0
+      end
+   end
+
+   for i in 1:length(r_bucket)
+      new_opinion[get_index(r_bucket[i], can, can_count)] = 0.5
+   end
+
+   return new_opinion
+end
+
+function rebucket_left(can, opinion, l_bucket, r_bucket, can_count)
+   new_opinion = deepcopy(opinion)
+
+   for i in 1:length(l_bucket)
+      new_opinion[get_index(l_bucket[i], can, can_count)] = 0.5
+   end
+
+   for i in 1:length(r_bucket)
+      if r_bucket[i] != can
+         new_opinion[get_index(r_bucket[i], can, can_count)] = can < r_bucket[i] ? 0.0 : 1.0
       end
    end
 
