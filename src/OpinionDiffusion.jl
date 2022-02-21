@@ -44,6 +44,8 @@ export get_edge_distances, draw_degree_distr, draw_edge_distances
 export draw_range, draw_voting_res
 export voters, social_network
 export load_model, restart_model
+export test_KT
+
 include("configs.jl")
 
 include("parsing.jl")
