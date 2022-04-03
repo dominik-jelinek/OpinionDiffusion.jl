@@ -11,6 +11,8 @@ function clustering(sampled_opinions, candidates, parties, clustering_config)
         gm = ScikitLearn.GaussianMixture(n_components=clustering_config.gm_config.cluster_count).fit(data_T)
         labels = gm.predict(data_T) .+ 1
         clusters = clusterize(labels, clustering_config.gm_config.cluster_count)
+    elseif clustering_config.method == "DBSCAN"
+        res = Clustering.DBSCAN(sampled_opinions, clustering_config.kmeans_config.cluster_count; maxiter=200)
     else
         error("Unknown clustering method")
     end

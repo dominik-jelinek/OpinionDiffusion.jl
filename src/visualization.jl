@@ -3,7 +3,11 @@ function reduce_dim(sampled_opinions, reduce_dim_Config)
         config = reduce_dim_Config.pca_config
         model = MultivariateStats.fit(MultivariateStats.PCA, sampled_opinions; maxoutdim=config.out_dim)
         projection = MultivariateStats.transform(model, sampled_opinions)
-
+        println(MultivariateStats.mean(model))
+        #println(MultivariateStats.projection(model))
+        println(MultivariateStats.principalratio(model))
+        #println(MultivariateStats.principalvars(model))
+        #println(MultivariateStats.tresidualvar(model))
     elseif reduceDimConfig.method == "tsne"
         config = reduce_dim_Config.tsne_config
         projection = permutedims(TSne.tsne(sampled_opinions, config.out_dim, config.reduce_dims, config.max_iter, config.perplexity))
@@ -109,4 +113,20 @@ function draw_voting_res(candidates, parties, result, title::String)
     legend = false,
     yformatter = :plain
     )
+end
+
+function ego(social_network, node_id, depth)
+    neighs = Graphs.neighbors(social_network, node_id)
+    ego_nodes = Set(neighs)
+    front = Set(neighs)
+    for i in 1:depth - 1
+        new_front = Set()
+        for voter in front
+            union!(new_front, Graphs.neighbors(social_network, voter))
+        end
+        front = setdiff(new_front, ego_nodes)
+        union!(ego_nodes, front)
+    end
+
+    return induced_subgraph(social_network, ego_nodes)
 end

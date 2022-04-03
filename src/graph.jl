@@ -53,9 +53,7 @@ function weighted_barabasi_albert_graph(voters::Vector{T}, m::Integer) where T <
    if m > length(voters)
       throw(ArgumentError("Argument m for Barabasi-Albert graph creation is higher than number of voters."))
    end
-   srcs = Vector{Int64}(undef, m*(length(voters)-m))
-   dsts = Vector{Int64}(undef, m*(length(voters)-m))
-   weights = Vector{Float64}(undef, m*(length(voters)-m))
+   social_network = MetaGraphs.MetaGraph(length(voters))
    counter = 1
 
    rand_perm = Random.shuffle(1:length(voters))
@@ -79,14 +77,12 @@ function weighted_barabasi_albert_graph(voters::Vector{T}, m::Integer) where T <
       @inbounds for j in eachindex(distances)
          probs[j] = degrees[j] / (1.0 + distances[j])
       end
-      edge_ends = StatsBase.sample(1:length(voters), StatsBase.Weights(probs), m, replace=false)
+      edge_ends = StatsBase.sample(1:length(voters), StatfisBase.Weights(probs), m, replace=false)
       
       #add edges
       @inbounds for edge_end in edge_ends
-         srcs[counter] = rand_perm[i]
-         dsts[counter] = rand_perm[edge_end]
-         weights[counter] = distances[edge_end] == 0.0 ? 5.0e-324 : distances[edge_end]
-
+         add_edge!(social_network, rand_perm[i], rand_perm[edge_end])
+         set_prop!(social_network, rand_perm[i], rand_perm[edge_end], :weight, 1.0)#distances[edge_end])
          degrees[edge_end] += 1.0
          counter += 1
       end
@@ -94,7 +90,7 @@ function weighted_barabasi_albert_graph(voters::Vector{T}, m::Integer) where T <
 
    end
 
-   return MetaGraph(srcs, dsts, weights)
+   return social_network
 end
 
 function init_graph(vert_count::Int, edges::Vector{Graphs.SimpleGraphs.SimpleEdge{Int64}})

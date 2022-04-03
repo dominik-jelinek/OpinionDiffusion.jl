@@ -7,16 +7,7 @@ struct Kendall_voter <: Abstract_voter
    openmindedness::Float64
    stubborness::Float64
 end
-#=
-struct Kendall_voter
-   vote::Vector{Vector{Int64}}
-   opinion::Vector{Float64}
-end
-function Kendall_voter(vote, can_count)
-   opinion = kendall_encoding(vote, can_count)
-   return Kendall_voter(vote, opinion)
-end
-=#
+
 function Kendall_voter(ID, vote, can_count, openmindedness_distr::Distributions.ContinuousUnivariateDistribution, stubbornness_distr::Distributions.ContinuousUnivariateDistribution)
    opinion = kendall_encoding(vote, can_count)
    openmindedness = rand(openmindedness_distr)
@@ -74,7 +65,7 @@ function step!(self::Kendall_voter, voters, graph, can_count, voter_diff_config)
    neighbor = voters[neighbor_id]
 
    if rand() <= voter_diff_config["attract_proba"]
-      attract_flip!(self, neighbor, can_count)
+      attract_flip(self, neighbor, can_count)
    else
       repel_flip!(self, neighbor)
    end
@@ -95,58 +86,7 @@ If it is bigger than the stubborness of respective voter, it is executed.
    
    
 =#
-function test_KT(n, can_count)
-   voters = Vector{Kendall_voter}(undef, n)
-   for i in 1:n
-      vote = get_random_vote(can_count)
-      voters[i] = Kendall_voter(69, vote, kendall_encoding(vote, can_count), 0.420, 0.420)
-   end
-
-   for i in 1:n
-      for j in 1:n
-         if i == j 
-            break
-         end
-
-         fst = deepcopy(voters[i])
-         snd = deepcopy(voters[j])
-         k = 0
-         println(fst)
-         println(snd)
-         while get_distance(fst, snd) != 0.0 
-            fst = attract_flip!(fst, snd, can_count)
-            if k == can_count*can_count
-               error("Failed to converge in time")
-               break
-            end
-            k += 1
-         end
-         println("converged after:", k)
-      end
-   end
-end
-
-function test_pair(vote_1, vote_2, can_count)
-   fst = Kendall_voter(69, vote_1, kendall_encoding(vote_1, can_count), 0.420, 0.420)
-   snd = Kendall_voter(69, vote_2, kendall_encoding(vote_2, can_count), 0.420, 0.420)
-
-   println(fst)
-   println(snd)
-   for k in 1:can_count*can_count
-      fst = attract_flip!(fst, snd, can_count)
-      if get_distance(fst, snd) == 0.0
-         #println(fst) 
-         #println(snd)
-         println("converged after:", k)
-         break
-      end
-   end
-end
-
-function attract_flip!(self, neighbor, can_count)
-   #println(self) 
-   #println(neighbor)
-
+function attract_flip(self, neighbor, can_count)
    if get_distance(self, neighbor) == 0.0
       return self
    end
@@ -156,7 +96,8 @@ function attract_flip!(self, neighbor, can_count)
       #display(swaps)
 
       if length(swaps) == 0
-         println(self, neighbor)
+         println(self)
+         println(neighbor)
          println("No feasible swaps but non-zero distance")
          error("BLA")
          return self
@@ -241,7 +182,6 @@ function apply_swap(swap, voter, can_count)
    end
 
    return Kendall_voter(voter.ID, new_vote, new_opinion, voter.openmindedness, voter.stubborness)
-   #return Kendall_voter(new_vote, new_opinion)
 end
 
 function get_feasible_swaps(u::Kendall_voter, v::Kendall_voter, can_count)
@@ -253,11 +193,12 @@ function get_feasible_swaps(u::Kendall_voter, v::Kendall_voter, can_count)
    end
 
    for i in 2:length(u.vote)
-      #check for unbucket
+      # check for possible unbuckets
       if length(u.vote[i]) > 1
          append!(feasible_swaps, unbucket(u.opinion, v.opinion, u.vote, i, can_count))
       end
 
+      # check for possible rebuckets
       append!(feasible_swaps, rebucket(u.opinion, v.opinion, u.vote, i, can_count))
    end
 
@@ -448,4 +389,42 @@ function get_penalty(inv_vote, can_1, can_2)
    end
    
    return penalty
+end
+
+function test_random_KT(n, can_count)
+   #fst = Kendall_voter(69, vote_1, kendall_encoding(vote_1, can_count), 0.420, 0.420)
+   #snd = Kendall_voter(69, vote_2, kendall_encoding(vote_2, can_count), 0.420, 0.420)
+   voters = Vector{Kendall_voter}(undef, n)
+   for i in 1:n
+      vote = get_random_vote(can_count)
+      voters[i] = Kendall_voter(69, vote, kendall_encoding(vote, can_count), 0.420, 0.420)
+   end
+
+   for i in 1:n
+      for j in 1:n
+         if i == j 
+            break
+         end
+
+         test_pair_KT(voters[i], voters[j], can_count)
+      end
+   end
+end
+
+function test_pair_KT(fst, snd, can_count)
+   fst = deepcopy(fst)
+   snd = deepcopy(snd)
+
+   println(fst)
+   println(snd)
+   k = 0
+   while get_distance(fst, snd) != 0.0 
+      fst = attract_flip(fst, snd, can_count)
+      if k == can_count*can_count
+         error("Failed to converge in time")
+         break
+      end
+      k += 1
+   end
+   println("converged after:", k)
 end

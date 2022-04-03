@@ -71,7 +71,6 @@ function parse_votes(lines, can_count)
       voter_str = split(line, "{")
       bucket_vote = Vector{Vector{Int64}}()
       vote = length(voter_str) == 2 ? split(chop(voter_str[1]), ",") : split(voter_str[1], ",")
-
       #first column contains number of matching votes
       matching_votes = parse(Int, vote[1])
 
@@ -89,7 +88,7 @@ function parse_votes(lines, can_count)
          end
          push!(bucket_vote, bucket)
       end
-
+      
       for j in 1:matching_votes
          election[counter] = deepcopy(bucket_vote)
          counter += 1
