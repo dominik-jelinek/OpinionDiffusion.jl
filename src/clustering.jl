@@ -1,7 +1,7 @@
-function clustering(sampled_opinions, candidates, parties, clustering_config)
+function clustering(sampled_opinions, candidates, parties_count, clustering_config)
     
     if clustering_config.method == "Party"
-        return party_clustering(sampled_opinions, candidates, parties)
+        return party_clustering(sampled_opinions, candidates, parties_count)
     elseif clustering_config.method == "K-means"
         kmeans_res = Clustering.kmeans(sampled_opinions, clustering_config.kmeans_config.cluster_count; maxiter=200)
         labels = kmeans_res.assignments
@@ -21,9 +21,9 @@ function clustering(sampled_opinions, candidates, parties, clustering_config)
     return labels, clusters
 end
 
-function party_clustering(sampled_opinions, candidates, parties)
-    labels = [candidates[argmin(col)].party for col in eachcol(sampled_opinions)] 
-    clusters = clusterize(labels, length(parties))
+function party_clustering(sampled_opinions, candidates, parties_count)
+    labels = [candidates[argmin(opin)].party for opin in eachcol(sampled_opinions)] 
+    clusters = clusterize(labels, parties_count)
     
     return labels, clusters
 end

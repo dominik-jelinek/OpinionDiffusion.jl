@@ -1,3 +1,4 @@
+# Logger takes model and creates log based on provided name 
 struct Logger
     model_dir::String
     exp_dir::String

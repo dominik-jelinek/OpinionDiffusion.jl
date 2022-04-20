@@ -16,10 +16,6 @@ function get_votes(voters::Vector{T}) where T <: Abstract_voter
     return votes
 end
 
-function get_opinions(voters::Vector{T}) where T <: Abstract_voter
-    return reduce(hcat, [voter.opinion for voter in voters])
-end
-
 function run!(model::T, diffusion_config, logger=nothing::Union{Nothing, Logger}) where T<:Abstract_model
     diffusion!(model, diffusion_config)
 

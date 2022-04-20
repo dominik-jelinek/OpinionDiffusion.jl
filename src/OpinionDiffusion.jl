@@ -19,7 +19,8 @@ import GraphPlot
 import Distances
 import Clustering
 import TSne
-import MultivariateStats
+using MultivariateStats
+
 import StatsBase
 import Distributions
 #import ScikitLearn
@@ -34,7 +35,7 @@ export Logger
 export run!
 export save_log, load_log, load_logs
 export get_opinion, get_vote
-export get_votes, get_opinions
+export get_votes
 
 export Spearman_voter_config, Spearman_voter_diff_config, General_model_config, General_graph_diff_config, Diffusion_config
 export Kmeans_config, GM_config, Clustering_config, PCA_config, Tsne_config, Reduce_dim_config, Voter_vis_config

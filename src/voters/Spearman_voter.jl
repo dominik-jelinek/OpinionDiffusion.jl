@@ -20,14 +20,17 @@ function init_voters(election, can_count, voter_config::Spearman_voter_config)
     for i in 2:length(weights)
         weights[i] = weights[i - 1] + voter_config.weight_func(i - 1)
     end
+    println(weights)
     openmindedness_distr = Distributions.Truncated(voter_config.openmindedness_distr, 0.0, 1.0)
     stubbornness_distr = Distributions.Truncated(voter_config.stubbornness_distr, 0.0, 1.0)
 
     voters = Vector{Spearman_voter}(undef, length(election))
     for (i, vote) in enumerate(election)
+        #println(vote)
         voters[i] = Spearman_voter(i, vote, weights, openmindedness_distr, stubbornness_distr)
+        #println(voters[i].opinion)
     end
-
+    #println(errors)
     return voters
 end
 

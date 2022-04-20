@@ -8,12 +8,13 @@ function General_model(election, can_count::Int64, model_config)
     @time voters = init_voters(election, can_count, model_config.voter_config)
     
     println("Initializing graph:")
-    @time social_network = weighted_barabasi_albert_graph(voters, model_config.m)
+    @time social_network = weighted_barabasi_albert_graph(voters, model_config.m, model_config.popularity_ratio)
 
     return General_model(voters, social_network)
 end
-#=
+
 function graph_diffusion!(model::General_model, graph_diff_config::General_graph_diff_config)
+    return
     edge_diff_func = graph_diff_config.edge_diff_func
     dist_metric = graph_diff_config.dist_metric
     
@@ -43,7 +44,7 @@ function edge_diffusion!(voter_1, voter_2, g, edge_diff_func, dist_metric::Dista
         end
     end
 end
-=#
+#=
 """
 Pick a random voter remove one edge based on inverse that it was created and the add one edge
 """
@@ -86,3 +87,4 @@ function edge_diffusion!(self, voters, social_network)
     probs = probs ./ sum(probs)
     add_edge!(social_network, self.ID, rand(Distributions.Categorical(probs)))
 end
+=#

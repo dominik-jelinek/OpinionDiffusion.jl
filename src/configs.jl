@@ -18,6 +18,7 @@ end
 #model configs __________________________________________________________________________
 @kwdef struct General_model_config
     m::Integer
+    popularity_ratio::Real
     voter_config::Abstract_voter_config
 end
 

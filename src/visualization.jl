@@ -1,6 +1,6 @@
-function reduce_dim(sampled_opinions, reduce_dim_Config)
-    if reduce_dim_Config.method == "PCA"
-        config = reduce_dim_Config.pca_config
+function reduce_dim(sampled_opinions, reduce_dim_config)
+    if reduce_dim_config.method == "PCA"
+        config = reduce_dim_config.pca_config
         model = MultivariateStats.fit(MultivariateStats.PCA, sampled_opinions; maxoutdim=config.out_dim)
         projection = MultivariateStats.transform(model, sampled_opinions)
         println(MultivariateStats.mean(model))
@@ -8,14 +8,28 @@ function reduce_dim(sampled_opinions, reduce_dim_Config)
         println(MultivariateStats.principalratio(model))
         #println(MultivariateStats.principalvars(model))
         #println(MultivariateStats.tresidualvar(model))
-    elseif reduceDimConfig.method == "tsne"
-        config = reduce_dim_Config.tsne_config
+    elseif reduce_dim_config.method == "tsne"
+        config = reduce_dim_config.tsne_config
         projection = permutedims(TSne.tsne(sampled_opinions, config.out_dim, config.reduce_dims, config.max_iter, config.perplexity))
+    elseif reduce_dim_config.method == "MDS"
+        model = MultivariateStats.fit(MDS, sampled_opinions; maxoutdim=2, distances=false)
+        println(model)
+        println(methods(predict))
+        projection = predict(model, sampled_opinions)
+	
+        #projection = MultivariateStats.transform(model, sampled_opinions)
     else
         error("Unknown dimensionality reduction method")
     end
 
     return projection
+end
+
+function ensemble_vis(experiment_names)
+    #=
+    Gather data from the logs of multiple diffusion experiments and visualize spreads
+
+    =#
 end
 
 function draw_voter_vis(projections, clusters, title, exp_dir=Nothing, counter=[0])
@@ -104,6 +118,7 @@ end
  
 function draw_voting_res(candidates, parties, result, title::String)
     names = [candidate.name * " - " * parties[candidate.party] for candidate in candidates]
+    party_colors = Colors.distinguishable_colors(length())[parties[candidate.party] for candidate in candidates]
     Plots.plot(result,
     title=title,
     xlabel="Diffusions",
@@ -130,3 +145,4 @@ function ego(social_network, node_id, depth)
 
     return induced_subgraph(social_network, ego_nodes)
 end
+
