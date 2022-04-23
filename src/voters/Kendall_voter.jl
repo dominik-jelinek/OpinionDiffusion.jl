@@ -16,7 +16,7 @@ function Kendall_voter(ID, vote, can_count, openmindedness_distr::Distributions.
    return Kendall_voter(ID, vote, opinion, openmindedness, stubbornness)
 end
 
-function init_voters(election, can_count, voter_config)
+function init_voters(election, can_count, voter_config::Kendall_voter_init_config)
    openmindedness_distr = Distributions.Truncated(voter_config.openmindedness_distr, 0.0, 1.0)
    stubbornness_distr = Distributions.Truncated(voter_config.stubbornness_distr, 0.0, 1.0)
 
@@ -28,7 +28,7 @@ function init_voters(election, can_count, voter_config)
    return voters
 end
 
-function get_vote(voter::Kendall_voter) :: Vector{Int}
+function get_vote(voter::Kendall_voter) :: Vector{Vector{Int}}
    return voter.vote
 end
 
@@ -55,7 +55,7 @@ function kendall_encoding(vote::Vector{Vector{Int64}}, can_count)
    return opinion
 end
 
-function step!(self::Kendall_voter, voters, graph, can_count, voter_diff_config)
+function step!(self::Kendall_voter, voters, graph, can_count, voter_diff_config::Kendall_voter_diff_config)
    neighbors_ = neighbors(graph, self.ID)
    if length(neighbors_) == 0
       return
@@ -64,10 +64,10 @@ function step!(self::Kendall_voter, voters, graph, can_count, voter_diff_config)
    neighbor_id = neighbors_[rand(1:end)]
    neighbor = voters[neighbor_id]
 
-   if rand() <= voter_diff_config["attract_proba"]
-      attract_flip(self, neighbor, can_count)
+   if rand() <= voter_diff_config.attract_proba
+      voters[self.ID], voters[neighbor_id] = attract_flip(self, neighbor, can_count)
    else
-      repel_flip!(self, neighbor)
+      #repel_flip!(self, neighbor)
    end
 end
 
@@ -88,30 +88,34 @@ If it is bigger than the stubborness of respective voter, it is executed.
 =#
 function attract_flip(self, neighbor, can_count)
    if get_distance(self, neighbor) == 0.0
-      return self
+      return self, neighbor
    end
 
-   if true#rand() > self.stubborness
+   if rand() > self.stubborness
       swaps = get_feasible_swaps(self, neighbor, can_count)
       #display(swaps)
 
       if length(swaps) == 0
          println(self)
          println(neighbor)
-         println("No feasible swaps but non-zero distance")
-         error("BLA")
-         return self
+         error("No feasible swaps but non-zero distance")
+         return
       end
    
       swap = swaps[rand(1:length(swaps))]
       #println("Swap:", swap)
-      return apply_swap(swap, self, can_count)
+      self = apply_swap(swap, self, can_count)
    end
    
+   if get_distance(self, neighbor) == 0.0
+      return self, neighbor
+   end
+
    if rand() > neighbor.stubborness
       swaps = get_feasible_swaps(neighbor, self, can_count)
       if length(swaps) == 0
-         print(self, neighbor)
+         println(self)
+         println(neighbor)
          error("No feasible swaps but non-zero distance")
          return      
       end
@@ -120,7 +124,7 @@ function attract_flip(self, neighbor, can_count)
       neighbor = apply_swap(swap, neighbor, can_count)
    end
    
-   return self
+   return self, neighbor
 end
 
 function apply_swap(swap, voter, can_count)

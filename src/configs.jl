@@ -1,39 +1,48 @@
-#voter configs __________________________________________________________________________
-abstract type Abstract_voter_config end
+# voter configs __________________________________________________________________________
+abstract type Abstract_voter_init_config end
 
-@kwdef struct Spearman_voter_config <: Abstract_voter_config
+@kwdef struct Spearman_voter_init_config <: Abstract_voter_init_config
     weight_func::Function
     openmindedness_distr::Distributions.Distribution{Distributions.Univariate, Distributions.Continuous}
     stubbornness_distr::Distributions.Distribution{Distributions.Univariate, Distributions.Continuous}
 end
 
+@kwdef struct Kendall_voter_init_config <: Abstract_voter_init_config
+    openmindedness_distr::Distributions.Distribution{Distributions.Univariate, Distributions.Continuous}
+    stubbornness_distr::Distributions.Distribution{Distributions.Univariate, Distributions.Continuous}
+end
+
+# diffusion configs ________________________________________________________________________
 abstract type Abstract_voter_diff_config end
-@kwdef struct Spearman_voter_diff_config <: Abstract_voter_diff_config
+abstract type Abstract_graph_diff_config end
+
+@kwdef struct Diffusion_config
+    checkpoint::Int64
     evolve_vertices::Float64
+    evolve_edges::Float64
+    voter_diff_config::Abstract_voter_diff_config
+    graph_diff_config::Abstract_graph_diff_config
+end
+
+@kwdef struct Spearman_voter_diff_config <: Abstract_voter_diff_config
 	attract_proba::Float64
 	change_rate::Float64
     normalize_shifts::Union{Nothing, Tuple{Bool, Float64, Float64}}
 end
-
-#model configs __________________________________________________________________________
-@kwdef struct General_model_config
-    m::Integer
-    popularity_ratio::Real
-    voter_config::Abstract_voter_config
+@kwdef struct Kendall_voter_diff_config <: Abstract_voter_diff_config
+	attract_proba::Float64
 end
 
-abstract type Abstract_graph_diff_config end
-
 @kwdef struct General_graph_diff_config <: Abstract_graph_diff_config
-    evolve_edges::Float64
     dist_metric::Distances.Metric
     edge_diff_func::Function
 end
 
-@kwdef struct Diffusion_config
-    checkpoint::Int64
-    voter_diff_config::Abstract_voter_diff_config
-    graph_diff_config::Abstract_graph_diff_config
+# model configs __________________________________________________________________________
+@kwdef struct General_model_config
+    m::Integer
+    popularity_ratio::Real
+    voter_init_config::Abstract_voter_init_config
 end
 
 # visualizations ________________________________________________________________________

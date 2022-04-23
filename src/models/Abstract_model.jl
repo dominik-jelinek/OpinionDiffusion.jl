@@ -3,7 +3,7 @@ abstract type Abstract_model end
 voters(model::T) where T <: Abstract_model = model.voters 
 social_network(model::T) where T <: Abstract_model = model.social_network
 
-function graph_diffusion!(model::T, graph_diff_config::U) where {T <: Abstract_model, U <: Abstract_graph_diff_config}
+function graph_diffusion!(model::T, evolve_edges, graph_diff_config::U) where {T <: Abstract_model, U <: Abstract_graph_diff_config}
     throw(NotImplementedError("graph_diffusion!"))
 end
 
@@ -57,17 +57,17 @@ function run_ensemble!(models::Vector{T}, diffusion_config, loggers=nothing::Uni
 end
 
 function diffusion!(model::T, diffusion_config) where T <: Abstract_model
-    voter_diffusion!(model, diffusion_config.voter_diff_config)
-    graph_diffusion!(model, diffusion_config.graph_diff_config)
+    voter_diffusion!(model, diffusion_config.evolve_vertices, diffusion_config.voter_diff_config)
+    graph_diffusion!(model, diffusion_config.evolve_edges, diffusion_config.graph_diff_config)
 end
 
-function voter_diffusion!(model::T, voter_diff_config::U) where 
+function voter_diffusion!(model::T, evolve_vertices, voter_diff_config::U) where 
     {T <: Abstract_model, U <: Abstract_voter_diff_config}
-    sample_size = ceil(Int, voter_diff_config.evolve_vertices * length(model.voters))
-    vertex_ids = StatsBase.sample(1:length(model.voters), sample_size, replace=true)
+    sample_size = ceil(Int, evolve_vertices * length(voters(model)))
+    vertex_ids = StatsBase.sample(1:length(voters(model)), sample_size, replace=true)
 
     for id in vertex_ids
-        step!(model.voters[id], model.voters, model.social_network, voter_diff_config)
+        step!(voters(model)[id], voters(model), social_network(model), model.can_count, voter_diff_config)
     end
 end
 

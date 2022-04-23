@@ -14,7 +14,7 @@ function Spearman_voter(ID, vote, weights, openmindedness_distr::Distributions.C
     return Spearman_voter(ID, opinion, openmindedness, stubbornness)
 end
 
-function init_voters(election, can_count, voter_config::Spearman_voter_config)
+function init_voters(election, can_count, voter_config::Spearman_voter_init_config)
     weights = Vector{Float64}(undef, can_count)
     weights[1] = 0.0
     for i in 2:length(weights)
@@ -76,7 +76,7 @@ function get_vote(voter::Spearman_voter) :: Vector{Vector{Int64}}
     return vote 
 end
 
-function step!(self::Spearman_voter, voters, graph, voter_diff_config::Spearman_voter_diff_config)
+function step!(self::Spearman_voter, voters, graph, can_count, voter_diff_config::Spearman_voter_diff_config)
     neighbors_ = neighbors(graph, self.ID)
     if length(neighbors_) == 0
         return
@@ -107,6 +107,7 @@ function average_all!(voter_1::Spearman_voter, voter_2::Spearman_voter, attract_
 end
 
 function normalize_shifts(shifts::Vector{Float64}, opinion::Vector{Float64}, min_opin, max_opin)
+    # decrease opinion changes that push candidates outside of [min_opin, max_opin] boundary
     #safeguard
     if max_opin < min_opin
         min_opin, max_opin = max_opin, min_opin
