@@ -7,15 +7,6 @@ function graph_diffusion!(model::T, evolve_edges, graph_diff_config::U) where {T
     throw(NotImplementedError("graph_diffusion!"))
 end
 
-function get_votes(voters::Vector{T}) where T <: Abstract_voter
-    votes = Vector{Vector{Vector{Int64}}}(undef, length(voters))
-    for (i, voter) in enumerate(voters)
-        votes[i] = get_vote(voter)
-    end
-    
-    return votes
-end
-
 function run!(model::T, diffusion_config, logger=nothing::Union{Nothing, Logger}) where T<:Abstract_model
     diffusion!(model, diffusion_config)
 

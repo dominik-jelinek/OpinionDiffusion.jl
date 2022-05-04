@@ -4,9 +4,20 @@ struct General_model <: Abstract_model
     can_count::Int64
 end
 
+@kwdef struct General_model_config
+    m::Integer
+    popularity_ratio::Real
+    voter_init_config::Abstract_voter_init_config
+end
+
+@kwdef struct General_graph_diff_config <: Abstract_graph_diff_config
+    dist_metric::Distances.Metric
+    edge_diff_func::Function
+end
+
 function General_model(election, can_count::Int64, model_config)
     println("Initializing voters:")
-    @time voters = init_voters(election, can_count, model_config.voter_config)
+    @time voters = init_voters(election, can_count, model_config.voter_init_config)
     
     println("Initializing graph:")
     @time social_network = weighted_barabasi_albert_graph(voters, model_config.m, model_config.popularity_ratio)

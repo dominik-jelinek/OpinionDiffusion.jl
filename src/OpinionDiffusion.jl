@@ -38,8 +38,8 @@ export get_opinion, get_vote
 export get_votes
 
 export General_model_config, General_graph_diff_config, Diffusion_config
-export Spearman_voter_config, Spearman_voter_diff_config
-export Kendall_voter_config, Kendall_voter_diff_config
+export Spearman_voter_init_config, Spearman_voter_diff_config
+export Kendall_voter_init_config, Kendall_voter_diff_config
 
 export Kmeans_config, GM_config, Clustering_config, PCA_config, Tsne_config, Reduce_dim_config, Voter_vis_config
 export plurality_voting, borda_voting, copeland_voting

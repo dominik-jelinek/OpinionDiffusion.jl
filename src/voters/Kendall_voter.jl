@@ -8,6 +8,15 @@ struct Kendall_voter <: Abstract_voter
    stubborness::Float64
 end
 
+@kwdef struct Kendall_voter_init_config <: Abstract_voter_init_config
+   openmindedness_distr::Distributions.Distribution{Distributions.Univariate, Distributions.Continuous}
+   stubbornness_distr::Distributions.Distribution{Distributions.Univariate, Distributions.Continuous}
+end
+
+@kwdef struct Kendall_voter_diff_config <: Abstract_voter_diff_config
+	attract_proba::Float64
+end
+
 function Kendall_voter(ID, vote, can_count, openmindedness_distr::Distributions.ContinuousUnivariateDistribution, stubbornness_distr::Distributions.ContinuousUnivariateDistribution)
    opinion = kendall_encoding(vote, can_count)
    openmindedness = rand(openmindedness_distr)

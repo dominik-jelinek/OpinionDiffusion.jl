@@ -6,6 +6,18 @@ struct Spearman_voter <: Abstract_voter
     stubbornness::Float64
 end
 
+@kwdef struct Spearman_voter_init_config <: Abstract_voter_init_config
+    weight_func::Function
+    openmindedness_distr::Distributions.Distribution{Distributions.Univariate, Distributions.Continuous}
+    stubbornness_distr::Distributions.Distribution{Distributions.Univariate, Distributions.Continuous}
+end
+
+@kwdef struct Spearman_voter_diff_config <: Abstract_voter_diff_config
+	attract_proba::Float64
+	change_rate::Float64
+    normalize_shifts::Union{Nothing, Tuple{Bool, Float64, Float64}}
+end
+
 function Spearman_voter(ID, vote, weights, openmindedness_distr::Distributions.ContinuousUnivariateDistribution, stubbornness_distr::Distributions.ContinuousUnivariateDistribution)
     opinion = spearman_encoding(vote, weights)
     openmindedness = rand(openmindedness_distr)
@@ -20,17 +32,14 @@ function init_voters(election, can_count, voter_config::Spearman_voter_init_conf
     for i in 2:length(weights)
         weights[i] = weights[i - 1] + voter_config.weight_func(i - 1)
     end
-    println(weights)
     openmindedness_distr = Distributions.Truncated(voter_config.openmindedness_distr, 0.0, 1.0)
     stubbornness_distr = Distributions.Truncated(voter_config.stubbornness_distr, 0.0, 1.0)
 
     voters = Vector{Spearman_voter}(undef, length(election))
     for (i, vote) in enumerate(election)
-        #println(vote)
         voters[i] = Spearman_voter(i, vote, weights, openmindedness_distr, stubbornness_distr)
-        #println(voters[i].opinion)
     end
-    #println(errors)
+
     return voters
 end
 
@@ -58,25 +67,30 @@ function spearman_encoding(vote::Vector{Vector{Int64}}, weights)
     return opinion ./sum(opinion)
 end
 
-function get_vote(voter::Spearman_voter) :: Vector{Vector{Int64}}
+function get_vote(voter::Spearman_voter; eps=0.01) :: Vector{Vector{Int64}}
+    # sort indexes based on opinions
     can_ranking = sortperm(voter.opinion)
     sorted_scores = voter.opinion[can_ranking]
-    
+
     vote = Vector{Vector{Int64}}()
+    # pre fill first bucket
     counter = 1
     push!(vote, [can_ranking[1]])
+
     for i in 2:length(sorted_scores)
-        if sorted_scores[i-1] == sorted_scores[i]
+        # if the opinion about the next candidate is at most eps from the last it is added into the same bucket 
+        if (sorted_scores[i] - sorted_scores[i-1]) < eps
             push!(vote[counter], can_ranking[i])
         else
             push!(vote, [can_ranking[i]])
             counter += 1
         end
     end
+
     return vote 
 end
 
-function step!(self::Spearman_voter, voters, graph, can_count, voter_diff_config::Spearman_voter_diff_config)
+function step!(self::Spearman_voter, voters, graph, voter_diff_config::Spearman_voter_diff_config)
     neighbors_ = neighbors(graph, self.ID)
     if length(neighbors_) == 0
         return
