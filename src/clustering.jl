@@ -1,18 +1,19 @@
-function clustering(sampled_opinions, candidates, parties_count, clustering_config)
-    
+function clustering(voters, candidates, parties_count, clustering_config)
+
     if clustering_config.method == "Party"
-        return party_clustering(sampled_opinions, candidates, parties_count)
+        return party_clustering(voters, candidates, parties_count)
     elseif clustering_config.method == "K-means"
-        kmeans_res = Clustering.kmeans(sampled_opinions, clustering_config.kmeans_config.cluster_count; maxiter=200)
+        opinions = reduce(hcat, get_opinion(voters))
+        kmeans_res = Clustering.kmeans(opinions, clustering_config.kmeans_config.cluster_count; maxiter=200)
         labels = kmeans_res.assignments
         clusters = clusterize(labels, clustering_config.kmeans_config.cluster_count)
     elseif clustering_config.method == "GM"
-        data_T = permutedims(sampled_opinions)
+        data_T = permutedims(get_opinion(voters))
         gm = ScikitLearn.GaussianMixture(n_components=clustering_config.gm_config.cluster_count).fit(data_T)
         labels = gm.predict(data_T) .+ 1
         clusters = clusterize(labels, clustering_config.gm_config.cluster_count)
     elseif clustering_config.method == "DBSCAN"
-        res = Clustering.DBSCAN(sampled_opinions, clustering_config.kmeans_config.cluster_count; maxiter=200)
+        res = Clustering.DBSCAN(get_opinion(voters), clustering_config.kmeans_config.cluster_count; maxiter=200)
     else
         error("Unknown clustering method")
     end
@@ -21,13 +22,19 @@ function clustering(sampled_opinions, candidates, parties_count, clustering_conf
     return labels, clusters
 end
 
-function party_clustering(sampled_opinions, candidates, parties_count)
-    labels = [candidates[argmin(opin)].party for opin in eachcol(sampled_opinions)] 
+"""
+Cluster voters based on highest ranked candidate
+"""
+function party_clustering(voters, candidates, parties_count)
+    labels = [candidates[get_vote(voter)[1][1]].party for voter in voters] 
     clusters = clusterize(labels, parties_count)
     
     return labels, clusters
 end
 
+"""
+Split labels into clusters
+"""
 function clusterize(labels, cluster_count)
     clusters = Vector{Set{Int64}}(undef, cluster_count)
     for i in 1:cluster_count
@@ -37,6 +44,9 @@ function clusterize(labels, cluster_count)
     return clusters
 end
 
+"""
+Finds the best bijection from clusters to template_clusters based on set overlap
+"""
 function unify_labels!(template_clusters, clusters)
     for i in 1:length(template_clusters)
         best = 0.0

@@ -5,7 +5,7 @@ function get_opinion(voter::Abstract_voter)
 end
 
 function get_opinion(voters::Vector{T}) where T <: Abstract_voter
-    return reduce(hcat, [get_opinion(voter) for voter in voters])
+    return [get_opinion(voter) for voter in voters]
 end
 
 function get_distance(voter_1::Abstract_voter, voter_2::Abstract_voter)

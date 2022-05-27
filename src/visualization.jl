@@ -30,8 +30,8 @@ function ensemble_vis(experiment_names, sampled_voter_ids)
     Gather data from the logs of multiple diffusion experiments and visualize spreads
     =#
     for log in experiment_names
-        model_log = load_log(logger.exp_dir, step)
-        sampled_voters = model_log.voters[sampled_voter_ids]
+        model_log = load_log(log, step)
+        sampled_voters = voters(model_log)[sampled_voter_ids]
         sampled_opinions = get_opinion(sampled_voters)
 
         projections = reduce_dim(sampled_opinions, reduce_dim_config)

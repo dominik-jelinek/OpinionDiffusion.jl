@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.17.1
+# v0.19.4
 
 using Markdown
 using InteractiveUtils
@@ -21,10 +21,13 @@ using Pkg
 Pkg.activate()
 
 # ╔═╡ 9284976e-d474-11eb-2b94-dbe906a08bd7
-using Revise, PlutoUI, OpinionDiffusion
+using Revise
 
 # ╔═╡ c5aa2487-97aa-48bd-b357-4e806a4c41e9
 using Profile
+
+# ╔═╡ c51a1af4-f235-40fa-b828-183e10b2f111
+using OpinionDiffusion, PlutoUI
 
 # ╔═╡ 957eb9d7-12d6-4a22-8338-4e8535b54c71
 md"## Opinion diffusion"
@@ -104,7 +107,7 @@ Plots.bar(transpose(sum(counts, dims = 1)), legend=false, xticks=1:length(src_ca
 Plots.bar(sum(counts, dims = 2), legend=false, xticks=1:length(src_candidates), ylabel="# votes", xlabel="candidate ID")
 
 # ╔═╡ dfef082a-3615-4141-9852-693de7ad4255
-init_sample_size = 1000
+init_sample_size = 10000
 
 # ╔═╡ c50be339-8d1c-459f-8c14-934297f10717
 function filter_candidates(election, candidates, remove_candidates, can_count)
@@ -202,7 +205,7 @@ model_config = General_model_config(
 )
 
 # ╔═╡ 985131a7-7c11-4f9d-ae00-ef031002592d
-model_dir = "logs/" * "model_2022-04-29_18-42-43"
+model_dir = "logs/" * "model_2022-05-26_20-50-29"
 
 # ╔═╡ d8b613c5-7276-466d-a54a-7670f0921b35
 exp_dir = model_dir * "/" * "experiment_2022-04-29_18-42-43"
@@ -398,6 +401,7 @@ md"Clustering for colouring of voters based on their opinions"
 clustering_config = Clustering_config(
     used = true,
     method = "K-means",
+    #method = "Party",
     kmeans_config = Kmeans_config(
         cluster_count = 5
     ),
@@ -417,12 +421,15 @@ model_log = load_log(logger.exp_dir, step)
 
 # ╔═╡ 05eedffd-c82a-4dbd-8608-5fa00f9d0bae
 begin
-	sampled_voters = model_log.voters[sampled_voter_ids]
+	sampled_voters = voters(model_log)[sampled_voter_ids]
 	sampled_opinions = get_opinion(sampled_voters)
 end
 
+# ╔═╡ a9ce1301-9a4c-46ab-9a6d-49109024d705
+opinions = get_opinion(sampled_voters)
+
 # ╔═╡ c81ebbcb-c709-4713-a2b4-cf4bb48eb0da
-labels, clusters = clustering(sampled_opinions, candidates, length(parties), clustering_config)
+labels, clusters = clustering(sampled_voters, candidates, length(parties), clustering_config)
 
 # ╔═╡ b8f16963-914b-40e4-b13d-77cb6eb7b6db
 reduce_dim_config = Reduce_dim_config(
@@ -640,6 +647,7 @@ metrics_vis(metrics, candidates, parties)
 # ╠═86c32615-cdba-41aa-bfca-e5b90563f7f7
 # ╠═481f2e27-0f88-482a-846a-6a31bf38f3ba
 # ╠═9284976e-d474-11eb-2b94-dbe906a08bd7
+# ╠═c51a1af4-f235-40fa-b828-183e10b2f111
 # ╠═75588cfd-52c9-4406-975c-c03158db6e78
 # ╟─46e8650e-f57d-48d7-89de-1c72e12dea45
 # ╠═bcc5468c-2a49-409d-b810-05fc30f4edca
@@ -720,6 +728,7 @@ metrics_vis(metrics, candidates, parties)
 # ╠═008cbbe1-949d-4be7-9178-9bfa27c6e2a8
 # ╟─52893c8c-d1b5-482a-aae7-b3ec5c590b77
 # ╠═1adc5d59-6198-4ef5-9a8a-6390acc28be1
+# ╠═a9ce1301-9a4c-46ab-9a6d-49109024d705
 # ╠═c81ebbcb-c709-4713-a2b4-cf4bb48eb0da
 # ╟─f0eed2be-799f-46bb-968b-b70462cc06fd
 # ╟─0c2345e5-c1b2-4af8-ad31-617ddc99257a
