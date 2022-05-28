@@ -1,7 +1,7 @@
 abstract type Abstract_model end
 
-voters(model::T) where T <: Abstract_model = model.voters 
-social_network(model::T) where T <: Abstract_model = model.social_network
+get_voters(model::T) where T <: Abstract_model = model.voters 
+get_social_network(model::T) where T <: Abstract_model = model.social_network
 
 function graph_diffusion!(model::T, evolve_edges, graph_diff_config::U) where {T <: Abstract_model, U <: Abstract_graph_diff_config}
     throw(NotImplementedError("graph_diffusion!"))
@@ -41,11 +41,11 @@ end
 
 function voter_diffusion!(model::T, evolve_vertices, voter_diff_config::U) where 
     {T <: Abstract_model, U <: Abstract_voter_diff_config}
-    sample_size = ceil(Int, evolve_vertices * length(voters(model)))
-    vertex_ids = StatsBase.sample(1:length(voters(model)), sample_size, replace=true)
+    sample_size = ceil(Int, evolve_vertices * length(get_voters(model)))
+    vertex_ids = StatsBase.sample(1:length(get_voters(model)), sample_size, replace=true)
 
     for id in vertex_ids
-        step!(voters(model)[id], voters(model), social_network(model), model.can_count, voter_diff_config)
+        step!(get_voters(model)[id], get_voters(model), get_social_network(model), model.can_count, voter_diff_config)
     end
 end
 

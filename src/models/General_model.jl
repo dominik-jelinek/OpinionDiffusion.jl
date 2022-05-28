@@ -29,12 +29,12 @@ function graph_diffusion!(model::General_model, evolve_edges, graph_diff_config:
     edge_diff_func = graph_diff_config.edge_diff_func
     dist_metric = graph_diff_config.dist_metric
     
-    sample_size = ceil(Int, evolve_edges * length(voters(model)))
-    start_ids = StatsBase.sample(1:length(voters(model)), sample_size, replace=true)
-    finish_ids = StatsBase.sample(1:length(voters(model)), sample_size, replace=true)
+    sample_size = ceil(Int, evolve_edges * length(get_voters(model)))
+    start_ids = StatsBase.sample(1:length(get_voters(model)), sample_size, replace=true)
+    finish_ids = StatsBase.sample(1:length(get_voters(model)), sample_size, replace=true)
 
     for i in 1:sample_size
-        edge_diffusion!(voters(model)[start_ids[i]], voters(model)[finish_ids[i]], model.social_network, edge_diff_func, dist_metric)
+        edge_diffusion!(get_voters(model)[start_ids[i]], get_voters(model)[finish_ids[i]], model.social_network, edge_diff_func, dist_metric)
     end
 end
 

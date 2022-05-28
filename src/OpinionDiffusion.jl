@@ -35,8 +35,8 @@ export General_model
 export Logger
 export run!
 export save_log, load_log, load_logs
-export get_opinion, get_vote, get_votes
-export voters, social_network
+export get_opinion, get_vote, get_votes, get_distance
+export get_voters, get_social_network
 
 export General_model_config, General_graph_diff_config, Diffusion_config
 export Spearman_voter_init_config, Spearman_voter_diff_config

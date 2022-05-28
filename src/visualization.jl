@@ -65,7 +65,7 @@ function gather_vis(exp_dir, sampled_voter_ids, reduce_dim_config, clustering_co
     x_projections, y_projections, max_x, min_x, max_y, min_y = nothing,nothing,nothing,nothing,nothing,nothing
     for step in 0:last
         model_log = load_log(exp_dir, step)
-        sampled_voters = voters(model_log)[sampled_voter_ids]
+        sampled_voters = get_voters(model_log)[sampled_voter_ids]
         sampled_opinions = reduce(hcat, get_opinion(sampled_voters))
 
         projections = reduce_dim(sampled_opinions, reduce_dim_config)
@@ -97,8 +97,8 @@ function gather_vis(exp_dir, sampled_voter_ids, reduce_dim_config, clustering_co
 end
 
 function init_metrics(model, can_count)
-    g = social_network(model)
-    voters = voters(model)
+    g = get_social_network(model)
+    voters = get_voters(model)
 
 	histogram = Graphs.degree_histogram(g)
     keyss = collect(keys(histogram))
@@ -123,8 +123,8 @@ function init_metrics(model, can_count)
 end
 
 function update_metrics!(model, diffusion_metrics, can_count)
-    g = social_network(model)
-    voters = voters(model)
+    g = get_social_network(model)
+    voters = get_voters(model)
 
     dict = Graphs.degree_histogram(g)
     keyss = collect(keys(dict))
@@ -204,8 +204,8 @@ function draw_edge_distances(distances)
                          xlabel = "Distance")
 end
 
-function draw_range!(plot, min, value, max, c, label)
-    Plots.plot!(plot, 1:length(min), min, fillrange = max, fillalpha = 0.25, c = c, linewidth = 1)
+function draw_range!(plot, min, value, max; c=1, label)
+    Plots.plot!(plot, 1:length(min), min, fillrange = max, fillalpha = 0.25, c = c, linewidth = 0, label=false)
     Plots.plot!(plot, 1:length(value), value, linewidth = 3, label = label, c = c)
     
     return plot
@@ -254,6 +254,17 @@ function draw_voting_res(candidates, parties, result, title::String)
     legend = false,
     yformatter = :plain
     )
+end
+
+function draw_voting_res!(plot, candidates, parties, result, title::String)
+    names = [candidate.name * " - " * parties[candidate.party] for candidate in candidates]
+    c = Colors.distinguishable_colors(size(result, 2))
+
+    for (i, col) in enumerate(eachcol(result))
+        Plots.plot!(plot, [x[3] for x in col], title=title,xlabel="t",ylabel="Percentage",label = names[i],linewidth = 3,legend = false,yformatter = :plain, c=c[i])
+        Plots.plot!(plot, [x[2] for x in col], fillrange = [x[4] for x in col], fillalpha = 0.25, linewidth = 0, label=false, fillcolor=c[i])
+    end
+    
 end
 
 function ego(social_network, node_id, depth)
