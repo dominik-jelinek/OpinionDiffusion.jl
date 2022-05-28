@@ -12,7 +12,8 @@ function Logger(model::Abstract_model, model_name="model", exp_name="experiment"
     exp_dir = "$(model_dir)/$(exp_name)_" * Dates.format(now(), "yyyy-mm-dd_HH-MM-SS")
     mkpath(exp_dir)
     
-    save_log(model, model_dir)
+    println("Saving log")
+    @time save_log(model, model_dir)
     save_log(model, exp_dir, 0)
     diff_counter = [0]
 

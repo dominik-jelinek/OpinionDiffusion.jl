@@ -14,37 +14,24 @@ function run!(model::T, diffusion_config, logger=nothing::Union{Nothing, Logger}
         logger.diff_counter[1] += 1
         save_log(logger, model)
     end
-
-    return model, logger
 end
 
-function ensemble_model(model_dir, ensemble_size)
-	models = Vector{Abstract_model}(undef, ensemble_size)
-	loggers = Vector{Logger}(undef, ensemble_size)
-	
-	for i in 1:ensemble_size
-		models[i], loggers[i] = restart_model(model_dir)
-	end
-	
-	models, loggers
-end
+function run_ensemble!(model::Abstract_model, ensemble_size, diffusions, init_metrics, update_metrics!, diffusion_config)
+    metrics_ens = []
 
-function ensemble_model(model::Abstract_model, ensemble_size)
-	models = Vector{Abstract_model}(undef, ensemble_size)
-	
-	for i in 1:ensemble_size
-		models[i] = deepcopy(model)
-	end
-	
-	models
-end
+    for i in 1:ensemble_size
+        model_cp = deepcopy(model)
+        metrics = deepcopy(init_metrics)
 
-function run_ensemble!(models::Vector{T}, diffusion_config, loggers=nothing::Union{Nothing, Vector{Logger}}) where T<:Abstract_model
-    for (model, logger) in zip(models, loggers)
-        run!(model, diffusion_config, logger)
+        for j in 1:diffusions
+            run!(model_cp, diffusion_config)
+            update_metrics!(model_cp, metrics)
+        end
+
+        push!(metrics_ens, metrics)
     end
 
-    return models, loggers
+    return metrics_ens
 end
 
 function diffusion!(model::T, diffusion_config) where T <: Abstract_model

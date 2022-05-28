@@ -21,6 +21,7 @@ import Clustering
 import TSne
 using MultivariateStats
 
+import Statistics
 import StatsBase
 import Distributions
 #import ScikitLearn
@@ -34,8 +35,8 @@ export General_model
 export Logger
 export run!
 export save_log, load_log, load_logs
-export get_opinion, get_vote
-export get_votes
+export get_opinion, get_vote, get_votes
+export voters, social_network
 
 export General_model_config, General_graph_diff_config, Diffusion_config
 export Spearman_voter_init_config, Spearman_voter_diff_config
@@ -45,7 +46,7 @@ export Kmeans_config, GM_config, Clustering_config, PCA_config, Tsne_config, Red
 export plurality_voting, borda_voting, copeland_voting
 export reduce_dim, clustering, draw_voter_vis, draw_heat_vis, unify_projections!
 export get_edge_distances, draw_degree_distr, draw_edge_distances
-export draw_range, draw_voting_res
+export draw_range!, draw_voting_res
 export voters, social_network
 export load_model, restart_model
 export test_KT

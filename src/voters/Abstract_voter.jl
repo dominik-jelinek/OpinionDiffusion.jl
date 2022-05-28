@@ -17,7 +17,7 @@ function get_distance(opinion_1::Vector{T}, opinion_2::Vector{T}) where T <: Rea
 end
 
 function get_distance(voter::T, voters::Vector{T}) where T <: Abstract_voter
-    return Distances.colwise(Distances.Cityblock(), get_opinion(voter), get_opinion(voters))
+    return Distances.colwise(Distances.Cityblock(), get_opinion(voter), reduce(hcat, get_opinion(voters)))
 end
 
 function init_voters(election, can_count, voter_config::T) where T <: Abstract_voter_init_config

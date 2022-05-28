@@ -3,9 +3,9 @@ function reduce_dim(sampled_opinions, reduce_dim_config)
         config = reduce_dim_config.pca_config
         model = MultivariateStats.fit(MultivariateStats.PCA, sampled_opinions; maxoutdim=config.out_dim)
         projection = MultivariateStats.transform(model, sampled_opinions)
-        println(MultivariateStats.mean(model))
+        #println(MultivariateStats.loadings(model))
         #println(MultivariateStats.projection(model))
-        println(MultivariateStats.principalratio(model))
+        #println(MultivariateStats.principalratio(model))
         #println(MultivariateStats.principalvars(model))
         #println(MultivariateStats.tresidualvar(model))
     elseif reduce_dim_config.method == "Tsne"
@@ -25,43 +25,96 @@ function reduce_dim(sampled_opinions, reduce_dim_config)
     return projection
 end
 
-function ensemble_vis(experiment_names, sampled_voter_ids)
-    #=
-    Gather data from the logs of multiple diffusion experiments and visualize spreads
-    =#
-    for log in experiment_names
-        model_log = load_log(log, step)
+"""
+Gather data from the logs of multiple diffusion experiments and visualize spreads
+"""
+function gather_metrics(ens_metrics)
+    if length(ens_metrics) == 0
+        return
+    end
+
+    res = Dict()
+    for metric in keys(ens_metrics[1])
+        #println(metric)
+        matrix = transpose(hcat([run[metric] for run in ens_metrics]...))
+        if matrix[1,1] isa Number
+            res[metric] = [Statistics.quantile(col, [0.0, 0.25, 0.5, 0.75, 1.0]) for col in eachcol(matrix)]
+        else
+            res[metric] = []
+            for col in eachcol(matrix)                
+                matrix_vect = vcat(col...)
+                push!(res[metric], [Statistics.quantile(col, [0.0, 0.25, 0.5, 0.75, 1.0]) for col in eachcol(matrix_vect)])
+            end
+
+        end
+        #display(res[metric])
+
+    end
+
+    return res
+end
+
+"""
+Loads all logs from one experiment and returns dictionary of visualizations
+"""
+function gather_vis(exp_dir, sampled_voter_ids, reduce_dim_config, clustering_config, parties, candidates)
+    last = last_log_idx(exp_dir)
+    visualizations = Dict("heatmaps"=>[], "voters"=>[], "distances"=>[])
+    title = reduce_dim_config.method * "_" * clustering_config.method * "_" * string(length(sampled_voter_ids))
+    prev_sampled_opinions = nothing
+    x_projections, y_projections, max_x, min_x, max_y, min_y = nothing,nothing,nothing,nothing,nothing,nothing
+    for step in 0:last
+        model_log = load_log(exp_dir, step)
         sampled_voters = voters(model_log)[sampled_voter_ids]
-        sampled_opinions = get_opinion(sampled_voters)
+        sampled_opinions = reduce(hcat, get_opinion(sampled_voters))
 
         projections = reduce_dim(sampled_opinions, reduce_dim_config)
-
-        labels, clusters = clustering(sampled_opinions, candidates, length(parties), clustering_config)
+        
+        labels, clusters = clustering(sampled_voters, candidates, length(parties), clustering_config)
 
         #heatmap
-        difference = sampled_opinions - prev_sampled_opinions
-        changes = vec(sum(abs.(difference), dims=1))
-        println(sum(changes))
-        draw_heat_vis(projections, changes, "Heat map")
+        if step > 0
+            unify_projections!(projections, x_projections, y_projections, (max_x-min_x)/2, (max_y-min_y)/2)
 
-        draw_voter_vis(projections, clusters, title)
-        draw_edge_distances(get_edge_distances(model_log.social_network, model_log.voters))
+            difference = sampled_opinions - prev_sampled_opinions
+            changes = vec(sum(abs.(difference), dims=1))
+            println(sum(changes))
+            push!(visualizations["heatmaps"], draw_heat_vis(projections, changes, "Heat map"))
+        end
+        prev_projections = projections
+        x_projections = prev_projections[1, 1:length(candidates)]
+    	y_projections = prev_projections[2, 1:length(candidates)]
+        min_x, max_x = minimum(x_projections), maximum(x_projections) 
+	    min_y, max_y = minimum(y_projections), maximum(y_projections)
+        
+        prev_sampled_opinions = sampled_opinions
 
-        metrics_vis(metrics, candidates, parties)
+        push!(visualizations["voters"], draw_voter_vis(projections, clusters, title))
+        push!(visualizations["distances"], draw_edge_distances(get_edge_distances(model_log.social_network, model_log.voters)))
     end
+
+    return visualizations
 end
 
 function init_metrics(model, can_count)
-	metrics = Dict()
-	histogram = Graphs.degree_histogram(model.social_network)
+    g = social_network(model)
+    voters = voters(model)
+
+	histogram = Graphs.degree_histogram(g)
     keyss = collect(keys(histogram))
 	
+	metrics = Dict()
 	metrics["min_degrees"] = [minimum(keyss)]
-	metrics["avg_degrees"] = [Graphs.ne(model.social_network) * 2 / Graphs.Graphs.nv(model.social_network)]
+	metrics["avg_degrees"] = [Graphs.ne(g) * 2 / Graphs.nv(g)]
     metrics["max_degrees"] = [maximum(keyss)]
- 
+    metrics["clustering_coeff"] = [Graphs.global_clustering_coefficient(g)]
+
     #election results
-	votes = get_votes(model.voters)
+	votes = get_votes(voters)
+	metrics["avg_vote_length"] = [StatsBase.mean([length(vote) for vote in votes])]
+    metrics["mean_nei_dist"] = [StatsBase.mean([StatsBase.mean(get_distance(voter, voters[Graphs.neighbors(g, voter.ID)])) for voter in voters])]
+    metrics["unique_votes"] = [length(unique(votes))]
+
     metrics["plurality_votings"] = [plurality_voting(votes, can_count, true)]
     metrics["borda_votings"] = [borda_voting(votes, can_count, true)]
     metrics["copeland_votings"] = [copeland_voting(votes, can_count)]
@@ -82,10 +135,8 @@ function update_metrics!(model, diffusion_metrics, can_count)
     push!(diffusion_metrics["clustering_coeff"], Graphs.global_clustering_coefficient(g))
     
     votes = get_votes(voters)
-	push!(diffusion_metrics["avg_vote_length"], StatsBase.mean([length(vote) for vote in votes]))
-    push!(diffusion_metrics["unique_votes"], length(unique(votes)))
-    
-    mean_nei_dist = StatsBase.mean([StatsBase.mean(get_distance(voter, voters[Graphs.neighbors(g, voter.ID)])) for voter in voters])
+	push!(diffusion_metrics["avg_vote_length"], StatsBase.mean([length(vote) for vote in votes]))    
+    push!(diffusion_metrics["mean_nei_dist"], StatsBase.mean([StatsBase.mean(get_distance(voter, voters[Graphs.neighbors(g, voter.ID)])) for voter in voters]))
     push!(diffusion_metrics["unique_votes"], length(unique(votes)))
 
     push!(diffusion_metrics["plurality_votings"], plurality_voting(votes, can_count, true))
@@ -116,7 +167,7 @@ function draw_voter_vis(projections, clusters, title, exp_dir=Nothing, counter=[
     plot = Plots.scatter(Tuple(eachrow(projections[:, idxes])), c=cluster_colors[1], label=length(clusters[1]), title=title)
     for i in 2:length(clusters)
         idxes = collect(clusters[i])
-        Plots.scatter!(plot, Tuple(eachrow(projections[:, idxes])), c=cluster_colors[i], label=length(clusters[i]))
+        Plots.scatter!(plot, Tuple(eachrow(projections[:, idxes])), c=cluster_colors[i], label=length(clusters[i]), alpha=0.6)
     end
    
     if exp_dir != Nothing
@@ -153,19 +204,17 @@ function draw_edge_distances(distances)
                          xlabel = "Distance")
 end
 
-function draw_range(min, value, max; title, xlabel, ylabel, value_label)
-    degrees = Plots.plot(1:length(min), min, fillrange = max, fillalpha = 0.25, c = 1, linewidth = 3, 
-    label = "range", legend = :topleft, title=title, xlabel=xlabel, ylabel=ylabel)
+function draw_range!(plot, min, value, max, c, label)
+    Plots.plot!(plot, 1:length(min), min, fillrange = max, fillalpha = 0.25, c = c, linewidth = 1)
+    Plots.plot!(plot, 1:length(value), value, linewidth = 3, label = label, c = c)
     
-    Plots.plot!(degrees, 1:length(value), value, linewidth = 3, label = value_label)
-    
-    return degrees
+    return plot
 end
 
 function draw_metric(values, title::String)
     Plots.plot(values,
     title=title,
-    xlabel="Diffusions",
+    xlabel="t",
     ylabel="Value",
     xticks=(1:length(values)),
     linewidth = 3,

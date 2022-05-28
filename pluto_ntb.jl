@@ -107,7 +107,7 @@ Plots.bar(transpose(sum(counts, dims = 1)), legend=false, xticks=1:length(src_ca
 Plots.bar(sum(counts, dims = 2), legend=false, xticks=1:length(src_candidates), ylabel="# votes", xlabel="candidate ID")
 
 # ╔═╡ dfef082a-3615-4141-9852-693de7ad4255
-init_sample_size = 10000
+init_sample_size = 1000
 
 # ╔═╡ c50be339-8d1c-459f-8c14-934297f10717
 function filter_candidates(election, candidates, remove_candidates, can_count)
@@ -201,7 +201,7 @@ md"Configuration of general model"
 model_config = General_model_config( 
 	m = 32,
 	popularity_ratio = 0.5,
-	voter_init_config = voter_config_sp
+	voter_init_config = voter_config_kt
 )
 
 # ╔═╡ 985131a7-7c11-4f9d-ae00-ef031002592d
@@ -338,9 +338,9 @@ voter_diff_config_kt = Kendall_voter_diff_config(attract_proba = 0.8)
 # ╔═╡ f43b3b4c-9075-414b-9694-83e7c841605f
 diffusion_config = Diffusion_config(
         checkpoint = 1,
-		evolve_vertices = 0.2,
+		evolve_vertices = 1.0,
 		evolve_edges = 0.0,
-        voter_diff_config = voter_diff_config_sp,
+        voter_diff_config = voter_diff_config_kt,
         graph_diff_config = General_graph_diff_config(
             dist_metric = Distances.Cityblock(),
             edge_diff_func = dist -> (1/2)^(dist)
@@ -353,10 +353,13 @@ Execution barrier $(@bind cb_run CheckBox())
 """
 
 # ╔═╡ d877c5d0-89af-48b9-bcd0-c1602d58339f
-diffusions = 1
+diffusions = 5
 
 # ╔═╡ 27a60724-5d19-419f-b208-ffa0c78e2505
-ensemble_size = 1
+ensemble_size = 2
+
+# ╔═╡ e31cdd5b-3310-43fb-addc-96144547de2b
+update_metrics!(model, metrics) = update_metrics!(model, metrics, length(candidates))
 
 # ╔═╡ 6492a611-fe57-4279-8852-9271b91396cc
 Profile.print(format=:flat)
@@ -371,7 +374,9 @@ md"### Diffusion analyzation"
 md"Choose visualization backend from Plots library:"
 
 # ╔═╡ ff873978-d93f-4ba2-aadd-6cfd3b136e3d
-Plots.plotly()
+#Plots.plotly()
+Plots.gr()
+
 
 # ╔═╡ 0932e410-4a74-42b3-86c5-ac40f6be3543
 md"##### Visualization of voters in vector space defined by their opinions"
@@ -400,8 +405,8 @@ md"Clustering for colouring of voters based on their opinions"
 # ╔═╡ 1adc5d59-6198-4ef5-9a8a-6390acc28be1
 clustering_config = Clustering_config(
     used = true,
-    method = "K-means",
-    #method = "Party",
+    #method = "K-means",
+    method = "Party",
     kmeans_config = Kmeans_config(
         cluster_count = 5
     ),
@@ -422,7 +427,7 @@ model_log = load_log(logger.exp_dir, step)
 # ╔═╡ 05eedffd-c82a-4dbd-8608-5fa00f9d0bae
 begin
 	sampled_voters = voters(model_log)[sampled_voter_ids]
-	sampled_opinions = get_opinion(sampled_voters)
+	sampled_opinions = reduce(hcat, get_opinion(sampled_voters))
 end
 
 # ╔═╡ a9ce1301-9a4c-46ab-9a6d-49109024d705
@@ -448,7 +453,7 @@ reduce_dim_config = Reduce_dim_config(
 # ╔═╡ e80cfc91-fc51-4216-a74c-39038d77c9db
 begin
 	_model_log = load_log(logger.exp_dir, 0)
-	_sampled_opinions = get_opinion(_model_log.voters[sampled_voter_ids])
+	_sampled_opinions = reduce(hcat, get_opinion(_model_log.voters[sampled_voter_ids]))
 	_projections = reduce_dim(_sampled_opinions, reduce_dim_config)
 	
 	x_projections = _projections[1, 1:length(candidates)]
@@ -467,7 +472,7 @@ end
 
 # ╔═╡ 83c88ccd-793a-42f5-b2b8-ae9dbf5e702d
 if step > 0
-	prev_sampled_opinions = get_opinion(load_log(logger.exp_dir, step-1).voters[sampled_voter_ids])
+	prev_sampled_opinions = reduce(hcat, get_opinion(load_log(logger.exp_dir, step-1).voters[sampled_voter_ids]))
 	difference = sampled_opinions - prev_sampled_opinions
 	changes = vec(sum(abs.(difference), dims=1))
 	println(sum(changes))
@@ -482,6 +487,21 @@ OpinionDiffusion.GraphPlot.gplot(egon[1], x, y, nodesize=[Graphs.degree(model.so
 
 # ╔═╡ 4eb56ee4-04e9-40cd-90fc-1495215f2928
 draw_voter_vis(projections, clusters, title)
+
+# ╔═╡ f3dd8bf9-41d4-404a-8ab7-c3859be0de60
+visualizations = OpinionDiffusion.gather_vis(logger.exp_dir, sampled_voter_ids, reduce_dim_config, clustering_config, parties, candidates)
+
+# ╔═╡ 6415cf68-9648-412d-b6eb-9682ace5c9ec
+md"""Diffusion: $(@bind t Slider(0 : logger.diff_counter[1], show_value=true, default=logger.diff_counter[1]))"""
+
+# ╔═╡ 9b8fc5b4-9918-4c6b-8389-b19d5faf16fc
+visualizations["distances"][t + 1]
+
+# ╔═╡ 53b63024-6f60-4121-971d-50a6205c05a8
+visualizations["voters"][t + 1]
+
+# ╔═╡ c7386f6d-451c-49d7-9fd4-1277b734f7f0
+t > 0 ? visualizations["heatmaps"][t] : nothing
 
 # ╔═╡ a1681b3e-340f-4c8a-a991-98c8217a05ad
 [candidate.party for candidate in candidates]
@@ -561,16 +581,24 @@ Graph centric: (graph)
 
 # ╔═╡ 93aa822a-1be4-45c0-a6a0-65a3d8f08bbf
 function init_metrics(model, can_count)
-	metrics = Dict()
-	histogram = Graphs.degree_histogram(model.social_network)
+    g = social_network(model)
+    voters = voters(model)
+
+	histogram = Graphs.degree_histogram(g)
     keyss = collect(keys(histogram))
 	
+	metrics = Dict()
 	metrics["min_degrees"] = [minimum(keyss)]
-	metrics["avg_degrees"] = [Graphs.ne(model.social_network) * 2 / Graphs.Graphs.nv(model.social_network)]
+	metrics["avg_degrees"] = [Graphs.ne(g) * 2 / Graphs.nv(g)]
     metrics["max_degrees"] = [maximum(keyss)]
- 
+    metrics["clustering_coeff"] = [Graphs.global_clustering_coefficient(g)]
+
     #election results
-	votes = get_votes(model.voters)
+	votes = get_votes(voters)
+	metrics["avg_vote_length"] = [StatsBase.mean([length(vote) for vote in votes])]
+    metrics["mean_nei_dist"] = [StatsBase.mean([StatsBase.mean(get_distance(voter, voters[Graphs.neighbors(g, voter.ID)])) for voter in voters])]
+    metrics["unique_votes"] = [length(unique(votes))]
+
     metrics["plurality_votings"] = [plurality_voting(votes, can_count, true)]
     metrics["borda_votings"] = [borda_voting(votes, can_count, true)]
     metrics["copeland_votings"] = [copeland_voting(votes, can_count)]
@@ -583,19 +611,34 @@ metrics = init_metrics(model, length(candidates))
 
 # ╔═╡ 8d259bcc-d54c-401f-b864-87701f2bcf46
 function update_metrics!(model, diffusion_metrics, can_count)
-    dict = Graphs.degree_histogram(model.social_network)
+    g = social_network(model)
+    voters = voters(model)
+
+    dict = Graphs.degree_histogram(g)
     keyss = collect(keys(dict))
 	
     push!(diffusion_metrics["min_degrees"], minimum(keyss))
-    push!(diffusion_metrics["avg_degrees"], Graphs.ne(model.social_network) * 2 / Graphs.nv(model.social_network))
+    push!(diffusion_metrics["avg_degrees"], Graphs.ne(g) * 2 / Graphs.nv(g))
     push!(diffusion_metrics["max_degrees"], maximum(keyss))
+    push!(diffusion_metrics["clustering_coeff"], Graphs.global_clustering_coefficient(g))
     
-    votes = get_votes(model.voters)
-	
+    votes = get_votes(voters)
+	push!(diffusion_metrics["avg_vote_length"], StatsBase.mean([length(vote) for vote in votes]))
+    push!(diffusion_metrics["unique_votes"], length(unique(votes)))
+    
+    push!(diffusion_metrics["mean_nei_dist"], StatsBase.mean([StatsBase.mean(get_distance(voter, voters[Graphs.neighbors(g, voter.ID)])) for voter in voters]))
+    push!(diffusion_metrics["unique_votes"], length(unique(votes)))
+
     push!(diffusion_metrics["plurality_votings"], plurality_voting(votes, can_count, true))
     push!(diffusion_metrics["borda_votings"], borda_voting(votes, can_count, true))
     push!(diffusion_metrics["copeland_votings"], copeland_voting(votes, can_count))
 end
+
+# ╔═╡ 5f805d60-3467-47b9-a5a0-745877ee20f4
+ens_metrics = OpinionDiffusion.run_ensemble!(model, ensemble_size, diffusions, metrics, update_metrics!, diffusion_config)
+
+# ╔═╡ a54ec025-4775-4929-b003-ce1cab974e83
+gathered = OpinionDiffusion.gather_metrics(ens_metrics)
 
 # ╔═╡ f6b4ba47-f9d2-42f0-9c86-e9810be7b810
 if cb_run && ensemble_size == 1
@@ -635,8 +678,16 @@ function metrics_vis(metrics, candidates, parties, exp_dir=Nothing)
     return plots
 end
 
+# ╔═╡ 52cf92e1-027e-4e25-85a4-e30ef94f1f40
+metrics_vis(gathered, candidates, parties)
+
 # ╔═╡ 7f138d72-419a-4642-b163-6ec58ce42d24
 metrics_vis(metrics, candidates, parties)
+
+# ╔═╡ 9c53a43a-b5e1-4fcc-b476-e73f9f6d436a
+for (metric, values) in items(gathered)
+	println(metric)
+end
 
 # ╔═╡ Cell order:
 # ╟─957eb9d7-12d6-4a22-8338-4e8535b54c71
@@ -709,6 +760,10 @@ metrics_vis(metrics, candidates, parties)
 # ╠═d877c5d0-89af-48b9-bcd0-c1602d58339f
 # ╠═27a60724-5d19-419f-b208-ffa0c78e2505
 # ╠═109e1b7c-16f0-4450-87ea-2d0442df5589
+# ╠═5f805d60-3467-47b9-a5a0-745877ee20f4
+# ╠═a54ec025-4775-4929-b003-ce1cab974e83
+# ╠═52cf92e1-027e-4e25-85a4-e30ef94f1f40
+# ╠═e31cdd5b-3310-43fb-addc-96144547de2b
 # ╠═f6b4ba47-f9d2-42f0-9c86-e9810be7b810
 # ╠═6492a611-fe57-4279-8852-9271b91396cc
 # ╠═260af73d-28de-46da-8f80-54f4349e6fba
@@ -730,7 +785,7 @@ metrics_vis(metrics, candidates, parties)
 # ╠═1adc5d59-6198-4ef5-9a8a-6390acc28be1
 # ╠═a9ce1301-9a4c-46ab-9a6d-49109024d705
 # ╠═c81ebbcb-c709-4713-a2b4-cf4bb48eb0da
-# ╟─f0eed2be-799f-46bb-968b-b70462cc06fd
+# ╠═f0eed2be-799f-46bb-968b-b70462cc06fd
 # ╟─0c2345e5-c1b2-4af8-ad31-617ddc99257a
 # ╠═86659fc0-af7e-4498-8388-3e79349e9eb4
 # ╠═83c88ccd-793a-42f5-b2b8-ae9dbf5e702d
@@ -738,6 +793,11 @@ metrics_vis(metrics, candidates, parties)
 # ╠═18c07cb1-3a91-405c-a626-f608e0d1ea9d
 # ╠═4eb56ee4-04e9-40cd-90fc-1495215f2928
 # ╠═7e47b5c8-3ad1-4093-85e5-6b20238e9569
+# ╠═f3dd8bf9-41d4-404a-8ab7-c3859be0de60
+# ╠═6415cf68-9648-412d-b6eb-9682ace5c9ec
+# ╠═9b8fc5b4-9918-4c6b-8389-b19d5faf16fc
+# ╠═53b63024-6f60-4121-971d-50a6205c05a8
+# ╠═c7386f6d-451c-49d7-9fd4-1277b734f7f0
 # ╠═a1681b3e-340f-4c8a-a991-98c8217a05ad
 # ╠═9a049ea3-f5c6-4e69-ab71-c2a8b8bad178
 # ╠═b771f5b9-42e1-444f-b5ac-cba2f0162e8d
@@ -755,3 +815,4 @@ metrics_vis(metrics, candidates, parties)
 # ╠═93aa822a-1be4-45c0-a6a0-65a3d8f08bbf
 # ╠═8d259bcc-d54c-401f-b864-87701f2bcf46
 # ╠═f6126696-ab8d-4637-b815-dd89ae8fb171
+# ╠═9c53a43a-b5e1-4fcc-b476-e73f9f6d436a
