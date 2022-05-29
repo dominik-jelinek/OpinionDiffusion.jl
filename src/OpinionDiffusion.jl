@@ -48,7 +48,7 @@ export reduce_dim, clustering, draw_voter_vis, draw_heat_vis, unify_projections!
 export get_edge_distances, draw_degree_distr, draw_edge_distances
 export draw_range!, draw_voting_res
 export voters, social_network
-export load_model, restart_model
+export load_model, restart_model, save_ensemble
 export test_KT
 
 include("configs.jl")

@@ -211,8 +211,11 @@ function draw_range!(plot, min, value, max; c=1, label)
     return plot
 end
 
-function draw_metric!(plot, values, title::String)
-    draw_range!(plot, [x[2] for x in values], [x[3] for x in values], [x[4] for x in values], label=title)
+function draw_metric!(plot, values, title::String; log_idx=nothing)
+    label = log_idx === nothing ? title : title * " " * string(log_idx)
+    c = log_idx === nothing ? 1 : log_idx
+
+    draw_range!(plot, [x[2] for x in values], [x[3] for x in values], [x[4] for x in values], label=label, c=c)
     Plots.plot!(plot, title=title, xlabel="t", ylabel="Value", yformatter = :plain)
 
     return plot
@@ -262,8 +265,8 @@ function draw_voting_res(candidates, parties, result, title::String)
     )
 end
 
-function draw_voting_res!(plot, candidates, parties, result, title::String)
-    names = [string(i) * " - " * parties[candidate.party] for (i, candidate) in enumerate(candidates)]
+function draw_voting_res!(plot, candidates, parties, result, title::String; log_idx="")
+    names = [string(i) * " - " * parties[candidate.party] * " " * log_idx  for (i, candidate) in enumerate(candidates)]
     c = Colors.distinguishable_colors(size(result, 2))
 
     for (i, col) in enumerate(eachcol(result))
