@@ -90,7 +90,7 @@ function get_vote(voter::Spearman_voter; eps=0.01) :: Vector{Vector{Int64}}
     return vote 
 end
 
-function step!(self::Spearman_voter, voters, graph, voter_diff_config::Spearman_voter_diff_config)
+function step!(self::Spearman_voter, voters, graph, can_count, voter_diff_config::Spearman_voter_diff_config)
     neighbors_ = neighbors(graph, self.ID)
     if length(neighbors_) == 0
         return

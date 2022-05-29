@@ -205,9 +205,16 @@ function draw_edge_distances(distances)
 end
 
 function draw_range!(plot, min, value, max; c=1, label)
-    Plots.plot!(plot, 1:length(min), min, fillrange = max, fillalpha = 0.25, c = c, linewidth = 0, label=false)
+    Plots.plot!(plot, 1:length(min), min, fillrange = max, fillalpha = 0.25, c = c, linewidth = 0, label=label)
     Plots.plot!(plot, 1:length(value), value, linewidth = 3, label = label, c = c)
     
+    return plot
+end
+
+function draw_metric!(plot, values, title::String)
+    draw_range!(plot, [x[2] for x in values], [x[3] for x in values], [x[4] for x in values], label=title)
+    Plots.plot!(plot, title=title, xlabel="t", ylabel="Value", yformatter = :plain)
+
     return plot
 end
 
@@ -251,18 +258,17 @@ function draw_voting_res(candidates, parties, result, title::String)
     ylabel="Percentage",
     label = reshape(names, 1, length(names)),
     linewidth = 3,
-    legend = false,
     yformatter = :plain
     )
 end
 
 function draw_voting_res!(plot, candidates, parties, result, title::String)
-    names = [candidate.name * " - " * parties[candidate.party] for candidate in candidates]
+    names = [string(i) * " - " * parties[candidate.party] for (i, candidate) in enumerate(candidates)]
     c = Colors.distinguishable_colors(size(result, 2))
 
     for (i, col) in enumerate(eachcol(result))
-        Plots.plot!(plot, [x[3] for x in col], title=title,xlabel="t",ylabel="Percentage",label = names[i],linewidth = 3,legend = false,yformatter = :plain, c=c[i])
-        Plots.plot!(plot, [x[2] for x in col], fillrange = [x[4] for x in col], fillalpha = 0.25, linewidth = 0, label=false, fillcolor=c[i])
+        draw_range!(plot, [x[2] for x in col], [x[3] for x in col], [x[4] for x in col], c=c[i], label=names[i])
+        Plots.plot!(plot, title=title, xlabel="t", ylabel="Percentage", yformatter = :plain)
     end
     
 end

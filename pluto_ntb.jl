@@ -201,7 +201,7 @@ md"Configuration of general model"
 model_config = General_model_config( 
 	m = 32,
 	popularity_ratio = 0.5,
-	voter_init_config = voter_config_kt
+	voter_init_config = voter_config_sp
 )
 
 # ╔═╡ 985131a7-7c11-4f9d-ae00-ef031002592d
@@ -331,7 +331,7 @@ diffusion_config = Diffusion_config(
         checkpoint = 1,
 		evolve_vertices = 0.5,
 		evolve_edges = 0.0,
-        voter_diff_config = voter_diff_config_kt,
+        voter_diff_config = voter_diff_config_sp,
         graph_diff_config = General_graph_diff_config(
             dist_metric = Distances.Cityblock(),
             edge_diff_func = dist -> (1/2)^(dist)
@@ -347,10 +347,7 @@ Execution barrier $(@bind cb_run CheckBox())
 diffusions = 40
 
 # ╔═╡ 27a60724-5d19-419f-b208-ffa0c78e2505
-ensemble_size = 10
-
-# ╔═╡ e31cdd5b-3310-43fb-addc-96144547de2b
-update_metrics!(model, metrics) = update_metrics!(model, metrics, length(candidates))
+ensemble_size = 2
 
 # ╔═╡ 6492a611-fe57-4279-8852-9271b91396cc
 Profile.print(format=:flat)
@@ -367,7 +364,6 @@ md"Choose visualization backend from Plots library:"
 # ╔═╡ ff873978-d93f-4ba2-aadd-6cfd3b136e3d
 Plots.plotly()
 #Plots.gr()
-
 
 # ╔═╡ 0932e410-4a74-42b3-86c5-ac40f6be3543
 md"##### Visualization of voters in vector space defined by their opinions"
@@ -600,6 +596,9 @@ end
 # ╔═╡ 109e1b7c-16f0-4450-87ea-2d0442df5589
 metrics = init_metrics(model, length(candidates))
 
+# ╔═╡ e31cdd5b-3310-43fb-addc-96144547de2b
+update_metrics!(model, metrics) = update_metrics!(model, metrics, length(candidates))
+
 # ╔═╡ 8d259bcc-d54c-401f-b864-87701f2bcf46
 function update_metrics!(model, diffusion_metrics, can_count)
     g = get_social_network(model)
@@ -624,32 +623,47 @@ function update_metrics!(model, diffusion_metrics, can_count)
     push!(diffusion_metrics["copeland_votings"], copeland_voting(votes, can_count))
 end
 
-# ╔═╡ 5f805d60-3467-47b9-a5a0-745877ee20f4
-ens_metrics = OpinionDiffusion.run_ensemble!(model, ensemble_size, diffusions, metrics, update_metrics!, diffusion_config)
-
-# ╔═╡ a54ec025-4775-4929-b003-ce1cab974e83
-gathered = OpinionDiffusion.gather_metrics(ens_metrics)
-
 # ╔═╡ f6b4ba47-f9d2-42f0-9c86-e9810be7b810
 if cb_run && ensemble_size == 1
 	for i in 1:diffusions
 		run!(model, diffusion_config, logger)
 		update_metrics!(model, metrics, length(candidates))
 	end
+elseif cb_run
+	ens_metrics = OpinionDiffusion.run_ensemble!(model, ensemble_size, diffusions, metrics, update_metrics!, diffusion_config)
+	gathered = OpinionDiffusion.gather_metrics(ens_metrics)
 end
 
-# ╔═╡ 805b55ad-c245-4140-84ce-c86e3b73a33c
-if cb_run && ensemble_size > 1
-	models, loggers = ensemble_model(logger.model_dir, ensemble_size)
-	ensemble_metrics = [init_metrics(model, can_count) for model in models]
-	
-	for i in 1:diffusions
-		run_ensemble!(models, diffusion_config, loggers)
-		for (model, ensemble_metric) in zip(models, ensemble_metrics)
-			update_metrics!(model, ensemble_metric, can_count)
-		end
+# ╔═╡ 187da043-ee48-420a-91c7-5e3a4fdc30bb
+function voting_rules_vis(data, candidates, parties, metrics)
+	n = length(metrics)
+	plot = Plots.plot(size = Plots.default(:size) .* (1, n), layout = (n, 1), bottom_margin = 10Plots.mm, left_margin = 5Plots.mm)
+
+	for (i, metric) in enumerate(metrics)
+		result = transpose(reduce(hcat, data[metric]))
+		OpinionDiffusion.draw_voting_res!(plot[i, 1], candidates, parties, result, metric)
 	end
+	
+	Plots.plot(plot)
 end
+
+# ╔═╡ 840c2562-c444-4422-9cf8-e82429163627
+voting_rules_vis(gathered, candidates, parties, ["plurality_votings", "borda_votings", "copeland_votings"])
+
+# ╔═╡ e70e36ad-066e-4619-a06a-56e325745a0e
+function draw_metrics_vis(data, metrics)
+	n = length(metrics)
+	plot = Plots.plot(size = Plots.default(:size) .* (1, n), layout = (n, 1), bottom_margin = 10Plots.mm, left_margin = 5Plots.mm)
+
+	for (i, metric) in enumerate(metrics)
+		OpinionDiffusion.draw_metric!(plot[i, 1], data[metric], metric)
+	end
+
+	Plots.plot(plot)
+end
+
+# ╔═╡ 09d34d24-0fb0-4cc6-8ab6-c0d55b3346d0
+draw_metrics_vis(gathered, ["unique_votes", "avg_vote_length", "mean_nei_dist", "avg_degrees"])
 
 # ╔═╡ f6126696-ab8d-4637-b815-dd89ae8fb171
 function metrics_vis(metrics, candidates, parties, exp_dir=Nothing)
@@ -668,40 +682,8 @@ function metrics_vis(metrics, candidates, parties, exp_dir=Nothing)
     return plots
 end
 
-# ╔═╡ 52cf92e1-027e-4e25-85a4-e30ef94f1f40
-metrics_vis(gathered, candidates, parties)
-
 # ╔═╡ 7f138d72-419a-4642-b163-6ec58ce42d24
 metrics_vis(metrics, candidates, parties)
-
-# ╔═╡ 187da043-ee48-420a-91c7-5e3a4fdc30bb
-begin
-	metric="unique_votes"
-	values = gathered[metric]
-	plot = Plots.plot(layout = (2, 2), size = (669,900))
-	draw_range!(plot[1,2], [x[2] for x in values], [x[3] for x in values], [x[4] for x in values], label=metric)
-
-	metric="borda_votings"
-	values = gathered[metric]
-	meso = transpose(reduce(hcat, values))
-	#display(meso)
-	#display([x[3] for x in meso])
-	OpinionDiffusion.draw_voting_res!(plot[1,1], candidates, parties, meso, metric)
-	
-	Plots.plot(plot)
-end
-
-# ╔═╡ 9c53a43a-b5e1-4fcc-b476-e73f9f6d436a
-for (metric, values) in gathered
-	display(metric)
-	println(values)
-	println()
-	if values[1][1] isa Number
-		println([x[2] for x in values])
-	else
-		display([x[2] for x in reduce(hcat, values)])
-	end
-end
 
 # ╔═╡ Cell order:
 # ╟─957eb9d7-12d6-4a22-8338-4e8535b54c71
@@ -771,17 +753,14 @@ end
 # ╠═d877c5d0-89af-48b9-bcd0-c1602d58339f
 # ╠═27a60724-5d19-419f-b208-ffa0c78e2505
 # ╠═109e1b7c-16f0-4450-87ea-2d0442df5589
-# ╠═5f805d60-3467-47b9-a5a0-745877ee20f4
-# ╠═a54ec025-4775-4929-b003-ce1cab974e83
-# ╠═52cf92e1-027e-4e25-85a4-e30ef94f1f40
-# ╠═e31cdd5b-3310-43fb-addc-96144547de2b
 # ╠═f6b4ba47-f9d2-42f0-9c86-e9810be7b810
 # ╠═6492a611-fe57-4279-8852-9271b91396cc
 # ╠═260af73d-28de-46da-8f80-54f4349e6fba
-# ╠═805b55ad-c245-4140-84ce-c86e3b73a33c
 # ╟─aad0da61-59d2-4429-97fa-6612872bb863
 # ╟─55836ee2-8ea9-4b42-bdcc-3f5dab0cef20
 # ╠═ff873978-d93f-4ba2-aadd-6cfd3b136e3d
+# ╠═09d34d24-0fb0-4cc6-8ab6-c0d55b3346d0
+# ╠═840c2562-c444-4422-9cf8-e82429163627
 # ╟─0932e410-4a74-42b3-86c5-ac40f6be3543
 # ╟─563c5195-fd67-48d8-9b01-a73ea756a7ba
 # ╠═228f2d0b-b964-4133-b0bc-fee7d9fe298f
@@ -824,7 +803,8 @@ end
 # ╟─4c140c0e-71c7-4567-b37e-286395a450a3
 # ╟─f539cf71-34ae-4e22-a7ac-d259b55cb2d3
 # ╠═93aa822a-1be4-45c0-a6a0-65a3d8f08bbf
+# ╠═e31cdd5b-3310-43fb-addc-96144547de2b
 # ╠═8d259bcc-d54c-401f-b864-87701f2bcf46
-# ╠═f6126696-ab8d-4637-b815-dd89ae8fb171
 # ╠═187da043-ee48-420a-91c7-5e3a4fdc30bb
-# ╠═9c53a43a-b5e1-4fcc-b476-e73f9f6d436a
+# ╠═e70e36ad-066e-4619-a06a-56e325745a0e
+# ╠═f6126696-ab8d-4637-b815-dd89ae8fb171
