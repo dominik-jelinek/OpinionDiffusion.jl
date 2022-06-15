@@ -1,15 +1,32 @@
+abstract type Config end
+
 # voter configs __________________________________________________________________________
-abstract type Abstract_voter_init_config end
+abstract type Abstract_voter_init_config <: Config end
 
 # diffusion configs ________________________________________________________________________
-abstract type Abstract_voter_diff_config end
-abstract type Abstract_graph_diff_config end
-@kwdef struct Diffusion_config
+abstract type Abstract_voter_diff_config <: Config end
+abstract type Abstract_graph_diff_config <: Config end
+
+@kwdef struct Diffusion_config <: Config
     checkpoint::Int64
     evolve_vertices::Float64
     evolve_edges::Float64
     voter_diff_config::Abstract_voter_diff_config
     graph_diff_config::Abstract_graph_diff_config
+end
+
+function Base.show(io::IO, config::T) where T <: Config
+    for var in fieldnames(typeof(config))
+        if typeof(var) <: Config
+            show(var)
+        else
+            println(io, "$(var) = $(getfield(config, var))")
+        end
+    end
+    #println(io, "evolve_vertices = $(config.evolve_vertices)")
+    #println(io, "evolve_edges = $(config.evolve_edges)")
+    #println(io, "voter_diff_config = $(config.voter_diff_config)")
+    #println(io, "graph_diff_config = $(config.graph_diff_config)")
 end
 
 # visualizations ________________________________________________________________________

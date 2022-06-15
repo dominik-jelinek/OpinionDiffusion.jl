@@ -74,7 +74,8 @@ function step!(self::Kendall_voter, voters, graph, can_count, voter_diff_config:
    neighbor = voters[neighbor_id]
 
    if rand() <= voter_diff_config.attract_proba
-      voters[self.ID], voters[neighbor_id] = attract_flip(self, neighbor, can_count)
+      voters[self.ID] = attract_flip(self, neighbor, can_count)
+      voters[neighbor.ID] = attract_flip(neighbor, self, can_count)
    else
       #repel_flip!(self, neighbor)
    end
@@ -95,72 +96,58 @@ If it is bigger than the stubborness of respective voter, it is executed.
    
    
 =#
-function attract_flip(self, neighbor, can_count)
+function attract_flip(self, neighbor, can_count, log_lvl=0)
    if get_distance(self, neighbor) == 0.0
-      return self, neighbor
+      return self
    end
 
    if rand() > self.stubborness
-      swaps = get_feasible_swaps(self, neighbor, can_count)
-      #display(swaps)
+      actions = get_feasible_actions(self, neighbor, can_count)
+      if log_lvl > 1
+         display("Feasible actions: ", actions)
+      end
 
-      if length(swaps) == 0
-         println(self)
-         println(neighbor)
-         error("No feasible swaps but non-zero distance")
+      if length(actions) == 0
+         println(self.vote)
+         println(neighbor.vote)
+         error("No feasible actions found, but non-zero distance")
          return
       end
    
-      swap = swaps[rand(1:length(swaps))]
-      #println("Swap:", swap)
-      self = apply_swap(swap, self, can_count)
-   end
-   
-   if get_distance(self, neighbor) == 0.0
-      return self, neighbor
+      action = actions[rand(1:length(actions))]
+      if log_lvl > 1
+         println("Action:", action)
+      end
+      self = apply_action(action, self, can_count)
    end
 
-   if rand() > neighbor.stubborness
-      swaps = get_feasible_swaps(neighbor, self, can_count)
-      if length(swaps) == 0
-         println(self)
-         println(neighbor)
-         error("No feasible swaps but non-zero distance")
-         return      
-      end
-   
-      swap = swaps[rand(1:length(swaps))]
-      neighbor = apply_swap(swap, neighbor, can_count)
-   end
-   
-   return self, neighbor
+   return self
 end
 
-function apply_swap(swap, voter, can_count)
-   can, bucket_idx, _, type = swap
+function delete_can!(vote, bucket_idx, can)
+   for i in 1:length(vote[bucket_idx])
+      if vote[bucket_idx][i] == can 
+         deleteat!(vote[bucket_idx], i)
+         break
+      end
+   end
+end
+
+function apply_action(action, voter, can_count)
+   can, bucket_idx, _, type = action
    bucket = voter.vote[bucket_idx]
    new_vote = deepcopy(voter.vote)
    
    if type == :unbucket_left
       new_opinion = unbucket_left(can, voter.opinion, bucket, can_count)
-
-      for i in 1:length(new_vote[bucket_idx])
-         if new_vote[bucket_idx][i] == can 
-            deleteat!(new_vote[bucket_idx], i)
-            break
-         end
-      end
+      
+      delete_can!(new_vote, bucket_idx, can)
       insert!(new_vote, bucket_idx, [can])
 
    elseif type == :unbucket_right
       new_opinion = unbucket_right(can, voter.opinion, bucket, can_count)
       
-      for i in 1:length(new_vote[bucket_idx])
-         if new_vote[bucket_idx][i] == can 
-            deleteat!(new_vote[bucket_idx], i)
-            break
-         end
-      end
+      delete_can!(new_vote, bucket_idx, can)
       insert!(new_vote, bucket_idx + 1, [can])
 
    elseif type == :rebucket_left
@@ -170,12 +157,7 @@ function apply_swap(swap, voter, can_count)
       if length(new_vote[bucket_idx]) == 1
          deleteat!(new_vote, bucket_idx)
       else
-         for i in 1:length(new_vote[bucket_idx])
-            if new_vote[bucket_idx][i] == can 
-               deleteat!(new_vote[bucket_idx], i)
-               break
-            end
-         end
+         delete_can!(new_vote, bucket_idx, can)
       end
       
    else
@@ -185,58 +167,57 @@ function apply_swap(swap, voter, can_count)
       if length(new_vote[bucket_idx]) == 1
          deleteat!(new_vote, bucket_idx)
       else
-         for i in 1:length(new_vote[bucket_idx])
-            if new_vote[bucket_idx][i] == can 
-               deleteat!(new_vote[bucket_idx], i)
-               break
-            end
-         end
+         delete_can!(new_vote, bucket_idx, can)
       end
    end
 
    return Kendall_voter(voter.ID, new_vote, new_opinion, voter.openmindedness, voter.stubborness)
 end
 
-function get_feasible_swaps(u::Kendall_voter, v::Kendall_voter, can_count)
-   # vector of new votes and opinions for voter u if we choose specific swap 
-   feasible_swaps = Vector{Tuple{Int64, Int64, Float64, Symbol}}()
+function get_feasible_actions(u::Kendall_voter, v::Kendall_voter, can_count)
+   # vector of new votes and opinions for voter u if we choose specific action 
+   feasible_actions = Vector{Tuple{Int64, Int64, Float64, Symbol}}()
    
+   # check first bucket possible unbuckets
    if length(u.vote[1]) > 1
-      append!(feasible_swaps, unbucket(u.opinion, v.opinion, u.vote, 1, can_count))
+      append!(feasible_actions, unbucket(u.opinion, v.opinion, u.vote, 1, can_count))
    end
 
    for i in 2:length(u.vote)
       # check for possible unbuckets
       if length(u.vote[i]) > 1
-         append!(feasible_swaps, unbucket(u.opinion, v.opinion, u.vote, i, can_count))
+         append!(feasible_actions, unbucket(u.opinion, v.opinion, u.vote, i, can_count))
       end
 
       # check for possible rebuckets
-      append!(feasible_swaps, rebucket(u.opinion, v.opinion, u.vote, i, can_count))
+      append!(feasible_actions, rebucket(u.opinion, v.opinion, u.vote, i, can_count))
    end
 
-   return feasible_swaps
+   return feasible_actions
 end
 
 function unbucket(u_opinion, v_opinion, u_vote, bucket_idx, can_count)
-   feasible_swaps = Vector{Tuple{Int64, Int64, Float64, Symbol}}()
+   feasible_actions = Vector{Tuple{Int64, Int64, Float64, Symbol}}()
    bucket = u_vote[bucket_idx]
+   d_uv = get_distance(u_opinion, v_opinion)
 
    for can in bucket
-      opinion = unbucket_right(can, u_opinion, bucket, can_count)
-      change = get_distance(opinion, v_opinion) - get_distance(u_opinion, v_opinion)
-      if change < 0.0
-         push!(feasible_swaps, (can, bucket_idx, change, :unbucket_right))
+      new_u_opinion = unbucket_right(can, u_opinion, bucket, can_count)
+      change = get_distance(new_u_opinion, v_opinion) - d_uv
+
+      if change < 0.0 && abs(change) == get_distance(u_opinion, new_u_opinion)
+         push!(feasible_actions, (can, bucket_idx, change, :unbucket_right))
       end
 
-      opinion = unbucket_left(can, u_opinion, bucket, can_count)
-      change = get_distance(opinion, v_opinion) - get_distance(u_opinion, v_opinion)
-      if change < 0.0
-         push!(feasible_swaps, (can, bucket_idx, change, :unbucket_left))
+      new_u_opinion = unbucket_left(can, u_opinion, bucket, can_count)
+      change = get_distance(new_u_opinion, v_opinion) - d_uv
+
+      if change < 0.0 && abs(change) == get_distance(u_opinion, new_u_opinion)
+         push!(feasible_actions, (can, bucket_idx, change, :unbucket_left))
       end
    end
 
-   return feasible_swaps
+   return feasible_actions
 end
 
 function unbucket_right(can, opinion, bucket, can_count)
@@ -262,27 +243,30 @@ function unbucket_left(can, opinion, bucket, can_count)
 end
 
 function rebucket(u_opinion, v_opinion, u_vote, r_bucket_idx, can_count)
-   feasible_swaps = Vector{Tuple{Int64, Int64, Float64, Symbol}}()
+   feasible_actions = Vector{Tuple{Int64, Int64, Float64, Symbol}}()
    l_bucket = u_vote[r_bucket_idx - 1]
    r_bucket = u_vote[r_bucket_idx]
-
+   d_uv = get_distance(u_opinion, v_opinion)
+   
    for can in l_bucket
-      opinion = rebucket_right(can, u_opinion, l_bucket, r_bucket, can_count)
-      change = get_distance(opinion, v_opinion) - get_distance(u_opinion, v_opinion)
-      if change < 0.0
-         push!(feasible_swaps, (can, r_bucket_idx - 1, change, :rebucket_right))
+      new_u_opinion = rebucket_right(can, u_opinion, l_bucket, r_bucket, can_count)
+      change = get_distance(new_u_opinion, v_opinion) - d_uv
+
+      if change < 0.0 && abs(change) == get_distance(u_opinion, new_u_opinion)
+         push!(feasible_actions, (can, r_bucket_idx - 1, change, :rebucket_right))
       end
    end
 
    for can in r_bucket
-      opinion = rebucket_left(can, u_opinion, l_bucket, r_bucket, can_count)
-      change = get_distance(opinion, v_opinion) - get_distance(u_opinion, v_opinion)
-      if change < 0.0
-         push!(feasible_swaps, (can, r_bucket_idx, change, :rebucket_left))
+      new_u_opinion = rebucket_left(can, u_opinion, l_bucket, r_bucket, can_count)
+      change = get_distance(new_u_opinion, v_opinion) - d_uv
+      
+      if change < 0.0 && abs(change) == get_distance(u_opinion, new_u_opinion)
+         push!(feasible_actions, (can, r_bucket_idx, change, :rebucket_left))
       end
    end
 
-   return feasible_swaps
+   return feasible_actions
 end
 
 function rebucket_right(can, opinion, l_bucket, r_bucket, can_count)
@@ -318,19 +302,19 @@ end
 
 # Utils _________________________________________________________________________________
 """
-Gets all swapped candidate pairs indexes based on opinion difference.
+Gets all inverted candidate pairs indexes based on opinion difference.
 """
-function get_all_swaps(voter_1, voter_2)
-   swaps = Vector{Int64}()
+function get_all_actions(voter_1, voter_2)
+   actions = Vector{Int64}()
    diff = voter_1.opinion - voter_2.opinion
 
    for i in 1:length(diff)
       if val != 0
-         push!(swaps, i)
+         push!(actions, i)
       end
    end
 
-   return swaps
+   return actions
 end
 
 function invert_vote(vote, can_count)
@@ -404,13 +388,13 @@ function get_penalty(inv_vote, can_1, can_2)
    return penalty
 end
 
-function test_random_KT(n, can_count)
-   #fst = Kendall_voter(69, vote_1, kendall_encoding(vote_1, can_count), 0.420, 0.420)
-   #snd = Kendall_voter(69, vote_2, kendall_encoding(vote_2, can_count), 0.420, 0.420)
+function test_random_KT(n, can_count, log_lvl=0)
+   #fst = Kendall_voter(69, vote_1, kendall_encoding(vote_1, can_count), 0.0, 0.0)
+   #snd = Kendall_voter(69, vote_2, kendall_encoding(vote_2, can_count), 0.0, 0.0)
    voters = Vector{Kendall_voter}(undef, n)
    for i in 1:n
       vote = get_random_vote(can_count)
-      voters[i] = Kendall_voter(69, vote, kendall_encoding(vote, can_count), 0.420, 0.420)
+      voters[i] = Kendall_voter(69, vote, kendall_encoding(vote, can_count), 0.0, 0.0)
    end
 
    for i in 1:n
@@ -419,25 +403,46 @@ function test_random_KT(n, can_count)
             break
          end
 
-         test_pair_KT(voters[i], voters[j], can_count)
+         test_pair_KT(voters[i], voters[j], can_count, log_lvl=log_lvl)
       end
    end
 end
 
-function test_pair_KT(fst, snd, can_count)
+function test_pair_KT(fst, snd, can_count, log_lvl=0)
    fst = deepcopy(fst)
    snd = deepcopy(snd)
 
-   println(fst)
-   println(snd)
+   dist = get_distance(fst, snd)
+   println("init d_uv:", dist)
    k = 0
-   while get_distance(fst, snd) != 0.0 
-      fst = attract_flip(fst, snd, can_count)
+   while dist != 0.0 
+      if log_lvl > 1
+         println(fst)
+         println(snd)
+      end
+
+      new_fst = attract_flip(fst, snd, can_count, log_lvl=log_lvl)
+
       if k == can_count*can_count
          error("Failed to converge in time")
          break
       end
       k += 1
+      new_dist = get_distance(new_fst, snd)
+
+      
+      if dist - new_dist != get_distance(fst, new_fst)
+         println("u:    ", fst.vote)
+         println("a(u): ", new_fst.vote)
+         println("v:    ", snd.vote)
+         println("u, a(u): ", get_distance(fst, new_fst))
+         println("a(u), v: ", dist - new_dist, " (change)")
+         error("Chosen sub-optimal action")
+         break
+      end
+
+      fst = new_fst
+      dist = new_dist
    end
    println("converged after:", k)
 end

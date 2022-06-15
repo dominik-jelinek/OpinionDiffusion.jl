@@ -17,9 +17,9 @@ function run!(model::T, diffusion_config, logger=nothing::Union{Nothing, Logger}
 end
 
 function run_ensemble!(model::Abstract_model, ensemble_size, diffusions, init_metrics, update_metrics!, diffusion_config)
-    metrics_ens = []
+    metrics_ens = Vector{Any}(undef, ensemble_size)
 
-    for i in 1:ensemble_size
+    @threads for i in 1:ensemble_size
         model_cp = deepcopy(model)
         metrics = deepcopy(init_metrics)
 
@@ -28,7 +28,7 @@ function run_ensemble!(model::Abstract_model, ensemble_size, diffusions, init_me
             update_metrics!(model_cp, metrics)
         end
 
-        push!(metrics_ens, metrics)
+        metrics_ens[i] = metrics
     end
 
     return metrics_ens
