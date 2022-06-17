@@ -53,6 +53,15 @@ import Distributions, Distances, Graphs, Plots
 # ╔═╡ 46e8650e-f57d-48d7-89de-1c72e12dea45
 md"### Load dataset"
 
+# ╔═╡ 470ec195-0118-4151-a74e-b976a91a3d29
+OpinionDiffusion.test_random_KT(1000, 8; log_lvl=0)
+
+# ╔═╡ f31ef6e8-1edc-4e43-8cbc-cebab3455848
+
+
+# ╔═╡ 63b5a286-8a8e-4f5e-8a33-c00ca03bf5d5
+
+
 # ╔═╡ bcc5468c-2a49-409d-b810-05fc30f4edca
 dataset = 2
 
@@ -390,9 +399,6 @@ diffusions = 100
 
 # ╔═╡ 27a60724-5d19-419f-b208-ffa0c78e2505
 ensemble_size = 5
-
-# ╔═╡ 470ec195-0118-4151-a74e-b976a91a3d29
-OpinionDiffusion.test_random_KT(20, 6)#sum of buckets - 1
 
 # ╔═╡ 6492a611-fe57-4279-8852-9271b91396cc
 Profile.print(format=:flat)
@@ -798,6 +804,9 @@ compare_metrics_vis(ensemble_logs, ["unique_votes", "avg_vote_length", "mean_nei
 # ╠═c51a1af4-f235-40fa-b828-183e10b2f111
 # ╠═75588cfd-52c9-4406-975c-c03158db6e78
 # ╟─46e8650e-f57d-48d7-89de-1c72e12dea45
+# ╠═470ec195-0118-4151-a74e-b976a91a3d29
+# ╠═f31ef6e8-1edc-4e43-8cbc-cebab3455848
+# ╠═63b5a286-8a8e-4f5e-8a33-c00ca03bf5d5
 # ╠═bcc5468c-2a49-409d-b810-05fc30f4edca
 # ╠═fc5a5935-8f4e-47ad-8568-70cd61656e06
 # ╠═c6ccf2a8-e045-4da9-bbdb-270327c2d53f
@@ -864,7 +873,6 @@ compare_metrics_vis(ensemble_logs, ["unique_votes", "avg_vote_length", "mean_nei
 # ╠═d877c5d0-89af-48b9-bcd0-c1602d58339f
 # ╠═27a60724-5d19-419f-b208-ffa0c78e2505
 # ╠═109e1b7c-16f0-4450-87ea-2d0442df5589
-# ╠═470ec195-0118-4151-a74e-b976a91a3d29
 # ╠═f6b4ba47-f9d2-42f0-9c86-e9810be7b810
 # ╠═8fec2372-6817-4c96-8884-5757ab851f44
 # ╠═009b8bbb-1419-4ded-bf6d-add522ed89d7
