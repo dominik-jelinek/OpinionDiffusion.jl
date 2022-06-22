@@ -48,19 +48,19 @@ md"Pluto is a reactive notebook that after the change of some variable recalcula
 md"### Initialize packages"
 
 # ╔═╡ 75588cfd-52c9-4406-975c-c03158db6e78
-import Distributions, Distances, Graphs, Plots
+import Distributions, Distances, Graphs, Plots, Random
 
 # ╔═╡ 46e8650e-f57d-48d7-89de-1c72e12dea45
 md"### Load dataset"
 
 # ╔═╡ 470ec195-0118-4151-a74e-b976a91a3d29
-OpinionDiffusion.test_random_KT(1000, 8; log_lvl=0)
+#OpinionDiffusion.test_random_KT(1000, 8; log_lvl=0)
 
 # ╔═╡ f31ef6e8-1edc-4e43-8cbc-cebab3455848
-
+distance decreasing 1.29 distance decreasing unique 1.60
 
 # ╔═╡ 63b5a286-8a8e-4f5e-8a33-c00ca03bf5d5
-
+1.42 optimal mensie kroky
 
 # ╔═╡ bcc5468c-2a49-409d-b810-05fc30f4edca
 dataset = 2
@@ -116,7 +116,7 @@ Plots.bar(transpose(sum(counts, dims = 1)), legend=false, xticks=1:length(src_ca
 Plots.bar(sum(counts, dims = 2), legend=false, xticks=1:length(src_candidates), ylabel="# votes", xlabel="candidate ID")
 
 # ╔═╡ dfef082a-3615-4141-9852-693de7ad4255
-init_sample_size = 29000
+init_sample_size = 1000
 
 # ╔═╡ e49622c2-6fac-4d4c-8ffc-50d58974090c
 exp = 1.2
@@ -133,23 +133,42 @@ Plots.plot(funccc, 1, 100)
 # ╔═╡ 8facc4c1-1e1d-4278-8545-8e45aae82774
 begin
 	i = 1
-	sum_ = 0
-	distribution = []
-	val = floor(funccc(i))
-	while val > 0 && sum_ < init_sample_size
-		push!(distribution, val)
+	sum_ = 1
+	distribution = Dict{Int, Int}()
+	val = round(funccc(i))
+	while sum_ <= init_sample_size
+		distribution[i] = val
 		sum_ += val
 		i += 1
-		val = floor(funccc(i))
+		val = ceil(funccc(i))
 	end
 	distribution
 end
 
+# ╔═╡ c6bcb358-0704-46a5-834a-d77fcf670002
+
+
+# ╔═╡ d88b2681-9f78-4239-b648-12f02261a938
+sum(values(distribution))
+
+# ╔═╡ 4063197b-66dd-4e3f-9ede-9d7dbb614b09
+begin
+	degrees = Vector{Int}()
+	for (degree, count) in distribution
+		append!(degrees, fill(degree, count))
+	end
+	degrees = Random.shuffle(degrees)
+	degrees
+end
+
+# ╔═╡ af4d3859-0398-4c07-b9fa-7644a2f295de
+
+
+# ╔═╡ 1e2ece2e-2d55-4b28-99a8-4ee1fa8e1c80
+fill(2,3)
+
 # ╔═╡ 24d2c8d7-9a22-4180-992e-89aaa151abac
 length(distribution)
-
-# ╔═╡ acd2c004-8564-4c4b-ab40-b02bd863f975
-sum(distribution)
 
 # ╔═╡ c50be339-8d1c-459f-8c14-934297f10717
 function filter_candidates(election, candidates, remove_candidates, can_count)
@@ -245,6 +264,21 @@ model_config = General_model_config(
 	popularity_ratio = 0.5,
 	voter_init_config = voter_config_sp
 )
+
+# ╔═╡ 255427a4-186d-492a-80e9-32f3581c4bac
+voters_ = OpinionDiffusion.init_voters(election, length(candidates), model_config.voter_init_config)
+
+# ╔═╡ c26a25e2-a4c1-495c-b5c0-5de98b6d5b41
+length(voters_)
+
+# ╔═╡ 49230039-1716-4f48-b144-cddcb88e6172
+g = OpinionDiffusion.get_DEG(voters_, degrees, 0.3, ratio=1.0, log_lvl=false)
+
+# ╔═╡ d94c4664-9028-47ec-acfa-02034f4bbb16
+Graphs.global_clustering_coefficient(g)
+
+# ╔═╡ fe6f495f-7049-4eca-a62f-29dc3106ca26
+Graphs.degree(g)
 
 # ╔═╡ b4d60582-ab23-4b2e-84bb-efd60786dc93
 [file for file in readdir("logs")]
@@ -823,8 +857,17 @@ compare_metrics_vis(ensemble_logs, ["unique_votes", "avg_vote_length", "mean_nei
 # ╠═f1af514d-1639-4533-baa2-ee816d4dc8ca
 # ╠═9f958417-fa9c-40c2-a721-3cf4b86d2bbf
 # ╠═8facc4c1-1e1d-4278-8545-8e45aae82774
+# ╠═c6bcb358-0704-46a5-834a-d77fcf670002
+# ╠═d88b2681-9f78-4239-b648-12f02261a938
+# ╠═c26a25e2-a4c1-495c-b5c0-5de98b6d5b41
+# ╠═4063197b-66dd-4e3f-9ede-9d7dbb614b09
+# ╠═255427a4-186d-492a-80e9-32f3581c4bac
+# ╠═49230039-1716-4f48-b144-cddcb88e6172
+# ╠═af4d3859-0398-4c07-b9fa-7644a2f295de
+# ╠═d94c4664-9028-47ec-acfa-02034f4bbb16
+# ╠═fe6f495f-7049-4eca-a62f-29dc3106ca26
+# ╠═1e2ece2e-2d55-4b28-99a8-4ee1fa8e1c80
 # ╠═24d2c8d7-9a22-4180-992e-89aaa151abac
-# ╠═acd2c004-8564-4c4b-ab40-b02bd863f975
 # ╠═93b8909b-479c-422a-b475-2befadf5e9ec
 # ╠═c50be339-8d1c-459f-8c14-934297f10717
 # ╠═150ecd7a-5fe5-4e25-9630-91d26c30ff38

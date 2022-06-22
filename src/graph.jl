@@ -98,6 +98,115 @@ function weighted_barabasi_albert_graph(voters::Vector{T}, m::Integer, ratio=1.0
    return social_network
 end
 
+function get_DEG(voters, targed_deg_distr, target_cc; ratio=1.0, log_lvl=true)
+   n = length(voters)
+   social_network = MetaGraphs.MetaGraph(n)
+
+   rand_perm = Random.shuffle(1:n)
+   voters_perm = voters[rand_perm]
+
+   m = floor(sum(targed_deg_distr) / 2)
+   rds = deepcopy(targed_deg_distr[rand_perm])
+   T = floor(target_cc * sum([ choose2(rd) for rd in rds]) / 3)
+   println("m: ", m, " T: ", T)
+   limit = 0
+   while T > 0
+      limit += 1
+      if limit == 1000
+         break
+      end
+      
+      probs = rds
+      if log_lvl
+         println(T)
+         println(StatsBase.Weights(probs))
+      end
+      u = StatsBase.sample(1:n, StatsBase.Weights(probs))
+
+      distances_u = 1.0 ./ (1.0 .+ get_distance(voters_perm[u], voters_perm))
+      probs = ratio .* rds ./ sum(rds) .+ (1.0 - ratio) .* distances_u ./ sum(distances_u)
+      probs = probs .* (rds.>0)
+      probs[u] = 0.0
+      if log_lvl
+         println(probs)
+      end
+      v = StatsBase.sample(1:n, StatsBase.Weights(probs))
+
+      distances_v = 1.0 ./ (1.0 .+ get_distance(voters_perm[v], voters_perm))
+      probs = ratio .* rds ./ sum(rds) .+ (1.0 - ratio) .* (distances_u ./ sum(distances_u) .+ distances_v ./ sum(distances_v)) ./ 2 
+      probs = probs .* (rds.>0)
+      probs[u] = 0.0
+      probs[v] = 0.0
+      
+      w = StatsBase.sample(1:n, StatsBase.Weights(probs))
+      if log_lvl
+         println(probs)
+         println(u, v, w)
+      end
+      
+      # test feasibility of creating a triangle with vertices u, v, w
+      if rds[u] == 1 && !has_edge(social_network, u, v) && !has_edge(social_network, u, w)
+         #T -= 1
+         continue
+      end
+
+      if rds[v] == 1 && !has_edge(social_network, v, u) && !has_edge(social_network, v, w)
+         #T -= 1
+         continue
+      end
+
+      if rds[w] == 1 && !has_edge(social_network, w, u) && !has_edge(social_network, w, v)
+         #T -= 1
+         continue
+      end
+
+      edges_added = 0
+      for (v_1, v_2) in zip([u, v, w], [v, w, u])
+         if add_edge!(social_network, rand_perm[v_1], rand_perm[v_2])
+            edges_added += 1
+            rds[v_1] -= 1
+            rds[v_2] -= 1
+         end
+      end
+      
+      if edges_added > 0   
+         m -= edges_added
+      end
+
+      # we decrease T even when no new triangles were created as is written in the paper
+      T -= 1
+   end
+
+   limit = 0
+   while m > 0
+      if log_lvl
+         println(m)
+      end
+
+      probs = rds
+      u = StatsBase.sample(1:n, StatsBase.Weights(probs))
+
+      distances_u = 1.0 ./ (1.0 .+ get_distance(voters_perm[u], voters_perm))
+      probs = ratio .* rds ./ sum(rds) .+ (1.0 - ratio) .* distances_u ./ sum(distances_u)
+      probs = probs .* (rds.>1)
+      probs[u] = 0.0
+      v = StatsBase.sample(1:n, StatsBase.Weights(probs))
+
+      if add_edge!(social_network, rand_perm[u], rand_perm[v])
+         rds[u] -= 1
+         rds[v] -= 1
+         m -= 1
+      end
+
+      limit += 1
+      if limit == 100
+         break
+      end
+   end
+
+   return social_network
+end
+
 function init_graph(vert_count::Int, edges::Vector{Graphs.SimpleGraphs.SimpleEdge{Int64}})
    g = Graphs.SimpleGraphFromIterator(edges)
    
