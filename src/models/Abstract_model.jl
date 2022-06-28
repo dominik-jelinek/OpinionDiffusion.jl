@@ -41,11 +41,15 @@ end
 
 function voter_diffusion!(model::T, evolve_vertices, voter_diff_config::U) where 
     {T <: Abstract_model, U <: Abstract_voter_diff_config}
+
+    voters = get_voters(model)
+    social_network = get_social_network(model)
+
     sample_size = ceil(Int, evolve_vertices * length(get_voters(model)))
     vertex_ids = StatsBase.sample(1:length(get_voters(model)), sample_size, replace=true)
-
+    
     for id in vertex_ids
-        step!(get_voters(model)[id], get_voters(model), get_social_network(model), model.can_count, voter_diff_config)
+        step!(voters[id], voters, social_network, model.can_count, voter_diff_config)
     end
 end
 

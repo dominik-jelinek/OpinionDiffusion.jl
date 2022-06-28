@@ -48,9 +48,14 @@ function barabasi_albert_graph(voters::Vector{T}, m::Integer) where T <: Abstrac
 
    return social_network
 end
-struct weighted_AB_graph_config <: Abstract_graph_init_config
+
+@kwdef struct weighted_AB_graph_config <: Abstract_graph_init_config
    m::Integer
    popularity_ratio::Real
+end
+
+function init_graph(voters, graph_init_config::weighted_AB_graph_config)
+   return weighted_barabasi_albert_graph(voters, graph_init_config.m, graph_init_config.popularity_ratio)
 end
 
 function weighted_barabasi_albert_graph(voters::Vector{T}, m::Integer, ratio=1.0) where T <: Abstract_voter
@@ -68,6 +73,7 @@ function weighted_barabasi_albert_graph(voters::Vector{T}, m::Integer, ratio=1.0
       add_edge!(social_network, rand_perm[m + 1], rand_perm[i])
       set_prop!(social_network, rand_perm[m + 1], rand_perm[i], :weight, get_distance(voters_perm[m + 1], voters_perm[i]))
    end
+
    degrees = zeros(Float64, n)
    for i in 1:m
       degrees[i] = 1.0
@@ -100,6 +106,23 @@ function weighted_barabasi_albert_graph(voters::Vector{T}, m::Integer, ratio=1.0
    end
 
    return social_network
+end
+
+@kwdef struct DEG_graph_config <: Abstract_graph_init_config
+   targed_deg_distr
+   target_cc
+   ratio
+   log_lvl
+end
+
+function init_graph(voters, graph_init_config::DEG_graph_config)
+   return get_DEG(
+      voters, 
+      graph_init_config.targed_deg_distr, 
+      graph_init_config.target_cc, 
+      ratio=graph_init_config.ratio, 
+      log_lvl=graph_init_config.log_lvl
+      )
 end
 
 function get_DEG(voters, targed_deg_distr, target_cc; ratio=1.0, log_lvl=true)

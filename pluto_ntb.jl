@@ -161,8 +161,17 @@ begin
 	degrees
 end
 
+# ╔═╡ 49230039-1716-4f48-b144-cddcb88e6172
+#g = OpinionDiffusion.get_DEG(voters_, degrees, 0.3, ratio=1.0, log_lvl=false)
+
 # ╔═╡ af4d3859-0398-4c07-b9fa-7644a2f295de
 
+
+# ╔═╡ d94c4664-9028-47ec-acfa-02034f4bbb16
+Graphs.global_clustering_coefficient(g)
+
+# ╔═╡ fe6f495f-7049-4eca-a62f-29dc3106ca26
+Graphs.degree(g)
 
 # ╔═╡ 1e2ece2e-2d55-4b28-99a8-4ee1fa8e1c80
 fill(2,3)
@@ -255,14 +264,21 @@ voter_config_sp = Spearman_voter_init_config(
 # ╔═╡ 825b45d1-fe6a-4460-8fe2-b323019c56b6
 Plots.bar([string(i) * '-' * string(i + 1) for i in 1:length(candidates)-1], [voter_config_sp.weight_func(x) for x in 1:length(candidates)-1], legend=false)
 
+# ╔═╡ fe65fb44-faf6-44de-8e99-022c39ee3d33
+graph_init_config_AB = weighted_AB_graph_config(
+	m=32, 
+	popularity_ratio=0.7)
+
+# ╔═╡ 6c3f3dd3-8184-4aae-b40d-09830506773b
+graph_init_config_DEG = DEG_graph_config(degrees, 0.4, 1.0, false)
+
 # ╔═╡ 338aa155-a4fb-4ff9-b27d-fc5481abb58d
 md"Configuration of general model"
 
 # ╔═╡ 0d3b58fe-8205-4d4c-9174-09cec37a61f3
-model_config = General_model_config( 
-	m = 64,
-	popularity_ratio = 0.5,
-	voter_init_config = voter_config_sp
+model_config = General_model_config(
+	voter_init_config = voter_config_sp,
+	graph_init_config = graph_init_config_AB
 )
 
 # ╔═╡ 255427a4-186d-492a-80e9-32f3581c4bac
@@ -274,17 +290,11 @@ length(voters_)
 # ╔═╡ 7cdd2510-af08-4380-9b22-ac6810d23753
 floor(sum(degrees) / 2) / length(voters_)
 
-# ╔═╡ 49230039-1716-4f48-b144-cddcb88e6172
-g = OpinionDiffusion.get_DEG(voters_, degrees, 0.3, ratio=1.0, log_lvl=false)
-
-# ╔═╡ d94c4664-9028-47ec-acfa-02034f4bbb16
-Graphs.global_clustering_coefficient(g)
-
-# ╔═╡ fe6f495f-7049-4eca-a62f-29dc3106ca26
-Graphs.degree(g)
-
 # ╔═╡ b4d60582-ab23-4b2e-84bb-efd60786dc93
 [file for file in readdir("logs")]
+
+# ╔═╡ 637a053e-1ce8-4107-926a-46f46b4718f8
+
 
 # ╔═╡ 985131a7-7c11-4f9d-ae00-ef031002592d
 model_dir = "logs/" * "model_2022-05-26_20-50-29"
@@ -432,13 +442,13 @@ Execution barrier $(@bind cb_run CheckBox())
 """
 
 # ╔═╡ d877c5d0-89af-48b9-bcd0-c1602d58339f
-diffusions = 100
+diffusions = 50
 
 # ╔═╡ 27a60724-5d19-419f-b208-ffa0c78e2505
-ensemble_size = 5
+ensemble_size = 3
 
-# ╔═╡ 109e1b7c-16f0-4450-87ea-2d0442df5589
-metrics = init_metrics(model, length(candidates))
+# ╔═╡ 87c573c1-69a4-4a61-bbb8-acb716f8ec6d
+ensemble_model = true
 
 # ╔═╡ 6492a611-fe57-4279-8852-9271b91396cc
 Profile.print(format=:flat)
@@ -692,10 +702,13 @@ function init_metrics(model, can_count)
     metrics["borda_votings"] = [borda_voting(votes, can_count, true)]
     metrics["copeland_votings"] = [copeland_voting(votes, can_count)]
 
-	metrics["positions"] = [get_positions(voters, can_count))]
+	metrics["positions"] = [get_positions(voters, can_count)]
 	
 	return metrics
 end
+
+# ╔═╡ 109e1b7c-16f0-4450-87ea-2d0442df5589
+metrics = init_metrics(model, length(candidates))
 
 # ╔═╡ e31cdd5b-3310-43fb-addc-96144547de2b
 update_metrics!(model, metrics) = update_metrics!(model, metrics, length(candidates))
@@ -746,6 +759,11 @@ ens_metrics
 # ╔═╡ 009b8bbb-1419-4ded-bf6d-add522ed89d7
 gathered_metrics
 
+# ╔═╡ b653ec57-005a-4ec4-aeb4-71f1afbec04f
+if cb_run && ensemble_size != 1 && ensemble_model
+	gathered_model_metrics = OpinionDiffusion.ensemble_model(ensemble_size, diffusions, election, init_metrics, length(candidates), update_metrics!, model_config, diffusion_config, nothing)
+end
+
 # ╔═╡ 187da043-ee48-420a-91c7-5e3a4fdc30bb
 function draw_voting_rules(data, voting_rules, candidates, parties)
 	n = length(voting_rules)
@@ -760,7 +778,7 @@ function draw_voting_rules(data, voting_rules, candidates, parties)
 end
 
 # ╔═╡ 840c2562-c444-4422-9cf8-e82429163627
-draw_voting_rules(gathered_metrics, ["plurality_votings", "borda_votings", "copeland_votings"], candidates, parties)
+draw_voting_rules(gathered_model_metrics, ["plurality_votings", "borda_votings", "copeland_votings", "positions"], candidates, parties)
 
 # ╔═╡ 5c505323-4487-4433-8ea7-4357b0fb8166
 configss = [OpinionDiffusion.load(log, "diffusion_config") for log in ensemble_logs]
@@ -886,10 +904,13 @@ compare_metrics_vis(ensemble_logs, ["unique_votes", "avg_vote_length", "mean_nei
 # ╠═342d3d34-4a3a-4f2d-811b-e9ab143504fd
 # ╠═affcdfab-a84b-4bc1-860d-17b05ac18133
 # ╠═825b45d1-fe6a-4460-8fe2-b323019c56b6
+# ╠═fe65fb44-faf6-44de-8e99-022c39ee3d33
+# ╠═6c3f3dd3-8184-4aae-b40d-09830506773b
 # ╟─338aa155-a4fb-4ff9-b27d-fc5481abb58d
 # ╠═0d3b58fe-8205-4d4c-9174-09cec37a61f3
 # ╠═776f99ea-6e44-4eb6-b2dd-3552bbb39954
 # ╠═b4d60582-ab23-4b2e-84bb-efd60786dc93
+# ╠═637a053e-1ce8-4107-926a-46f46b4718f8
 # ╠═985131a7-7c11-4f9d-ae00-ef031002592d
 # ╠═37cf8471-02a7-4a91-b17e-f44d06974d97
 # ╠═d8b613c5-7276-466d-a54a-7670f0921b35
@@ -922,8 +943,10 @@ compare_metrics_vis(ensemble_logs, ["unique_votes", "avg_vote_length", "mean_nei
 # ╟─20819900-1129-4ff1-b97e-d079ffce8ab8
 # ╠═d877c5d0-89af-48b9-bcd0-c1602d58339f
 # ╠═27a60724-5d19-419f-b208-ffa0c78e2505
+# ╠═87c573c1-69a4-4a61-bbb8-acb716f8ec6d
 # ╠═109e1b7c-16f0-4450-87ea-2d0442df5589
 # ╠═f6b4ba47-f9d2-42f0-9c86-e9810be7b810
+# ╠═b653ec57-005a-4ec4-aeb4-71f1afbec04f
 # ╠═8fec2372-6817-4c96-8884-5757ab851f44
 # ╠═009b8bbb-1419-4ded-bf6d-add522ed89d7
 # ╠═6492a611-fe57-4279-8852-9271b91396cc

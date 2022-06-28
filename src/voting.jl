@@ -86,9 +86,9 @@ function get_positions(voters, can_count)
             positions[i] = get_pos(voter, can)
         end
 
-        res[can] = Statistics.mean(avg_position)
+        res[can] = Statistics.mean(positions)
     end
-    
+
     return res
 end
 # OLD ___________________________________________
