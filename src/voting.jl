@@ -77,6 +77,20 @@ function copeland_voting(votes::Vector{Vector{Vector{Int64}}}, can_count)
     return scores
 end
 
+function get_positions(voters, can_count)
+    res = zeros(can_count)
+
+    for can in 1:can_count
+        positions = zeros(length(voters))
+        for (i, voter) in enumerate(voters)
+            positions[i] = get_pos(voter, can)
+        end
+
+        res[can] = Statistics.mean(avg_position)
+    end
+    
+    return res
+end
 # OLD ___________________________________________
 #=
 function getPluralityScores(electionResult, normalize::Bool)

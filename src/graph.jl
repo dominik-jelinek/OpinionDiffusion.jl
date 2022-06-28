@@ -48,6 +48,10 @@ function barabasi_albert_graph(voters::Vector{T}, m::Integer) where T <: Abstrac
 
    return social_network
 end
+struct weighted_AB_graph_config <: Abstract_graph_init_config
+   m::Integer
+   popularity_ratio::Real
+end
 
 function weighted_barabasi_albert_graph(voters::Vector{T}, m::Integer, ratio=1.0) where T <: Abstract_voter
    if m > length(voters)
@@ -105,17 +109,18 @@ function get_DEG(voters, targed_deg_distr, target_cc; ratio=1.0, log_lvl=true)
    rand_perm = Random.shuffle(1:n)
    voters_perm = voters[rand_perm]
 
-   m = floor(sum(targed_deg_distr) / 2)
+   M = floor(sum(targed_deg_distr) / 2)
    rds = deepcopy(targed_deg_distr[rand_perm])
    T = floor(target_cc * sum([ choose2(rd) for rd in rds]) / 3)
-   println("m: ", m, " T: ", T)
-   limit = 0
+   println("M: ", M, " T: ", T)
+   limit = T * 2
+   i = 0
    while T > 0
-      limit += 1
-      if limit == 1000
+      i += 1
+      if limit == i
          break
       end
-      
+
       probs = rds
       if log_lvl
          println(T)
@@ -170,7 +175,7 @@ function get_DEG(voters, targed_deg_distr, target_cc; ratio=1.0, log_lvl=true)
       end
       
       if edges_added > 0   
-         m -= edges_added
+         M -= edges_added
       end
 
       # we decrease T even when no new triangles were created as is written in the paper
@@ -178,9 +183,9 @@ function get_DEG(voters, targed_deg_distr, target_cc; ratio=1.0, log_lvl=true)
    end
 
    limit = 0
-   while m > 0
+   while M > 0
       if log_lvl
-         println(m)
+         println(M)
       end
 
       probs = rds
@@ -195,7 +200,7 @@ function get_DEG(voters, targed_deg_distr, target_cc; ratio=1.0, log_lvl=true)
       if add_edge!(social_network, rand_perm[u], rand_perm[v])
          rds[u] -= 1
          rds[v] -= 1
-         m -= 1
+         M -= 1
       end
 
       limit += 1

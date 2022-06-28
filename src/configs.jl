@@ -1,7 +1,8 @@
 abstract type Config end
 
-# voter configs __________________________________________________________________________
+# model init configs __________________________________________________________________________
 abstract type Abstract_voter_init_config <: Config end
+abstract type Abstract_graph_init_config <: Config end
 
 # diffusion configs ________________________________________________________________________
 abstract type Abstract_voter_diff_config <: Config end

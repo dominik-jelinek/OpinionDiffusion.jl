@@ -41,6 +41,17 @@ function get_vote(voter::Kendall_voter) :: Vector{Vector{Int}}
    return voter.vote
 end
 
+function get_pos(voter::Kendall_voter, can)
+   pos = 0
+   for bucket in get_vote(voter)
+      if can in bucket 
+         return pos + (length(bucket) + 1)/ 2
+      end
+
+      pos += length(bucket)
+   end
+end
+
 """
 Encodes vote into space of dimension canCount choose 2 
 """

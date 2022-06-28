@@ -119,7 +119,7 @@ Plots.bar(sum(counts, dims = 2), legend=false, xticks=1:length(src_candidates), 
 init_sample_size = 1000
 
 # ╔═╡ e49622c2-6fac-4d4c-8ffc-50d58974090c
-exp = 1.2
+exp = 1.8
 
 # ╔═╡ 3ae5dca5-1fb9-40f1-b3a4-5150810363c1
 c = init_sample_size / 4
@@ -270,6 +270,9 @@ voters_ = OpinionDiffusion.init_voters(election, length(candidates), model_confi
 
 # ╔═╡ c26a25e2-a4c1-495c-b5c0-5de98b6d5b41
 length(voters_)
+
+# ╔═╡ 7cdd2510-af08-4380-9b22-ac6810d23753
+floor(sum(degrees) / 2) / length(voters_)
 
 # ╔═╡ 49230039-1716-4f48-b144-cddcb88e6172
 g = OpinionDiffusion.get_DEG(voters_, degrees, 0.3, ratio=1.0, log_lvl=false)
@@ -433,6 +436,9 @@ diffusions = 100
 
 # ╔═╡ 27a60724-5d19-419f-b208-ffa0c78e2505
 ensemble_size = 5
+
+# ╔═╡ 109e1b7c-16f0-4450-87ea-2d0442df5589
+metrics = init_metrics(model, length(candidates))
 
 # ╔═╡ 6492a611-fe57-4279-8852-9271b91396cc
 Profile.print(format=:flat)
@@ -685,12 +691,11 @@ function init_metrics(model, can_count)
     metrics["plurality_votings"] = [plurality_voting(votes, can_count, true)]
     metrics["borda_votings"] = [borda_voting(votes, can_count, true)]
     metrics["copeland_votings"] = [copeland_voting(votes, can_count)]
+
+	metrics["positions"] = [get_positions(voters, can_count))]
 	
 	return metrics
 end
-
-# ╔═╡ 109e1b7c-16f0-4450-87ea-2d0442df5589
-metrics = init_metrics(model, length(candidates))
 
 # ╔═╡ e31cdd5b-3310-43fb-addc-96144547de2b
 update_metrics!(model, metrics) = update_metrics!(model, metrics, length(candidates))
@@ -717,6 +722,7 @@ function update_metrics!(model, diffusion_metrics, can_count)
     push!(diffusion_metrics["plurality_votings"], plurality_voting(votes, can_count, true))
     push!(diffusion_metrics["borda_votings"], borda_voting(votes, can_count, true))
     push!(diffusion_metrics["copeland_votings"], copeland_voting(votes, can_count))
+    push!(diffusion_metrics["positions"], get_positions(voters, can_count))
 end
 
 # ╔═╡ f6b4ba47-f9d2-42f0-9c86-e9810be7b810
@@ -861,6 +867,7 @@ compare_metrics_vis(ensemble_logs, ["unique_votes", "avg_vote_length", "mean_nei
 # ╠═d88b2681-9f78-4239-b648-12f02261a938
 # ╠═c26a25e2-a4c1-495c-b5c0-5de98b6d5b41
 # ╠═4063197b-66dd-4e3f-9ede-9d7dbb614b09
+# ╠═7cdd2510-af08-4380-9b22-ac6810d23753
 # ╠═255427a4-186d-492a-80e9-32f3581c4bac
 # ╠═49230039-1716-4f48-b144-cddcb88e6172
 # ╠═af4d3859-0398-4c07-b9fa-7644a2f295de
