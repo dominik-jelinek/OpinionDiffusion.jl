@@ -16,7 +16,7 @@ function run!(model::T, diffusion_config, logger=nothing::Union{Nothing, Logger}
     end
 end
 
-function run_ensemble!(model::Abstract_model, ensemble_size, diffusions, init_metrics, update_metrics!, diffusion_config)
+function run_ensemble(model::Abstract_model, ensemble_size, diffusions, init_metrics, update_metrics!, diffusion_config, model_dir=nothing)
     metrics_ens = Vector{Any}(undef, ensemble_size)
 
     @threads for i in 1:ensemble_size
@@ -31,7 +31,37 @@ function run_ensemble!(model::Abstract_model, ensemble_size, diffusions, init_me
         metrics_ens[i] = metrics
     end
 
-    return metrics_ens
+    gathered_metrics = OpinionDiffusion.gather_metrics(metrics_ens)
+
+	if model_dir != nothing
+		save_ensemble(model_dir, diffusion_config, gathered_metrics)
+	end
+
+    return gathered_metrics
+end
+
+function run_ensemble_model(ensemble_size, diffusions, election, init_metrics, can_count, update_metrics!, model_config, diffusion_config, log=false)
+    ens_metrics = Vector{Any}(undef, ensemble_size)
+
+    @threads for i in 1:ensemble_size
+        model = General_model(election, can_count, model_config)
+        metrics = init_metrics(model, can_count)
+
+        for j in 1:diffusions
+            run!(model, diffusion_config)
+            update_metrics!(model, metrics)
+        end
+
+        ens_metrics[i] = metrics
+    end
+
+    gathered_metrics = gather_metrics(ens_metrics)
+
+	if log
+		save_ensemble(model_config, diffusion_config, gathered_metrics)
+	end
+
+    return gathered_metrics
 end
 
 function diffusion!(model::T, diffusion_config) where T <: Abstract_model

@@ -24,30 +24,6 @@ function General_model(election, can_count::Int64, model_config)
     return General_model(voters, social_network, can_count)
 end
 
-function ensemble_model(ensemble_size, diffusions, election, init_metrics, can_count, update_metrics!, model_config, diffusion_config, log_dir=nothing)
-    ens_metrics = Vector{Any}(undef, ensemble_size)
-
-    @threads for i in 1:ensemble_size
-        model = General_model(election, can_count, model_config)
-        metrics = init_metrics(model, can_count)
-
-        for j in 1:diffusions
-            run!(model, diffusion_config)
-            update_metrics!(model, metrics)
-        end
-
-        ens_metrics[i] = metrics
-    end
-
-    gathered_metrics = gather_metrics(ens_metrics)
-
-	if log_dir != nothing
-		save_ensemble(log_dir, diffusion_config, gathered_metrics)
-	end
-
-    return gathered_metrics
-end
-
 function General_model(election, voter_init_config, social_network, can_count::Int64)
     if length(election) != ne(social_network)
         error("Number of voters does not equal the number of vertices")

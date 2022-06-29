@@ -86,7 +86,7 @@ function weighted_barabasi_albert_graph(voters::Vector{T}, m::Integer, ratio=1.0
    for i in m+2:length(voters_perm)
       self = voters_perm[i]
       
-      distances = 1.0 ./ (1.0 .+ get_distance(self, voters_perm[1:i-1]))
+      distances = (1/2) .^ get_distance(self, voters_perm[1:i-1])
       #calculate distribution of p robabilities for each previously added vertex
       dist_sum = sum(distances)
       @inbounds for j in eachindex(distances)

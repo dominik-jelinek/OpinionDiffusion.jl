@@ -70,6 +70,10 @@ function load_log(logger::Logger)
     return load_log(logger.exp_dir, logger.diff_counter[1])
 end
 
-function save_ensemble(model_dir, diffusion_config, gathered_metrics)
+function save_ensemble(model_dir::String, diffusion_config, gathered_metrics)
 	jldsave("$(model_dir)/ensemble_$(Dates.format(now(), "yyyy-mm-dd_HH-MM-SS")).jld2"; diffusion_config, gathered_metrics)
+end
+
+function save_ensemble(model_config, diffusion_config, gathered_metrics)
+	jldsave("logs/model_ensemble_$(Dates.format(now(), "yyyy-mm-dd_HH-MM-SS")).jld2"; model_config, diffusion_config, gathered_metrics)
 end
