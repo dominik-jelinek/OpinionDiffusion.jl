@@ -87,11 +87,10 @@ function weighted_barabasi_albert_graph(voters::Vector{T}, m::Integer, ratio=1.0
       self = voters_perm[i]
       
       distances = (1/2) .^ get_distance(self, voters_perm[1:i-1])
-      #calculate distribution of p robabilities for each previously added vertex
       dist_sum = sum(distances)
-      @inbounds for j in eachindex(distances)
-         probs[j] = ratio * degrees[j] / degree_sum + (1.0 - ratio) * distances[j] / dist_sum
-      end
+      #calculate distribution of p robabilities for each previously added vertex
+
+      probs = ratio .* degrees ./ degree_sum + (1.0 - ratio) .* distances ./ dist_sum
       edge_ends = StatsBase.sample(1:n, StatsBase.Weights(probs), m, replace=false)
       
       #add edges
@@ -136,13 +135,13 @@ function get_DEG(voters, targed_deg_distr, target_cc; ratio=1.0, log_lvl=true)
    rds = deepcopy(targed_deg_distr[rand_perm])
    T = floor(target_cc * sum([ choose2(rd) for rd in rds]) / 3)
    println("M: ", M, " T: ", T)
-   limit = T * 2
+   limit = T * 30
    i = 0
    while T > 0
-      i += 1
       if limit == i
          break
       end
+      i += 1
 
       probs = rds
       if log_lvl
@@ -150,9 +149,8 @@ function get_DEG(voters, targed_deg_distr, target_cc; ratio=1.0, log_lvl=true)
          println(StatsBase.Weights(probs))
       end
       u = StatsBase.sample(1:n, StatsBase.Weights(probs))
-
-      distances_u = 1.0 ./ (1.0 .+ get_distance(voters_perm[u], voters_perm))
-      probs = ratio .* rds ./ sum(rds) .+ (1.0 - ratio) .* distances_u ./ sum(distances_u)
+      distances_u = (1/2) .^ get_distance(voters_perm[u], voters_perm)
+      probs = (ratio .* rds ./ sum(rds)) .+ (1.0 - ratio) .* distances_u ./ sum(distances_u)
       probs = probs .* (rds.>0)
       probs[u] = 0.0
       if log_lvl
@@ -160,7 +158,7 @@ function get_DEG(voters, targed_deg_distr, target_cc; ratio=1.0, log_lvl=true)
       end
       v = StatsBase.sample(1:n, StatsBase.Weights(probs))
 
-      distances_v = 1.0 ./ (1.0 .+ get_distance(voters_perm[v], voters_perm))
+      distances_v = (1/2) .^ get_distance(voters_perm[v], voters_perm)
       probs = ratio .* rds ./ sum(rds) .+ (1.0 - ratio) .* (distances_u ./ sum(distances_u) .+ distances_v ./ sum(distances_v)) ./ 2 
       probs = probs .* (rds.>0)
       probs[u] = 0.0
@@ -188,47 +186,51 @@ function get_DEG(voters, targed_deg_distr, target_cc; ratio=1.0, log_lvl=true)
          continue
       end
 
-      edges_added = 0
       for (v_1, v_2) in zip([u, v, w], [v, w, u])
          if add_edge!(social_network, rand_perm[v_1], rand_perm[v_2])
-            edges_added += 1
+            M -= 1
             rds[v_1] -= 1
             rds[v_2] -= 1
+            T -= length(common_neighbors(social_network, rand_perm[v_1], rand_perm[v_2]))
          end
       end
       
-      if edges_added > 0   
-         M -= edges_added
-      end
-
       # we decrease T even when no new triangles were created as is written in the paper
-      T -= 1
+      #T -= 1
    end
-
-   limit = 0
+   println("M: ", M, " T: ", T)
+   println(global_clustering_coefficient(social_network))
+   limit = M * 10
+   i = 0
    while M > 0
+      if limit == i
+         break
+      end
+      i += 1
+
       if log_lvl
          println(M)
       end
 
       probs = rds
+      if log_lvl
+         println(probs)
+      end
       u = StatsBase.sample(1:n, StatsBase.Weights(probs))
 
       distances_u = 1.0 ./ (1.0 .+ get_distance(voters_perm[u], voters_perm))
       probs = ratio .* rds ./ sum(rds) .+ (1.0 - ratio) .* distances_u ./ sum(distances_u)
-      probs = probs .* (rds.>1)
+      probs = probs .* (rds.>0)
       probs[u] = 0.0
+      if log_lvl
+         println(probs)
+      end
       v = StatsBase.sample(1:n, StatsBase.Weights(probs))
 
       if add_edge!(social_network, rand_perm[u], rand_perm[v])
          rds[u] -= 1
          rds[v] -= 1
          M -= 1
-      end
-
-      limit += 1
-      if limit == 100
-         break
       end
    end
 
@@ -267,11 +269,14 @@ function createClusteredMetaGraph(g, clusters, labels)
 end
 
 function drawGraph(g, clustering, K)
-   ClusterColor  = Colors.distinguishable_colors(K)
+   ClusterColor  = distinguishable_colors(K)
    nodefillc = ClusterColor[clustering]
-   display(GraphPlot.gplot(g,
+   nodesize = [log(Graphs.degree(g, v)) for v in Graphs.vertices(g)]
+   GraphPlot.gplot(g,
       nodefillc=nodefillc,
-      layout=random_layout))
+      nodesize=nodesize,
+      #edgestrokec=colorant"red",
+      layout=GraphPlot.spring_layout)
 end
 
 function drawClusteredMetaGraph(G)
@@ -349,5 +354,3 @@ function initGraphCompr(database, p::Float64, normalize::Bool, f::Function) #WIP
    end
    return g, totalDistance/pairsCount(length(database))
 end
-
-#__________________________________________________________________

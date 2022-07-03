@@ -4,7 +4,7 @@ using Base.Threads
 using Base: Float64
 using Random
 using Dates
-import Colors
+using Colors
 import Base.@kwdef
 
 using MetaGraphs

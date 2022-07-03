@@ -96,6 +96,25 @@ function gather_vis(exp_dir, sampled_voter_ids, reduce_dim_config, clustering_co
     return visualizations
 end
 
+function model_vis(model, sampled_voter_ids, reduce_dim_config, clustering_config, parties, candidates)
+    title = reduce_dim_config.method * "_" * clustering_config.method * "_" * string(length(sampled_voter_ids))
+
+    sampled_voters = get_voters(model)[sampled_voter_ids]
+    sampled_opinions = reduce(hcat, get_opinion(sampled_voters))
+
+    projections = reduce_dim(sampled_opinions, reduce_dim_config)
+        
+    labels, clusters = clustering(sampled_voters, candidates, length(parties), clustering_config)
+
+    n = 3
+    plot = Plots.plot(size = Plots.default(:size) .* (1, n), layout = (n, 1), bottom_margin = 10Plots.mm, left_margin = 5Plots.mm)
+
+    draw_voter_vis!(plot[1, 1], projections, clusters, title)
+    draw_degree_distr!(plot[2, 1], Graphs.degree_histogram(model.social_network))
+    draw_edge_distances!(plot[3, 1], get_edge_distances(model.social_network, model.voters))
+
+    return plot
+end
 function init_metrics(model, can_count)
     g = get_social_network(model)
     voters = get_voters(model)
@@ -160,11 +179,11 @@ function metrics_vis(metrics, candidates, parties, exp_dir=Nothing)
     return plots
 end
 
-function draw_voter_vis(projections, clusters, title, exp_dir=Nothing, counter=[0])
+function draw_voter_vis!(plot, projections, clusters, title, exp_dir=Nothing, counter=[0])
     cluster_colors  = Colors.distinguishable_colors(length(clusters))
 
     idxes = collect(clusters[1])
-    plot = Plots.scatter(Tuple(eachrow(projections[:, idxes])), c=cluster_colors[1], label=length(clusters[1]), title=title)
+    Plots.scatter!(plot, Tuple(eachrow(projections[:, idxes])), c=cluster_colors[1], label=length(clusters[1]), title=title)
     for i in 2:length(clusters)
         idxes = collect(clusters[i])
         Plots.scatter!(plot, Tuple(eachrow(projections[:, idxes])), c=cluster_colors[i], label=length(clusters[i]), alpha=0.6)
@@ -177,8 +196,8 @@ function draw_voter_vis(projections, clusters, title, exp_dir=Nothing, counter=[
     return plot
 end
 
-function draw_heat_vis(projections, difference, title, exp_dir=Nothing, counter=[0])
-    plot = Plots.scatter(Tuple(eachrow(projections)), marker_z=difference, title=title)
+function draw_heat_vis!(plot, projections, difference, title, exp_dir=Nothing, counter=[0])
+    Plots.scatter!(plot, Tuple(eachrow(projections)), marker_z=difference, title=title)
     
     if exp_dir != Nothing
         Plots.savefig(plot, "$(exp_dir)/images/$(title)_$(counter[1]).png")
@@ -196,8 +215,8 @@ function get_edge_distances(social_network, voters)
     return distances
 end
 
-function draw_edge_distances(distances)
-    Plots.histogram(distances,
+function draw_edge_distances!(plot, distances)
+    Plots.histogram!(plot, distances,
                          title = "Edge distance distribution",
                          legend = false,
                          ylabel = "Num. of vertices",
@@ -233,17 +252,17 @@ function draw_metric(values, title::String)
     )
 end
 
-function draw_degree_distr(dict, exp_dir=Nothing, diff_counter=[0])
-    keyss = collect(keys(dict))
-    vals = collect(values(dict))
+function draw_degree_distr!(plot, degree_distribution, exp_dir=Nothing, diff_counter=[0])
+    sorted = sort(degree_distribution)
+    keyss = collect(keys(sorted))
+    vals = collect(values(sorted))
 
-    plot = Plots.histogram(keyss,
-                        weights = vals,
-                        nbins = maximum(keyss),
+    plot = Plots.plot!(plot, keyss, vals, 
                         title = "Degree distribution",
                         legend = false,
-                        ylabel = "Num. of vertices",
-                        xlabel = "Num. of edges")
+                        xaxis=:log, yaxis=:log,
+                        ylabel = "Num. of vertices (log)",
+                        xlabel = "Degree (log)")
 
     if exp_dir != Nothing
         Plots.savefig(plot, "$(exp_dir)/images/degree_distribution_$(diff_counter[1]).png")
@@ -252,7 +271,7 @@ function draw_degree_distr(dict, exp_dir=Nothing, diff_counter=[0])
     return plot
 end
  
-function draw_voting_res(candidates, parties, result, title::String)
+function draw_voting_res(candidates, parties, result, title::String) #OLD
     names = [candidate.name * " - " * parties[candidate.party] for candidate in candidates]
     #party_colors = Colors.distinguishable_colors(length())[parties[candidate.party] for candidate in candidates]
     Plots.plot(result,
