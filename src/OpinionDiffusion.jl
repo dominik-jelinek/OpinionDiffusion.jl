@@ -66,7 +66,10 @@ include("voters/Abstract_voter.jl")
 include("voters/Kendall_voter.jl")
 include("voters/Spearman_voter.jl")
 
-include("graph.jl")
+include("graphs/graph.jl")
+include("graphs/barabasi_albert.jl")
+include("graphs/DEG.jl")
+
 include("models/Abstract_model.jl")
 include("models/General_model.jl")
 

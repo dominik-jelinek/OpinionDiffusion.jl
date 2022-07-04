@@ -1,9 +1,9 @@
 
 struct Kendall_voter <: Abstract_voter
    ID::Int64
-   vote::Vector{Vector{Int64}}
    opinion::Vector{Float64}
 
+   vote::Vector{Vector{Int64}}
    openmindedness::Float64
    stubborness::Float64
 end
@@ -22,7 +22,7 @@ function Kendall_voter(ID, vote, can_count, openmindedness_distr::Distributions.
    openmindedness = rand(openmindedness_distr)
    stubbornness = rand(stubbornness_distr)
 
-   return Kendall_voter(ID, vote, opinion, openmindedness, stubbornness)
+   return Kendall_voter(ID, opinion, vote, openmindedness, stubbornness)
 end
 
 function init_voters(election, can_count, voter_config::Kendall_voter_init_config)
@@ -62,7 +62,7 @@ function kendall_encoding(vote::Vector{Vector{Int64}}, can_count)
    counter = 1
    for can_1 in 1:can_count-1
       for can_2 in can_1+1:can_count
-         opinion[counter] = get_penalty(inv_vote, can_1, can_2)
+         opinion[counter] = get_penalty(inv_vote[can_1], inv_vote[can_2], choose2(can_count))
          counter += 1
       end
    end
@@ -264,34 +264,34 @@ function get_distance_preserving_actions(u::Kendall_voter, v::Kendall_voter, can
    # vector of new votes and opinions for voter u if we choose specific action 
    feasible_actions = Vector{Tuple{Vector{Int64}, Int64, Float64, Symbol}}()
    inverted = invert_vote(get_vote(v), can_count)
-
+   max_distance = choose2(can_count)
    # check first bucket possible unstack
    (l_mins, l_pos_min), (l_maxs, l_pos_max) = get_extremes(u.vote[1], inverted)
    if l_pos_min != l_pos_max
-      push!(feasible_actions, (l_mins, 1, -length(l_mins) * (length(u.vote[1]) - length(l_mins)) * 0.5, :unstack_left))
-      push!(feasible_actions, (l_maxs, 1, -length(l_maxs) * (length(u.vote[1]) - length(l_maxs)) * 0.5, :unstack_right))
+      push!(feasible_actions, (l_mins, 1, -length(l_mins) * (length(u.vote[1]) - length(l_mins)) * 0.5 / max_distance, :unstack_left))
+      push!(feasible_actions, (l_maxs, 1, -length(l_maxs) * (length(u.vote[1]) - length(l_maxs)) * 0.5 / max_distance, :unstack_right))
    end
 
    for i in 2:length(u.vote)
       (r_mins, r_pos_min), (r_maxs, r_pos_max) = get_extremes(u.vote[i], inverted)
       # check for possible unbuckets
       if r_pos_min != r_pos_max
-         push!(feasible_actions, (r_mins, i, -length(r_mins) * (length(u.vote[i]) - length(r_mins)) * 0.5, :unstack_left))
-         push!(feasible_actions, (r_maxs, i, -length(r_maxs) * (length(u.vote[i]) - length(r_maxs)) * 0.5, :unstack_right))
+         push!(feasible_actions, (r_mins, i, -length(r_mins) * (length(u.vote[i]) - length(r_mins)) * 0.5 / max_distance, :unstack_left))
+         push!(feasible_actions, (r_maxs, i, -length(r_maxs) * (length(u.vote[i]) - length(r_maxs)) * 0.5 / max_distance, :unstack_right))
       end
 
       # check for possible rebuckets
       # if there are candidates from the right bucket that have position less than right most candidates from left bucket 
       # then at least those pairs of candidates will increase Kendall-tau distance
       if l_pos_max >= r_pos_max 
-         l_change = -length(l_maxs) * (length(u.vote[i - 1]) - length(l_maxs)) * 0.5
-         r_change = -length(l_maxs) * length(u.vote[i]) * 0.5
+         l_change = -length(l_maxs) * (length(u.vote[i - 1]) - length(l_maxs)) * 0.5 / max_distance
+         r_change = -length(l_maxs) * length(u.vote[i]) * 0.5 / max_distance
          push!(feasible_actions, (l_maxs, i - 1, l_change + r_change, :restack_right))
       end
 
       if r_pos_min <= l_pos_min
-         l_change = -length(r_mins) * length(u.vote[i - 1]) * 0.5
-         r_change = -length(r_mins) * (length(u.vote[i]) - length(r_mins)) * 0.5 
+         l_change = -length(r_mins) * length(u.vote[i - 1]) * 0.5 / max_distance
+         r_change = -length(r_mins) * (length(u.vote[i]) - length(r_mins)) * 0.5 / max_distance
          push!(feasible_actions, (r_mins, i, l_change + r_change, :restack_left))
       end
 
@@ -326,10 +326,12 @@ function unbucket(u_opinion, v_opinion, u_vote, bucket_idx, can_count)
 end
 
 function unbucket_right(can, opinion, bucket, can_count)
+   max_distance = choose2(can_count)
+
    new_opinion = deepcopy(opinion)
    for i in 1:length(bucket)
       if bucket[i] != can
-         new_opinion[get_index(bucket[i], can, can_count)] = can < bucket[i] ? 1.0 : 0.0
+         new_opinion[get_index(bucket[i], can, can_count)] = can < bucket[i] ? 1.0 / max_distance : 0.0
       end
    end
 
@@ -337,10 +339,12 @@ function unbucket_right(can, opinion, bucket, can_count)
 end
 
 function unbucket_left(can, opinion, bucket, can_count)
+   max_distance = choose2(can_count)
+
    new_opinion = deepcopy(opinion)
    for i in 1:length(bucket)
       if bucket[i] != can
-         new_opinion[get_index(bucket[i], can, can_count)] = can < bucket[i] ? 0.0 : 1.0
+         new_opinion[get_index(bucket[i], can, can_count)] = can < bucket[i] ? 0.0 : 1.0 / max_distance
       end
    end
 
@@ -375,30 +379,34 @@ function rebucket(u_opinion, v_opinion, u_vote, r_bucket_idx, can_count)
 end
 
 function rebucket_right(can, opinion, l_bucket, r_bucket, can_count)
+   max_distance = choose2(can_count)
+
    new_opinion = deepcopy(opinion)
    for i in 1:length(l_bucket)
       if l_bucket[i] != can
-         new_opinion[get_index(l_bucket[i], can, can_count)] = can < l_bucket[i] ? 1.0 : 0.0
+         new_opinion[get_index(l_bucket[i], can, can_count)] = can < l_bucket[i] ? 1.0 / max_distance : 0.0
       end
    end
 
    for i in 1:length(r_bucket)
-      new_opinion[get_index(r_bucket[i], can, can_count)] = 0.5
+      new_opinion[get_index(r_bucket[i], can, can_count)] = 0.5 / max_distance
    end
 
    return new_opinion
 end
 
 function rebucket_left(can, opinion, l_bucket, r_bucket, can_count)
+   max_distance = choose2(can_count)
+
    new_opinion = deepcopy(opinion)
 
    for i in 1:length(l_bucket)
-      new_opinion[get_index(l_bucket[i], can, can_count)] = 0.5
+      new_opinion[get_index(l_bucket[i], can, can_count)] = 0.5 / max_distance
    end
 
    for i in 1:length(r_bucket)
       if r_bucket[i] != can
-         new_opinion[get_index(r_bucket[i], can, can_count)] = can < r_bucket[i] ? 0.0 : 1.0
+         new_opinion[get_index(r_bucket[i], can, can_count)] = can < r_bucket[i] ? 0.0 : 1.0 / max_distance
       end
    end
 
@@ -478,19 +486,19 @@ function get_candidates(index, can_count)
    end
 end
 
-function get_penalty(inv_vote, can_1, can_2)
+function get_penalty(pos_1, pos_2, max_distance = nothing)
    # candidates are indistinguishable
    penalty = 0.5
    
-   if inv_vote[can_1] < inv_vote[can_2]
+   if pos_1 < pos_2
       # candidates are in order with numerical candidate ordering
       penalty = 0.0
-   elseif inv_vote[can_1] > inv_vote[can_2]
+   elseif pos_1 > pos_2
       # candidates are out of order with numerical candidate ordering
       penalty = 1.0
    end
    
-   return penalty
+   return max_distance === nothing ? penalty : penalty / max_distance
 end
 
 

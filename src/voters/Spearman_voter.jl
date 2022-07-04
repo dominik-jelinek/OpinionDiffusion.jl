@@ -18,8 +18,8 @@ end
     normalize_shifts::Union{Nothing, Tuple{Bool, Float64, Float64}}
 end
 
-function Spearman_voter(ID, vote, weights, openmindedness_distr::Distributions.ContinuousUnivariateDistribution, stubbornness_distr::Distributions.ContinuousUnivariateDistribution)
-    opinion = spearman_encoding(vote, weights)
+function Spearman_voter(ID, vote, weights, max_distance, openmindedness_distr::Distributions.ContinuousUnivariateDistribution, stubbornness_distr::Distributions.ContinuousUnivariateDistribution)
+    opinion = spearman_encoding(vote, weights, max_distance)
     openmindedness = rand(openmindedness_distr)
     stubbornness = rand(stubbornness_distr)
 
@@ -35,9 +35,17 @@ function init_voters(election, can_count, voter_config::Spearman_voter_init_conf
     openmindedness_distr = Distributions.Truncated(voter_config.openmindedness_distr, 0.0, 1.0)
     stubbornness_distr = Distributions.Truncated(voter_config.stubbornness_distr, 0.0, 1.0)
 
+    a = Vector{Vector{Int64}}()
+    b = Vector{Vector{Int64}}()
+    for i in 1:m
+        push!(a, [i])
+        push!(b, [m - i + 1])
+    end
+    max_distance = get_distance(spearman_encoding(a, weights), spearman_encoding(b, weights))
+    
     voters = Vector{Spearman_voter}(undef, length(election))
     for (i, vote) in enumerate(election)
-        voters[i] = Spearman_voter(i, vote, weights, openmindedness_distr, stubbornness_distr)
+        voters[i] = Spearman_voter(i, vote, weights, max_distance, openmindedness_distr, stubbornness_distr)
     end
 
     return voters
@@ -48,7 +56,7 @@ end
 
 Encodes bucket ordered vote to spearman encoded space
 """
-function spearman_encoding(vote::Vector{Vector{Int64}}, weights)
+function spearman_encoding(vote::Vector{Vector{Int64}}, weights, max_distance=nothing)
     can_count = length(weights)
 
     opinion = Vector{Float64}(undef, can_count)
@@ -64,7 +72,7 @@ function spearman_encoding(vote::Vector{Vector{Int64}}, weights)
         end
     end
     
-    return opinion ./sum(opinion)
+    return max_distance === nothing ? opinion : opinion ./ max_distance
 end
 
 function get_vote(voter::Spearman_voter; eps=0.01) :: Vector{Vector{Int64}}
