@@ -70,8 +70,11 @@ function kendall_encoding(vote::Vector{Vector{Int64}}, can_count)
    return opinion
 end
 
-function step!(self::Kendall_voter, voters, graph, can_count, voter_diff_config::Kendall_voter_diff_config)
-   neighbors_ = neighbors(graph, self.ID)
+function step!(self::Kendall_voter, model, voter_diff_config::Kendall_voter_diff_config)
+   voters = get_voters(model)
+   social_network = get_social_network(model)
+   neighbors_ = neighbors(social_network, self.ID)
+
    if length(neighbors_) == 0
       return
    end
@@ -80,8 +83,8 @@ function step!(self::Kendall_voter, voters, graph, can_count, voter_diff_config:
    neighbor = voters[neighbor_id]
 
    if rand() <= voter_diff_config.attract_proba
-      voters[self.ID] = attract_flip(self, neighbor, can_count)
-      voters[neighbor.ID] = attract_flip(neighbor, self, can_count)
+      voters[self.ID] = attract_flip(self, neighbor, model.can_count)
+      voters[neighbor.ID] = attract_flip(neighbor, self, model.can_count)
    else
       #repel_flip!(self, neighbor)
    end

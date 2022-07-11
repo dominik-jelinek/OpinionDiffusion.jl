@@ -20,13 +20,17 @@ function get_distance(voter::T, voters::Vector{T}) where T <: Abstract_voter
     return Distances.colwise(Distances.Cityblock(), get_opinion(voter), reduce(hcat, get_opinion(voters)))
 end
 
+function get_distance(voters::Vector{T}) where T <: Abstract_voter
+    return Distances.pairwise(Distances.Cityblock(), reduce(hcat, get_opinion(voters)), dims=2)
+end
+
 function init_voters(election, can_count, voter_config::T) where T <: Abstract_voter_init_config
     throw(NotImplementedError("init_voters"))
 end
 
-function step!(self::T, voters, graph, can_count, voter_diff_config::U) where 
+function step!(self::T, model, voter_diff_config::U) where 
     {T <: Abstract_voter, U <: Abstract_voter_diff_config}
-    throw(NotImplementedError("step!"))
+    throw(NotImplementedError("step!(self::T, model, voter_diff_config::U) where {T <: Abstract_voter, U <: Abstract_voter_diff_config}"))
 end
 
 function get_vote(voter::Abstract_voter) :: Vector{Vector{Int64}}

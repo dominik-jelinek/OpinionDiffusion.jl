@@ -45,16 +45,19 @@ end
 """
 Pick a random voter remove one edge based on inverse that it was created and the add one edge
 """
-function graph_diffusion!(model::General_model, graph_diff_config::General_graph_diff_config)
-    sample_size = ceil(Int, graph_diff_config.evolve_edges * length(model.voters))
-    vertex_ids = StatsBase.sample(1:length(model.voters), sample_size, replace=true)
+function graph_diffusion!(model::General_model, evolve_edges, graph_diff_config::General_graph_diff_config)
+    voters = get_voters(model)
+    
+    sample_size = ceil(Int, evolve_edges * length(voters))
+    vertex_ids = StatsBase.sample(1:length(voters), sample_size, replace=true)
 
     for id in vertex_ids
-        edge_diffusion!(model.voters[id], model.voters, model.social_network, graph_diff_config.popularity_ratio)
+        edge_diffusion!(voters[id], model, graph_diff_config.popularity_ratio)
     end
 end
 
-function edge_diffusion!(self, voters, social_network, popularity_ratio)
+function edge_diffusion!(self, model, popularity_ratio)
+    voters, social_network = get_voters(model), get_social_network(model)
     ID = self.ID
     distances = get_distance(self, voters)
 

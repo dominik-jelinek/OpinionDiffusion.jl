@@ -214,10 +214,18 @@ function get_edge_distances(social_network, voters)
 
     return distances
 end
+function get_edge_distances2(social_network, voters)
+    distances = Vector{Any}(undef, Graphs.ne(social_network))
+    for (i, edge) in enumerate(Graphs.edges(social_network))
+       distances[i] = (Graphs.src(edge), Graphs.dst(edge), get_distance(voters[Graphs.src(edge)], voters[Graphs.dst(edge)]))
+    end
 
+    return distances
+end
 function draw_edge_distances!(plot, distances)
     Plots.histogram!(plot, distances,
                          title = "Edge distance distribution",
+                         nbins = 20,
                          legend = false,
                          ylabel = "Num. of vertices",
                          xlabel = "Distance")

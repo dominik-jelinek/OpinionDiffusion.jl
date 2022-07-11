@@ -7,7 +7,7 @@ struct Spearman_voter <: Abstract_voter
 end
 
 @kwdef struct Spearman_voter_init_config <: Abstract_voter_init_config
-    weight_func::Function
+    weights::Vector{Float64}
     openmindedness_distr::Distributions.Distribution{Distributions.Univariate, Distributions.Continuous}
     stubbornness_distr::Distributions.Distribution{Distributions.Univariate, Distributions.Continuous}
 end
@@ -18,34 +18,32 @@ end
     normalize_shifts::Union{Nothing, Tuple{Bool, Float64, Float64}}
 end
 
-function Spearman_voter(ID, vote, weights, max_distance, openmindedness_distr::Distributions.ContinuousUnivariateDistribution, stubbornness_distr::Distributions.ContinuousUnivariateDistribution)
-    opinion = spearman_encoding(vote, weights, max_distance)
+function Spearman_voter(ID, vote, weights, openmindedness_distr::Distributions.ContinuousUnivariateDistribution, stubbornness_distr::Distributions.ContinuousUnivariateDistribution)
+    opinion = spearman_encoding(vote, weights)
     openmindedness = rand(openmindedness_distr)
     stubbornness = rand(stubbornness_distr)
 
     return Spearman_voter(ID, opinion, openmindedness, stubbornness)
 end
 
-function init_voters(election, can_count, voter_config::Spearman_voter_init_config)
-    weights = Vector{Float64}(undef, can_count)
-    weights[1] = 0.0
-    for i in 2:length(weights)
-        weights[i] = weights[i - 1] + voter_config.weight_func(i - 1)
-    end
-    openmindedness_distr = Distributions.Truncated(voter_config.openmindedness_distr, 0.0, 1.0)
-    stubbornness_distr = Distributions.Truncated(voter_config.stubbornness_distr, 0.0, 1.0)
-
+function get_max_distance(can_count, weights)
     a = Vector{Vector{Int64}}()
     b = Vector{Vector{Int64}}()
-    for i in 1:m
+    for i in 1:can_count
         push!(a, [i])
-        push!(b, [m - i + 1])
+        push!(b, [can_count - i + 1])
     end
-    max_distance = get_distance(spearman_encoding(a, weights), spearman_encoding(b, weights))
+
+    return get_distance(spearman_encoding(a, weights), spearman_encoding(b, weights))
+end
+
+function init_voters(election, can_count, voter_config::Spearman_voter_init_config)
+    openmindedness_distr = Distributions.Truncated(voter_config.openmindedness_distr, 0.0, 1.0)
+    stubbornness_distr = Distributions.Truncated(voter_config.stubbornness_distr, 0.0, 1.0)
     
     voters = Vector{Spearman_voter}(undef, length(election))
     for (i, vote) in enumerate(election)
-        voters[i] = Spearman_voter(i, vote, weights, max_distance, openmindedness_distr, stubbornness_distr)
+        voters[i] = Spearman_voter(i, vote, voter_config.weights, openmindedness_distr, stubbornness_distr)
     end
 
     return voters
@@ -56,26 +54,28 @@ end
 
 Encodes bucket ordered vote to spearman encoded space
 """
-function spearman_encoding(vote::Vector{Vector{Int64}}, weights, max_distance=nothing)
-    can_count = length(weights)
-
-    opinion = Vector{Float64}(undef, can_count)
-    mean = (weights[end] + weights[length(vote)-1]) / 2
+function spearman_encoding(vote::Vector{Vector{Int64}}, weights)
+    opinion = Vector{Float64}(undef, length(weights))
     
-    for (i, bucket) in enumerate(vote)
-        if (length(bucket) == 1)
+    i = 1
+    for bucket in vote
+        if length(bucket) == 1
             opinion[bucket[1]] = weights[i]
         else
+            mean = sum(weights[i:i + length(bucket) - 1]) / length(bucket)
+
             for can in bucket
                 opinion[can] = mean
             end
         end
+
+        i += length(bucket)
     end
     
-    return max_distance === nothing ? opinion : opinion ./ max_distance
+    return opinion
 end
 
-function get_vote(voter::Spearman_voter; eps=0.01) :: Vector{Vector{Int64}}
+function get_vote(voter::Spearman_voter; eps=0.005) :: Vector{Vector{Int64}}
     # sort indexes based on opinions
     can_ranking = sortperm(voter.opinion)
     sorted_scores = voter.opinion[can_ranking]
@@ -102,8 +102,11 @@ function get_pos(voter::Spearman_voter, can)
     return get_opinion(voter)[can]
 end
 
-function step!(self::Spearman_voter, voters, graph, can_count, voter_diff_config::Spearman_voter_diff_config)
-    neighbors_ = neighbors(graph, self.ID)
+function step!(self::Spearman_voter, model, voter_diff_config::Spearman_voter_diff_config)
+    voters = get_voters(model)
+    social_network = get_social_network(model)
+    neighbors_ = neighbors(social_network, self.ID)
+    
     if length(neighbors_) == 0
         return
     end
