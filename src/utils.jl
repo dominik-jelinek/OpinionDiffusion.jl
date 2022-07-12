@@ -43,13 +43,13 @@ function last_log_idx(exp_dir)
    return idx
 end
 
-function get_random_vote(can_count) :: Vector{Vector{Int64}}
+function get_random_vote(can_count) :: Vote
    # assign candidates to random bins
    bins = rand(1:can_count, can_count)
    sorted_cans = sortperm(bins)
    sorted_bins = bins[sorted_cans]
  
-   vote = Vector{Vector{Int64}}()
+   vote = Vote()
    curr_bin = 0
    skip_bins = 0
    for i in 1:length(sorted_cans)
@@ -60,11 +60,58 @@ function get_random_vote(can_count) :: Vector{Vector{Int64}}
          end
          
          curr_bin = sorted_bins[i]
-         push!(vote, [sorted_cans[i]])
+         push!(vote, Bucket(sorted_cans[i]))
       else
          push!(vote[curr_bin - skip_bins], sorted_cans[i])
       end
    end
 
    return vote
+end
+
+function filter_candidates(election, candidates, remove_candidates, can_count)
+	if length(remove_candidates) == 0
+		return election, candidates
+	end
+	# calculate candidate index offset dependant 
+	adjust = zeros(can_count)
+	for i in 1:length(remove_candidates) - 1
+		adjust[remove_candidates[i] + 1:remove_candidates[i + 1]-1] += fill(i, remove_candidates[i + 1] - remove_candidates[i] - 1)
+	end
+	adjust[remove_candidates[end] + 1:end] += fill(length(remove_candidates), can_count - remove_candidates[end])
+
+	#copy election without the filtered out candidates
+	new_election = Vector{Vote}()
+	for vote in election
+		new_vote = Vote()
+		for bucket in vote
+			new_bucket = Bucket()
+			
+			for can in bucket
+				if can ∉ remove_candidates
+					push!(new_bucket, can - adjust[can])
+				end	
+			end
+			
+			if length(new_bucket) != 0
+				push!(new_vote, new_bucket)
+			end
+		end
+
+		# vote with one bucket ore less buckets contains no preferences
+		if length(new_vote) > 1
+			push!(new_election, new_vote)
+		end
+	end
+
+	new_candidates = Vector{OpinionDiffusion.Candidate}()
+	for (i, can) in enumerate(candidates)
+		if i ∉ remove_candidates
+			push!(new_candidates, OpinionDiffusion.Candidate(can.name, can.party))
+		end
+	end
+	
+	#candidates = deleteat!(copy(candidates), remove_candidates)
+	
+	return new_election, new_candidates
 end

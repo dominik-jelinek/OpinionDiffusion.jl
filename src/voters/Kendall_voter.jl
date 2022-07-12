@@ -3,7 +3,7 @@ struct Kendall_voter <: Abstract_voter
    ID::Int64
    opinion::Vector{Float64}
 
-   vote::Vector{Vector{Int64}}
+   vote::Vote
    openmindedness::Float64
    stubborness::Float64
 end
@@ -37,7 +37,7 @@ function init_voters(election, can_count, voter_config::Kendall_voter_init_confi
    return voters
 end
 
-function get_vote(voter::Kendall_voter) :: Vector{Vector{Int}}
+function get_vote(voter::Kendall_voter) :: Vote
    return voter.vote
 end
 
@@ -50,12 +50,14 @@ function get_pos(voter::Kendall_voter, can)
 
       pos += length(bucket)
    end
+
+   return pos
 end
 
 """
-Encodes vote into space of dimension canCount choose 2 
+Encodes vote into space of dimension can_ount choose 2 
 """
-function kendall_encoding(vote::Vector{Vector{Int64}}, can_count)
+function kendall_encoding(vote::Vote, can_count)
    inv_vote = invert_vote(vote, can_count)
 
    opinion = Vector{Float64}(undef, choose2(can_count))
@@ -210,8 +212,14 @@ function get_feasible_actions(u::Kendall_voter, v::Kendall_voter, can_count)
    return feasible_actions
 end
 
-function delete_cans!(vote, bucket_idx, cans)
+function delete_cans!(vote::Vector{Vector{Int64}}, bucket_idx, cans)
    vote[bucket_idx] = [can for can in vote[bucket_idx] if can ∉ cans]
+end
+
+function delete_cans!(vote::Vector{Set{Int64}}, bucket_idx, cans)
+   for can in cans
+      delete!(vote[bucket_idx], can)
+   end
 end
 
 function apply_action2(action, voter, can_count)
@@ -220,18 +228,18 @@ function apply_action2(action, voter, can_count)
 
    if type == :unstack_left
       delete_cans!(new_vote, bucket_idx, cans)
-      insert!(new_vote, bucket_idx, cans)
+      insert!(new_vote, bucket_idx, Bucket(cans))
 
       new_opinion = kendall_encoding(new_vote, can_count)
 
    elseif type == :unstack_right      
       delete_cans!(new_vote, bucket_idx, cans)
-      insert!(new_vote, bucket_idx + 1, cans)
+      insert!(new_vote, bucket_idx + 1, Bucket(cans))
 
       new_opinion = kendall_encoding(new_vote, can_count)
 
    elseif type == :restack_left
-      append!(new_vote[bucket_idx - 1], cans)
+      push!(new_vote[bucket_idx - 1], cans...)
       
       if length(new_vote[bucket_idx]) == length(cans)
          deleteat!(new_vote, bucket_idx)
@@ -242,7 +250,7 @@ function apply_action2(action, voter, can_count)
       new_opinion = kendall_encoding(new_vote, can_count)
 
    else
-      append!(new_vote[bucket_idx + 1], cans)
+      push!(new_vote[bucket_idx + 1], cans...)
 
       if length(new_vote[bucket_idx]) == length(cans)
          deleteat!(new_vote, bucket_idx)
@@ -253,10 +261,11 @@ function apply_action2(action, voter, can_count)
       new_opinion = kendall_encoding(new_vote, can_count)
    end
 
-   return Kendall_voter(voter.ID, new_vote, new_opinion, voter.openmindedness, voter.stubborness)
+   return Kendall_voter(voter.ID, new_opinion, new_vote, voter.openmindedness, voter.stubborness)
 end
 
-function get_extremes(bucket, inverted_vote)
+function get_extremes(bucket_set, inverted_vote)
+   bucket = collect(bucket_set)
    pos_in_v = inverted_vote[bucket]
    pos_min, pos_max = minimum(pos_in_v), maximum(pos_in_v)
 

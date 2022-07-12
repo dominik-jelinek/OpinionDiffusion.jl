@@ -1,7 +1,7 @@
 @kwdef struct DEG_graph_config <: Abstract_graph_init_config
     targed_deg_distr
     target_cc
-    ratio
+    popularity_ratio
     log_lvl
 end
 
@@ -10,12 +10,12 @@ function init_graph(voters, graph_init_config::DEG_graph_config)
         voters,
         graph_init_config.targed_deg_distr,
         graph_init_config.target_cc,
-        ratio=graph_init_config.ratio,
+        popularity_ratio=graph_init_config.popularity_ratio,
         log_lvl=graph_init_config.log_lvl
     )
 end
 
-function get_DEG(voters, targed_deg_distr, target_cc; ratio=1.0, log_lvl=true)
+function get_DEG(voters, targed_deg_distr, target_cc; popularity_ratio=1.0, log_lvl=true)
     n = length(voters)
     social_network = MetaGraphs.MetaGraph(n)
 
@@ -42,7 +42,7 @@ function get_DEG(voters, targed_deg_distr, target_cc; ratio=1.0, log_lvl=true)
         u = StatsBase.sample(1:length(rds_nonzero), StatsBase.Weights(rds_nonzero))
 
         distances_u = (1 / 2) .^ get_distance(voters[u], voters[nonzero])
-        probs = (ratio .* rds_nonzero ./ sum(rds_nonzero)) .+ (1.0 - ratio) .* distances_u ./ sum(distances_u)
+        probs = (popularity_ratio .* rds_nonzero ./ sum(rds_nonzero)) .+ (1.0 - popularity_ratio) .* distances_u ./ sum(distances_u)
         probs[u] = 0.0
         if log_lvl
             println(probs)
@@ -50,7 +50,7 @@ function get_DEG(voters, targed_deg_distr, target_cc; ratio=1.0, log_lvl=true)
         v = StatsBase.sample(1:n, StatsBase.Weights(probs))
 
         distances_v = (1 / 2) .^ get_distance(voters[v], voters[nonzero])
-        probs = ratio .* rds_nonzero ./ sum(rds_nonzero) .+ (1.0 - ratio) .* (distances_u ./ sum(distances_u) .+ distances_v ./ sum(distances_v)) ./ 2
+        probs = popularity_ratio .* rds_nonzero ./ sum(rds_nonzero) .+ (1.0 - popularity_ratio) .* (distances_u ./ sum(distances_u) .+ distances_v ./ sum(distances_v)) ./ 2
         probs[u] = 0.0
         probs[v] = 0.0
 
@@ -111,7 +111,7 @@ function get_DEG(voters, targed_deg_distr, target_cc; ratio=1.0, log_lvl=true)
         u = StatsBase.sample(1:length(rds_nonzero), StatsBase.Weights(rds_nonzero))
 
         distances_u = (1 / 2) .^ get_distance(voters[u], voters[nonzero])
-        probs = ratio .* rds_nonzero ./ sum(rds_nonzero) .+ (1.0 - ratio) .* distances_u ./ sum(distances_u)
+        probs = popularity_ratio .* rds_nonzero ./ sum(rds_nonzero) .+ (1.0 - popularity_ratio) .* distances_u ./ sum(distances_u)
         probs[u] = 0.0
         if log_lvl
             println(probs)
@@ -132,7 +132,7 @@ function get_DEG(voters, targed_deg_distr, target_cc; ratio=1.0, log_lvl=true)
     return social_network
 end
 
-function get_DEG_distances(voters, targed_deg_distr, target_cc; ratio=1.0, log_lvl=true)
+function get_DEG_distances(voters, targed_deg_distr, target_cc; popularity_ratio=1.0, log_lvl=true)
     n = length(voters)
     social_network = MetaGraphs.MetaGraph(n)
 
@@ -162,7 +162,7 @@ function get_DEG_distances(voters, targed_deg_distr, target_cc; ratio=1.0, log_l
         u = StatsBase.sample(1:length(rds_nonzero), StatsBase.Weights(rds_nonzero))
 
         distances_u = distances[u, nonzero]
-        probs = (ratio .* rds_nonzero ./ sum(rds_nonzero)) .+ (1.0 - ratio) .* distances_u ./ sum(distances_u)
+        probs = (popularity_ratio .* rds_nonzero ./ sum(rds_nonzero)) .+ (1.0 - popularity_ratio) .* distances_u ./ sum(distances_u)
         probs[u] = 0.0
         if log_lvl
             println(probs)
@@ -170,7 +170,7 @@ function get_DEG_distances(voters, targed_deg_distr, target_cc; ratio=1.0, log_l
         v = StatsBase.sample(1:n, StatsBase.Weights(probs))
 
         distances_v = distances[v, nonzero]
-        probs = ratio .* rds_nonzero ./ sum(rds_nonzero) .+ (1.0 - ratio) .* (distances_u ./ sum(distances_u) .+ distances_v ./ sum(distances_v)) ./ 2
+        probs = popularity_ratio .* rds_nonzero ./ sum(rds_nonzero) .+ (1.0 - popularity_ratio) .* (distances_u ./ sum(distances_u) .+ distances_v ./ sum(distances_v)) ./ 2
         probs[u] = 0.0
         probs[v] = 0.0
 
@@ -232,7 +232,7 @@ function get_DEG_distances(voters, targed_deg_distr, target_cc; ratio=1.0, log_l
         u = StatsBase.sample(1:length(rds_nonzero), StatsBase.Weights(rds_nonzero))
 
         distances_u = distances[u, nonzero]
-        probs = ratio .* rds_nonzero ./ sum(rds_nonzero) .+ (1.0 - ratio) .* distances_u ./ sum(distances_u)
+        probs = popularity_ratio .* rds_nonzero ./ sum(rds_nonzero) .+ (1.0 - popularity_ratio) .* distances_u ./ sum(distances_u)
         probs[u] = 0.0
         if log_lvl
             println(probs)

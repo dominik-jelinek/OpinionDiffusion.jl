@@ -33,12 +33,12 @@ function step!(self::T, model, voter_diff_config::U) where
     throw(NotImplementedError("step!(self::T, model, voter_diff_config::U) where {T <: Abstract_voter, U <: Abstract_voter_diff_config}"))
 end
 
-function get_vote(voter::Abstract_voter) :: Vector{Vector{Int64}}
+function get_vote(voter::Abstract_voter; kwargs...) :: Vote
     throw(NotImplementedError("get_vote"))
 end
 
 function get_votes(voters::Vector{T}; kwargs...) where T <: Abstract_voter
-    votes = Vector{Vector{Vector{Int64}}}(undef, length(voters))
+    votes = Vector{Vote}(undef, length(voters))
     for (i, voter) in enumerate(voters)
         votes[i] = get_vote(voter; kwargs...)
     end

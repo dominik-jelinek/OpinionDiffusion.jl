@@ -26,7 +26,7 @@ end
 Cluster voters based on highest ranked candidate
 """
 function party_clustering(voters, candidates, parties_count)
-    labels = [candidates[get_vote(voter)[1][1]].party for voter in voters] 
+    labels = [candidates[iterate(get_vote(voter)[1])[1]].party for voter in voters] 
     clusters = clusterize(labels, parties_count)
     
     return labels, clusters

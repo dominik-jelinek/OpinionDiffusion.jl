@@ -318,4 +318,3 @@ function ego(social_network, node_id, depth)
 
     return induced_subgraph(social_network, ego_nodes)
 end
-

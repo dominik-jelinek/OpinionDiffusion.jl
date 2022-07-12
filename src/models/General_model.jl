@@ -61,23 +61,27 @@ function edge_diffusion!(self, model, popularity_ratio)
     ID = self.ID
     distances = get_distance(self, voters)
 
-    #remove one neighboring edge
-    neibrs = neighbors(social_network, self.ID)
+    neibrs = neighbors(social_network, ID)
+    if length(neibrs) == 0
+        # do not add or remove edges because this would change average degree
+        return
+    end
 
+    #remove one neighboring edge
     degree_probs = 1 ./ degree(social_network, neibrs)
     distance_probs = 2 .^ distances[neibrs]
     probs = popularity_ratio .* degree_probs ./ sum(degree_probs) + (1.0 - popularity_ratio) .* distance_probs ./ sum(distance_probs)
-    probs[ID] = 0.0
 
-    to_remove = rand(Distributions.Categorical(probs))
-    rem_edge!(social_network, self.ID, neibrs[to_remove])
+    to_remove = StatsBase.sample(1:length(neibrs), StatsBase.Weights(probs))
+    rem_edge!(social_network, ID, neibrs[to_remove])
 
     #add edge
     degree_probs = degree(social_network)
     distance_probs = (1 / 2) .^ distances
     probs = popularity_ratio .* degree_probs ./ sum(degree_probs) + (1.0 - popularity_ratio) .* distance_probs ./ sum(distance_probs)
     probs[ID] = 0.0
-    probs[neighbors(social_network, self.ID)] .= 0.0
+    probs[neighbors(social_network, ID)] .= 0.0
 
-    add_edge!(social_network, self.ID, rand(Distributions.Categorical(probs)))
+    to_add = StatsBase.sample(1:length(voters), StatsBase.Weights(probs))
+    add_edge!(social_network, ID, to_add)
 end

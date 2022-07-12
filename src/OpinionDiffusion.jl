@@ -53,6 +53,9 @@ export voters, social_network
 export load_model, restart_model, save_ensemble
 export test_KT
 
+Bucket = Set{Int64}
+Vote = Vector{Bucket}
+
 include("configs.jl")
 
 include("parsing.jl")

@@ -60,37 +60,38 @@ function parse_candidates(lines)
    return parties, candidates
 end
 
-function parse_votes(lines, can_count)
+function parse_votes(lines, can_count) ::Vector{Vote} 
    voters_count = parse(Int, split(lines[2+can_count], ",")[1])
    voters_uniq = parse(Int, split(lines[2+can_count], ",")[3])
 
-   election = Vector{Vector{Vector{Int64}}}(undef, voters_count)
+   election = Vector{Vote}(undef, voters_count)
    counter = 1
    for i in 1:voters_uniq
       line = lines[i + can_count + 2]
       voter_str = split(line, "{")
-      bucket_vote = Vector{Vector{Int64}}()
-      vote = length(voter_str) == 2 ? split(chop(voter_str[1]), ",") : split(voter_str[1], ",")
+      vote = Vote()
+      tokenized_vote = length(voter_str) == 2 ? split(chop(voter_str[1]), ",") : split(voter_str[1], ",")
       #first column contains number of matching votes
-      matching_votes = parse(Int, vote[1])
+      matching_votes = parse(Int, tokenized_vote[1])
 
       #bucket for each known prefference
-      for j in 2:length(vote)
-         push!(bucket_vote, [parse(Int64, vote[j])])
+      for j in 2:length(tokenized_vote)
+         push!(vote, Bucket(parse(Int64, tokenized_vote[j])))
       end
       
       #the rest goes into one bucket as they are not distinguishable
       if length(voter_str) == 2
          no_pref = split(chop(voter_str[2]), ",")
-         bucket = Vector{Int64}()
+         bucket = Bucket()
          for j in 1:length(no_pref)
             push!(bucket, parse(Int64, no_pref[j]))
          end
-         push!(bucket_vote, bucket)
+         push!(vote, bucket)
       end
       
+      #copy parsed vote into election based on how many matching votes there were
       for j in 1:matching_votes
-         election[counter] = deepcopy(bucket_vote)
+         election[counter] = deepcopy(vote)
          counter += 1
       end
    end

@@ -12,7 +12,7 @@ function drawElectionResult(candidates, parties, result)
     )
 end
 
-function plurality_voting(votes::Vector{Vector{Vector{Int64}}}, can_count,  normalize::Bool)
+function plurality_voting(votes::Vector{Vote}, can_count,  normalize::Bool)
     result = zeros(Float64, can_count)
 
     for vote in votes
@@ -24,7 +24,7 @@ function plurality_voting(votes::Vector{Vector{Vector{Int64}}}, can_count,  norm
     return normalize ? (result/sum(result))*100 : result
 end
 
-function borda_voting(votes::Vector{Vector{Vector{Int64}}}, can_count, normalize::Bool)
+function borda_voting(votes::Vector{Vote}, can_count, normalize::Bool)
     result = zeros(Float64, can_count)
     
     for vote in votes
@@ -42,7 +42,7 @@ function borda_voting(votes::Vector{Vector{Vector{Int64}}}, can_count, normalize
     return normalize ? (result/sum(result))*100 : result
 end
 
-function copeland_voting(votes::Vector{Vector{Vector{Int64}}}, can_count)
+function copeland_voting(votes::Vector{Vote}, can_count) #TO DO rewrite with sets
     result = zeros(Float64, can_count, can_count)
     alpha = 0.5
 
