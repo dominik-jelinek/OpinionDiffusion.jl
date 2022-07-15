@@ -1,30 +1,3 @@
-function reduce_dim(sampled_opinions, reduce_dim_config)
-    if reduce_dim_config.method == "PCA"
-        config = reduce_dim_config.pca_config
-        model = MultivariateStats.fit(MultivariateStats.PCA, sampled_opinions; maxoutdim=config.out_dim)
-        projection = MultivariateStats.transform(model, sampled_opinions)
-        #println(MultivariateStats.loadings(model))
-        #println(MultivariateStats.projection(model))
-        #println(MultivariateStats.principalratio(model))
-        #println(MultivariateStats.principalvars(model))
-        #println(MultivariateStats.tresidualvar(model))
-    elseif reduce_dim_config.method == "Tsne"
-        config = reduce_dim_config.tsne_config
-        projection = permutedims(TSne.tsne(permutedims(sampled_opinions), config.out_dim, config.reduce_dims, config.max_iter, config.perplexity))
-    elseif reduce_dim_config.method == "MDS"
-        model = MultivariateStats.fit(MDS, sampled_opinions; maxoutdim=2, distances=false)
-        println(model)
-        println(methods(predict))
-        projection = predict(model, sampled_opinions)
-	
-        #projection = MultivariateStats.transform(model, sampled_opinions)
-    else
-        error("Unknown dimensionality reduction method")
-    end
-
-    return projection
-end
-
 """
 Gather data from the logs of multiple diffusion experiments and visualize spreads
 """
@@ -57,7 +30,7 @@ end
 """
 Loads all logs from one experiment and returns dictionary of visualizations
 """
-function gather_vis(exp_dir, sampled_voter_ids, reduce_dim_config, clustering_config, parties, candidates)
+function gather_vis(exp_dir, sampled_voter_ids, dim_reduce_config, clustering_config, parties, candidates)
     last = last_log_idx(exp_dir)
     visualizations = Dict("heatmaps"=>[], "voters"=>[], "distances"=>[])
     title = reduce_dim_config.method * "_" * clustering_config.method * "_" * string(length(sampled_voter_ids))
@@ -68,9 +41,9 @@ function gather_vis(exp_dir, sampled_voter_ids, reduce_dim_config, clustering_co
         sampled_voters = get_voters(model_log)[sampled_voter_ids]
         sampled_opinions = reduce(hcat, get_opinion(sampled_voters))
 
-        projections = reduce_dim(sampled_opinions, reduce_dim_config)
+        projections = dim_reduce(sampled_opinions, dim_reduce_config)
         
-        labels, clusters = clustering(sampled_voters, candidates, length(parties), clustering_config)
+        labels, clusters = clustering(sampled_voters, clustering_config)
 
         #heatmap
         if step > 0
@@ -214,6 +187,7 @@ function get_edge_distances(social_network, voters)
 
     return distances
 end
+
 function get_edge_distances2(social_network, voters)
     distances = Vector{Any}(undef, Graphs.ne(social_network))
     for (i, edge) in enumerate(Graphs.edges(social_network))
@@ -222,6 +196,7 @@ function get_edge_distances2(social_network, voters)
 
     return distances
 end
+
 function draw_edge_distances!(plot, distances)
     Plots.histogram!(plot, distances,
                          title = "Edge distance distribution",
@@ -231,10 +206,22 @@ function draw_edge_distances!(plot, distances)
                          xlabel = "Distance")
 end
 
+function draw_range(min, value, max; c=1, label)
+    plot = Plots.plot()
+    draw_range!(plot, min, value, max; c=c, label=label)
+
+    return plot
+end
+
 function draw_range!(plot, min, value, max; c=1, label)
     Plots.plot!(plot, 1:length(min), min, fillrange = max, fillalpha = 0.25, c = c, linewidth = 0, label=label)
     Plots.plot!(plot, 1:length(value), value, linewidth = 3, label = label, c = c)
-    
+end
+
+function draw_metric(values, title::String; log_idx=nothing)
+    plot = Plots.plot()
+    draw_metric!(plot, values, title; log_idx=log_idx)
+
     return plot
 end
 
@@ -248,16 +235,11 @@ function draw_metric!(plot, values, title::String; log_idx=nothing)
     return plot
 end
 
-function draw_metric(values, title::String)
-    Plots.plot(values,
-    title=title,
-    xlabel="t",
-    ylabel="Value",
-    xticks=(1:length(values)),
-    linewidth = 3,
-    legend = true,
-    yformatter = :plain
-    )
+function draw_degree_distr(degree_distribution, exp_dir=Nothing, diff_counter=[0])
+    plot = Plots.plot()
+    draw_degree_distr!(plot, degree_distribution, exp_dir, diff_counter)
+
+    return plot
 end
 
 function draw_degree_distr!(plot, degree_distribution, exp_dir=Nothing, diff_counter=[0])
@@ -265,7 +247,7 @@ function draw_degree_distr!(plot, degree_distribution, exp_dir=Nothing, diff_cou
     keyss = collect(keys(sorted))
     vals = collect(values(sorted))
 
-    plot = Plots.plot!(plot, keyss, vals, 
+    Plots.plot!(plot, keyss, vals, 
                         title = "Degree distribution",
                         legend = false,
                         xaxis=:log, yaxis=:log,
@@ -275,21 +257,13 @@ function draw_degree_distr!(plot, degree_distribution, exp_dir=Nothing, diff_cou
     if exp_dir != Nothing
         Plots.savefig(plot, "$(exp_dir)/images/degree_distribution_$(diff_counter[1]).png")
     end
-
-    return plot
 end
- 
-function draw_voting_res(candidates, parties, result, title::String) #OLD
-    names = [candidate.name * " - " * parties[candidate.party] for candidate in candidates]
-    #party_colors = Colors.distinguishable_colors(length())[parties[candidate.party] for candidate in candidates]
-    Plots.plot(result,
-    title=title,
-    xlabel="Diffusions",
-    ylabel="Percentage",
-    label = reshape(names, 1, length(names)),
-    linewidth = 3,
-    yformatter = :plain
-    )
+
+function draw_voting_res(candidates, parties, result, title::String; log_idx="")
+    plot = Plots.plot()
+    draw_voting_res!(plot, candidates, parties, result, title; log_idx="")
+
+    return plot 
 end
 
 function draw_voting_res!(plot, candidates, parties, result, title::String; log_idx="")
@@ -300,7 +274,6 @@ function draw_voting_res!(plot, candidates, parties, result, title::String; log_
         draw_range!(plot, [x[2] for x in col], [x[3] for x in col], [x[4] for x in col], c=c[i], label=names[i])
         Plots.plot!(plot, title=title, xlabel="t", ylabel="Percentage", yformatter = :plain)
     end
-    
 end
 
 function ego(social_network, node_id, depth)

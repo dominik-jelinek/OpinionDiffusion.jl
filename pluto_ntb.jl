@@ -63,35 +63,11 @@ md"### Load dataset"
 # ╔═╡ 470ec195-0118-4151-a74e-b976a91a3d29
 #OpinionDiffusion.test_random_KT(1000, 8; log_lvl=0)
 
-# ╔═╡ f31ef6e8-1edc-4e43-8cbc-cebab3455848
-distance decreasing 1.29 distance decreasing unique 1.60
-
-# ╔═╡ 63b5a286-8a8e-4f5e-8a33-c00ca03bf5d5
-1.42 optimal mensie kroky
-
 # ╔═╡ bcc5468c-2a49-409d-b810-05fc30f4edca
-dataset = 2
-
-# ╔═╡ fc5a5935-8f4e-47ad-8568-70cd61656e06
-begin
-	if dataset == 1
-		input_filename = "ED-00001-00000001.toc"
-		remove_candidates = [3, 5, 8, 11]
-	elseif dataset == 2
-		input_filename = "ED-00001-00000002.toc"
-		remove_candidates = [8]#[1, 6, 8]
-	elseif dataset == 3
-		input_filename = "ED-00001-00000003.toc"
-		remove_candidates = [3, 8, 9, 11]
-	else
-		input_filename = "madeUp.toc"
-	end
-end
+md"""Select dataset: $(@bind input_filename Select(["ED-00001-00000001.toc", "ED-00001-00000002.toc", "ED-00001-00000003.toc"], default = "ED-00001-00000002.toc"))"""
 
 # ╔═╡ c6ccf2a8-e045-4da9-bbdb-270327c2d53f
-begin
-	parties, src_candidates, src_election = parse_data(input_filename)
-end
+parties, src_candidates, src_election = parse_data(input_filename)
 
 # ╔═╡ c8522415-1fd9-4c06-bf2a-38ab23153b56
 md"### Explore dataset"
@@ -126,13 +102,21 @@ Plots.bar(transpose(sum(counts, dims = 1)), legend=false, xticks=1:length(src_ca
 Plots.bar(sum(counts, dims = 2), legend=false, xticks=1:length(src_candidates), ylabel="# votes", xlabel="Candidate ID")
 
 # ╔═╡ 977d39e2-7f82-49e8-a93f-889204bd19cb
-md"### Sample voters"
-
-# ╔═╡ 49230039-1716-4f48-b144-cddcb88e6172
-g = OpinionDiffusion.get_DEG(voters_, dgrs, 0.1, ratio=1.0, log_lvl=false)
+md"### Sample voters and remove unnecessary candidates"
 
 # ╔═╡ ad94415f-fc56-4a2f-9068-e05d8633aafe
 init_sample_size = 1000
+
+# ╔═╡ 8ea22c93-1fe3-44b2-88c1-fb6ccd195866
+if input_filename == "ED-00001-00000001.toc"
+	remove_candidates = [3, 5, 8, 11]
+elseif input_filename == "ED-00001-00000002.toc"
+	remove_candidates = [8]#[1, 6, 8]
+elseif input_filename == "ED-00001-00000003.toc"
+	remove_candidates = [3, 8, 9, 11]
+else
+	remove_candidates = []
+end
 
 # ╔═╡ 28f103a9-2b18-4cfc-bcf3-34d512f8da03
 filtered_election, candidates = OpinionDiffusion.filter_candidates(src_election, src_candidates, remove_candidates, length(src_candidates))
@@ -268,7 +252,7 @@ md"Index for loading specific model state inside of exp_dir. Insert -1 for the l
 idx = -1
 
 # ╔═╡ e9169286-8d05-4bc9-8dc4-16ae6bd81038
-logging = false
+logging = true
 
 # ╔═╡ 98885ec6-7561-43d7-bdf6-7f58fb2720f6
 md"Choose source of the model and then check execution barrier for generation of the model"
@@ -420,9 +404,9 @@ voter_diff_config_kt = Kendall_voter_diff_config(attract_proba = 0.8)
 
 # ╔═╡ f43b3b4c-9075-414b-9694-83e7c841605f
 diffusion_config = Diffusion_config(
-        checkpoint = 1,
+        checkpoint = 10,
 		evolve_vertices = 1.0,
-		evolve_edges = 0.1,
+		evolve_edges = 0.01,
         voter_diff_config = voter_diff_config_kt,
         graph_diff_config = General_graph_diff_config(
             popularity_ratio = popularity_ratio
@@ -430,13 +414,13 @@ diffusion_config = Diffusion_config(
     )
 
 # ╔═╡ d877c5d0-89af-48b9-bcd0-c1602d58339f
-diffusions = 100
+diffusions = 300
 
 # ╔═╡ 27a60724-5d19-419f-b208-ffa0c78e2505
-ensemble_size = 3
+ensemble_size = 1
 
 # ╔═╡ 87c573c1-69a4-4a61-bbb8-acb716f8ec6d
-ensemble_model = false
+ensemble_model = true
 
 # ╔═╡ 20819900-1129-4ff1-b97e-d079ffce8ab8
 md"""
@@ -483,24 +467,46 @@ md"Dimensionality reduction for visualisation of high dimensional opinions"
 # ╔═╡ 52893c8c-d1b5-482a-aae7-b3ec5c590b77
 md"Clustering for colouring of voters based on their opinions"
 
-# ╔═╡ 1adc5d59-6198-4ef5-9a8a-6390acc28be1
-clustering_config = Clustering_config(
-    used = true,
-    #method = "K-means",
-    method = "Party",
-    kmeans_config = Kmeans_config(
-        cluster_count = 5
-    ),
-    gm_config = GM_config(
-    	cluster_count = 5
-	)
-)
+# ╔═╡ e60db281-0bd0-4eb6-94fa-4c30766464fd
+md"""Clustering method: $(@bind clustering_method Select(["Kmeans", "GM", "Party", "DBSCAN"], default="Party"))"""
+
+# ╔═╡ ca8a24e4-ce3b-47d9-ad39-8507fa910a9d
+if clustering_method == "Party"
+	clustering_config = Party_clustering_config(candidates, length(parties))
+elseif clustering_method == "Kmeans"
+	clustering_config = Kmeans_clustering_config(length(candidates))
+elseif clustering_method == "GM"
+	clustering_config = GM_clustering_config(length(candidates))
+else# clustering_method == "DBSCAN"
+	clustering_config = DBSCAN_clustering_config(length(candidates))
+end
 
 # ╔═╡ fa927ac6-5d14-4a8d-8a50-16f305c00d11
 labls, _ = clustering(voters_, candidates, length(parties), clustering_config)
 
 # ╔═╡ a4e4ecb5-d28a-4ec3-93fd-ce58c402b6d3
 OpinionDiffusion.drawGraph(g, labls, length(parties))
+
+# ╔═╡ a652cf9b-adb5-47d2-906f-a7b479face45
+OpinionDiffusion.model_vis(model, sampled_voter_ids, reduce_dim_config, clustering_config, parties, candidates)
+
+# ╔═╡ 868986e9-09f5-483e-9b8e-11b5ab6082fd
+md"""Dimensionality reduction method: $(@bind dim_reduction_method Select(["PCA", "Tsne", "MDS"], default="PCA"))"""
+
+# ╔═╡ 54855884-22b3-42e0-9120-c5f049043899
+out_dim = 2
+
+# ╔═╡ 390be9ec-29a1-4138-952e-fc4eb5eb2ecb
+if dim_reduction_method == "PCA"
+	dim_reduction_config = PCA_dim_reduction_config(out_dim)
+elseif dim_reduction_method == "Tsne"
+	dim_reduction_config = Tsne_dim_reduction_config(out_dim = out_dim,
+        											reduce_dims = 0,
+        											max_iter = 3000,
+        											perplexity = 100.0)
+else# dim_reduction_method == "MDS"
+	dim_reduction_config = MDS_dim_reduction_config(out_dim)
+end
 
 # ╔═╡ 0c2345e5-c1b2-4af8-ad31-617ddc99257a
 md"##### Metrics calculated for every diffusion selected by slider below"
@@ -512,39 +518,12 @@ md"""Diffusion: $(@bind step Slider(0 : logger.diff_counter[1], show_value=true,
 model_log = load_log(logger.exp_dir, step)
 
 # ╔═╡ 05eedffd-c82a-4dbd-8608-5fa00f9d0bae
-begin
-	sampled_voters = get_voters(model_log)[sampled_voter_ids]
-	sampled_opinions = reduce(hcat, get_opinion(sampled_voters))
-end
-
-# ╔═╡ a9ce1301-9a4c-46ab-9a6d-49109024d705
-opinions = get_opinion(sampled_voters)
-
-# ╔═╡ c81ebbcb-c709-4713-a2b4-cf4bb48eb0da
-labels, clusters = clustering(sampled_voters, candidates, length(parties), clustering_config)
-
-# ╔═╡ b8f16963-914b-40e4-b13d-77cb6eb7b6db
-reduce_dim_config = Reduce_dim_config(
-    method = "PCA",
-    pca_config = PCA_config(
-        out_dim = 3
-    ),
-    tsne_config = Tsne_config(
-        out_dim = 2,
-        reduce_dims = 0,
-        max_iter = 3000,
-        perplexity = 100.0
-    )
-)
-
-# ╔═╡ a652cf9b-adb5-47d2-906f-a7b479face45
-OpinionDiffusion.model_vis(model, sampled_voter_ids, reduce_dim_config, clustering_config, parties, candidates)
+sampled_voters = get_voters(model_log)[sampled_voter_ids]
 
 # ╔═╡ e80cfc91-fc51-4216-a74c-39038d77c9db
 begin
 	_model_log = load_log(logger.exp_dir, 0)
-	_sampled_opinions = reduce(hcat, get_opinion(_model_log.voters[sampled_voter_ids]))
-	_projections = reduce_dim(_sampled_opinions, reduce_dim_config)
+	_projections = reduce_dims(sampled_voters, dim_reduction_config)
 	
 	x_projections = _projections[1, 1:length(candidates)]
 	y_projections = _projections[2, 1:length(candidates)]
@@ -555,10 +534,16 @@ end
 
 # ╔═╡ 008cbbe1-949d-4be7-9178-9bfa27c6e2a8
 begin
-	projections = reduce_dim(sampled_opinions, reduce_dim_config)
+	projections = reduce_dims(sampled_voters, dim_reduction_config)
 	#unify_projections!(projections, x_projections, y_projections, (max_x-min_x)/2, (max_y-min_y)/2)
 	projections
 end
+
+# ╔═╡ c81ebbcb-c709-4713-a2b4-cf4bb48eb0da
+labels, clusters = clustering(sampled_voters, clustering_config)
+
+# ╔═╡ f0eed2be-799f-46bb-968b-b70462cc06fd
+title = dim_reduction_method * "_" * clustering_method * "_" * string(length(sampled_voters))
 
 # ╔═╡ 83c88ccd-793a-42f5-b2b8-ae9dbf5e702d
 if step > 0
@@ -569,8 +554,8 @@ if step > 0
 	draw_heat_vis(projections, changes, "Heat map")
 end
 
-# ╔═╡ f0eed2be-799f-46bb-968b-b70462cc06fd
-title = reduce_dim_config.method * "_" * clustering_config.method * "_" * string(length(sampled_voters))
+# ╔═╡ 2b41d5f8-4f2b-4705-ba7a-0d343b7736b8
+
 
 # ╔═╡ 18c07cb1-3a91-405c-a626-f608e0d1ea9d
 OpinionDiffusion.GraphPlot.gplot(egon[1], x, y, nodesize=[Graphs.degree(model.social_network, node) for node in egon[2]]) #nodefillc=cluster_colors[labels[egon[2]]])
@@ -583,6 +568,9 @@ visualizations = OpinionDiffusion.gather_vis(logger.exp_dir, sampled_voter_ids, 
 
 # ╔═╡ 6415cf68-9648-412d-b6eb-9682ace5c9ec
 md"""Diffusion: $(@bind t Slider(0 : logger.diff_counter[1], show_value=true, default=logger.diff_counter[1]))"""
+
+# ╔═╡ 4f2e171b-7914-4134-907e-222e8f8bbb68
+#@bind t Clock()
 
 # ╔═╡ fd0428ce-0c48-4727-a718-46f81e71d40f
 begin
@@ -614,7 +602,7 @@ t > 0 ? visualizations["heatmaps"][t] : nothing
 countss = [get_counts(get_votes(sampled_voters[collect(cluster)]), length(candidates)) for cluster in clusters if length(cluster) != 0]
 
 # ╔═╡ 7e47b5c8-3ad1-4093-85e5-6b20238e9569
-plots = Plots.plot([Plots.heatmap(count, yticks=1:length(src_candidates), xticks=1:length(src_candidates), ylabel="Candidate", xlabel="Position") for count in countss]..., layout = (5, 1), size = (669,900))
+plots = Plots.plot([Plots.heatmap(count, yticks=1:length(src_candidates), xticks=1:length(src_candidates), ylabel="Candidate", xlabel="Position") for count in countss]..., layout = (length(candidates), 1), size = (669,900))
 
 # ╔═╡ e814359f-3e70-48ab-9b57-aed8bcaf0102
 clusters
@@ -850,10 +838,7 @@ compare_metrics_vis(ensemble_logs, ["unique_votes", "avg_vote_length", "mean_nei
 # ╠═ff873978-d93f-4ba2-aadd-6cfd3b136e3d
 # ╟─46e8650e-f57d-48d7-89de-1c72e12dea45
 # ╠═470ec195-0118-4151-a74e-b976a91a3d29
-# ╠═f31ef6e8-1edc-4e43-8cbc-cebab3455848
-# ╠═63b5a286-8a8e-4f5e-8a33-c00ca03bf5d5
-# ╠═bcc5468c-2a49-409d-b810-05fc30f4edca
-# ╠═fc5a5935-8f4e-47ad-8568-70cd61656e06
+# ╟─bcc5468c-2a49-409d-b810-05fc30f4edca
 # ╠═c6ccf2a8-e045-4da9-bbdb-270327c2d53f
 # ╟─c8522415-1fd9-4c06-bf2a-38ab23153b56
 # ╠═21f341c3-4d38-4449-b0f8-62e4ab14c99b
@@ -863,11 +848,11 @@ compare_metrics_vis(ensemble_logs, ["unique_votes", "avg_vote_length", "mean_nei
 # ╠═8c709e84-66f8-4128-a85c-66a4c5ffc9b7
 # ╠═20078431-5a7c-4a6f-b181-984ed54cf506
 # ╟─977d39e2-7f82-49e8-a93f-889204bd19cb
-# ╠═49230039-1716-4f48-b144-cddcb88e6172
 # ╠═fa927ac6-5d14-4a8d-8a50-16f305c00d11
 # ╠═a4e4ecb5-d28a-4ec3-93fd-ce58c402b6d3
 # ╠═ad94415f-fc56-4a2f-9068-e05d8633aafe
 # ╠═93b8909b-479c-422a-b475-2befadf5e9ec
+# ╠═8ea22c93-1fe3-44b2-88c1-fb6ccd195866
 # ╠═28f103a9-2b18-4cfc-bcf3-34d512f8da03
 # ╠═150ecd7a-5fe5-4e25-9630-91d26c30ff38
 # ╠═089c39a6-e516-4aac-8014-b3a1e6444e61
@@ -955,25 +940,29 @@ compare_metrics_vis(ensemble_logs, ["unique_votes", "avg_vote_length", "mean_nei
 # ╠═228f2d0b-b964-4133-b0bc-fee7d9fe298f
 # ╠═3fcf0afd-0bfc-4e58-b066-1461e49d1dee
 # ╠═462930eb-f995-48f0-9564-0c3b3d3b437f
-# ╟─9f7f56db-8a73-40f7-bb47-9570e41a634f
 # ╠═05eedffd-c82a-4dbd-8608-5fa00f9d0bae
+# ╟─9f7f56db-8a73-40f7-bb47-9570e41a634f
 # ╟─b203aed5-3231-4e19-a961-089c0a4cf8c6
+# ╠═54855884-22b3-42e0-9120-c5f049043899
+# ╠═390be9ec-29a1-4138-952e-fc4eb5eb2ecb
+# ╟─868986e9-09f5-483e-9b8e-11b5ab6082fd
 # ╠═e80cfc91-fc51-4216-a74c-39038d77c9db
 # ╠═008cbbe1-949d-4be7-9178-9bfa27c6e2a8
 # ╟─52893c8c-d1b5-482a-aae7-b3ec5c590b77
-# ╠═1adc5d59-6198-4ef5-9a8a-6390acc28be1
-# ╠═a9ce1301-9a4c-46ab-9a6d-49109024d705
+# ╠═ca8a24e4-ce3b-47d9-ad39-8507fa910a9d
+# ╟─e60db281-0bd0-4eb6-94fa-4c30766464fd
 # ╠═c81ebbcb-c709-4713-a2b4-cf4bb48eb0da
 # ╠═f0eed2be-799f-46bb-968b-b70462cc06fd
 # ╟─0c2345e5-c1b2-4af8-ad31-617ddc99257a
 # ╠═86659fc0-af7e-4498-8388-3e79349e9eb4
 # ╠═83c88ccd-793a-42f5-b2b8-ae9dbf5e702d
-# ╠═b8f16963-914b-40e4-b13d-77cb6eb7b6db
+# ╠═2b41d5f8-4f2b-4705-ba7a-0d343b7736b8
 # ╠═18c07cb1-3a91-405c-a626-f608e0d1ea9d
 # ╠═4eb56ee4-04e9-40cd-90fc-1495215f2928
 # ╠═7e47b5c8-3ad1-4093-85e5-6b20238e9569
 # ╠═f3dd8bf9-41d4-404a-8ab7-c3859be0de60
 # ╠═6415cf68-9648-412d-b6eb-9682ace5c9ec
+# ╠═4f2e171b-7914-4134-907e-222e8f8bbb68
 # ╠═fd0428ce-0c48-4727-a718-46f81e71d40f
 # ╠═228b9f9c-1bde-4927-8c85-6b5938dcdbf1
 # ╠═9b8fc5b4-9918-4c6b-8389-b19d5faf16fc

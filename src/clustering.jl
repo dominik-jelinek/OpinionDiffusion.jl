@@ -1,33 +1,64 @@
-function clustering(voters, candidates, parties_count, clustering_config)
+abstract type Abstract_clustering_config <: Config end
+@kwdef struct Kmeans_clustering_config <: Abstract_clustering_config
+    cluster_count::Int64
+end
 
-    if clustering_config.method == "Party"
-        return party_clustering(voters, candidates, parties_count)
-    elseif clustering_config.method == "K-means"
-        opinions = reduce(hcat, get_opinion(voters))
-        kmeans_res = Clustering.kmeans(opinions, clustering_config.kmeans_config.cluster_count; maxiter=200)
-        labels = kmeans_res.assignments
-        clusters = clusterize(labels, clustering_config.kmeans_config.cluster_count)
-    elseif clustering_config.method == "GM"
-        data_T = permutedims(get_opinion(voters))
-        gm = ScikitLearn.GaussianMixture(n_components=clustering_config.gm_config.cluster_count).fit(data_T)
-        labels = gm.predict(data_T) .+ 1
-        clusters = clusterize(labels, clustering_config.gm_config.cluster_count)
-    elseif clustering_config.method == "DBSCAN"
-        res = Clustering.DBSCAN(get_opinion(voters), clustering_config.kmeans_config.cluster_count; maxiter=200)
-    else
-        error("Unknown clustering method")
-    end
+function clustering(voters, clustering_config::Kmeans_clustering_config)
+    opinions = reduce(hcat, get_opinion(voters))
 
+    kmeans_res = Clustering.kmeans(opinions, clustering_config.cluster_count; maxiter=200)
+    labels = kmeans_res.assignments
+    
+    clusters = clusterize(labels, clustering_config.cluster_count)
     
     return labels, clusters
+end
+
+@kwdef struct GM_clustering_config <: Abstract_clustering_config
+    cluster_count::Int64
+end
+
+function clustering(voters, clustering_config::GM_clustering_config)
+    opinions = reduce(hcat, get_opinion(voters))
+
+    data_T = permutedims(opinions)
+    gm = ScikitLearn.GaussianMixture(n_components=clustering_config.cluster_count).fit(data_T)
+    labels = gm.predict(data_T) .+ 1
+    
+    clusters = clusterize(labels, clustering_config.cluster_count)
+    
+    return labels, clusters
+end
+
+@kwdef struct Party_clustering_config <: Abstract_clustering_config
+    candidates::Vector{Candidate}
+    parties_count::Int64
 end
 
 """
 Cluster voters based on highest ranked candidate
 """
-function party_clustering(voters, candidates, parties_count)
+function clustering(voters, clustering_config::Party_clustering_config)
+    candidates = clustering_config.candidates
+
     labels = [candidates[iterate(get_vote(voter)[1])[1]].party for voter in voters] 
-    clusters = clusterize(labels, parties_count)
+    
+    clusters = clusterize(labels, clustering_config.parties_count)
+    
+    return labels, clusters
+end
+
+@kwdef struct DBSCAN_clustering_config <: Abstract_clustering_config
+    cluster_count::Int64
+end
+
+function clustering(voters, clustering_config::DBSCAN_clustering_config)
+    opinions = reduce(hcat, get_opinion(voters))
+
+    res = Clustering.DBSCAN(opinions, clustering_config.cluster_count; maxiter=200)
+    labels = res.assignments
+    
+    clusters = clusterize(labels, clustering_config.cluster_count)
     
     return labels, clusters
 end
@@ -60,15 +91,4 @@ function unify_labels!(template_clusters, clusters)
         end
         clusters[i], clusters[idx] = clusters[idx], clusters[i]
     end
-end
-
-function unify_projections!(projections, x_projections, y_projections, x_treshold=1.0, y_treshold=1.0)
-    if sum(projections[1, 1:length(x_projections)] - x_projections) < x_treshold
-		@views row = projections[1, :] 
-		row .*= -1.0
-	end
-	if sum(projections[2, 1:length(y_projections)] - y_projections) < y_treshold
-		@views row = projections[2, :] 
-		row .*= -1.0
-	end
 end

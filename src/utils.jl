@@ -1,6 +1,3 @@
-notnothing(::Any) = true
-notnothing(::Nothing) = false
-
 function translateRange(oldMin::Float64, oldMax::Float64, newMin::Float64, newMax::Float64, oldValue::Float64)
    return (((oldValue - oldMin) * (newMax - newMin)) / (oldMax - oldMin)) + newMin;
 end

@@ -44,9 +44,11 @@ export weighted_AB_graph_config, DEG_graph_config
 export Spearman_voter_init_config, Spearman_voter_diff_config
 export Kendall_voter_init_config, Kendall_voter_diff_config
 
-export Kmeans_config, GM_config, Clustering_config, PCA_config, Tsne_config, Reduce_dim_config, Voter_vis_config
+export clustering, Kmeans_clustering_config, GM_clustering_config, Party_clustering_config, DBSCAN_clustering_config
+export reduce_dims, MDS_dim_reduction_config, Tsne_dim_reduction_config, PCA_dim_reduction_config
+
 export plurality_voting, borda_voting, copeland_voting, get_positions
-export reduce_dim, clustering, draw_voter_vis, draw_heat_vis, unify_projections!
+export clustering, draw_voter_vis, draw_heat_vis, unify_projections!
 export get_edge_distances, draw_degree_distr, draw_edge_distances
 export draw_range!, draw_voting_res
 export voters, social_network
@@ -62,6 +64,7 @@ include("parsing.jl")
 include("utils.jl")
 
 include("voting.jl")
+include("dim_reduction.jl")
 include("clustering.jl")
 
 
