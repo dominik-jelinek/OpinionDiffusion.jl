@@ -30,7 +30,7 @@ end
 """
 Loads all logs from one experiment and returns dictionary of visualizations
 """
-function gather_vis(exp_dir, sampled_voter_ids, dim_reduce_config, clustering_config, parties, candidates)
+function gather_vis(exp_dir, sampled_voter_ids, dim_reduction_config, clustering_config, parties, candidates)
     last = last_log_idx(exp_dir)
     visualizations = Dict("heatmaps"=>[], "voters"=>[], "distances"=>[])
     title = reduce_dim_config.method * "_" * clustering_config.method * "_" * string(length(sampled_voter_ids))
@@ -41,7 +41,7 @@ function gather_vis(exp_dir, sampled_voter_ids, dim_reduce_config, clustering_co
         sampled_voters = get_voters(model_log)[sampled_voter_ids]
         sampled_opinions = reduce(hcat, get_opinion(sampled_voters))
 
-        projections = dim_reduce(sampled_opinions, dim_reduce_config)
+        projections = reduce_dims(sampled_opinions, dim_reduction_config)
         
         labels, clusters = clustering(sampled_voters, clustering_config)
 
@@ -69,25 +69,70 @@ function gather_vis(exp_dir, sampled_voter_ids, dim_reduce_config, clustering_co
     return visualizations
 end
 
-function model_vis(model, sampled_voter_ids, reduce_dim_config, clustering_config, parties, candidates)
-    title = reduce_dim_config.method * "_" * clustering_config.method * "_" * string(length(sampled_voter_ids))
+function model_vis(model, sampled_voter_ids, reduce_dim_config, clustering_config)
+    social_network = get_social_network(model)
+    voters = get_voters(model)
 
-    sampled_voters = get_voters(model)[sampled_voter_ids]
+    #voter visualization
+    sampled_voters = voters[sampled_voter_ids]
     sampled_opinions = reduce(hcat, get_opinion(sampled_voters))
 
-    projections = reduce_dim(sampled_opinions, reduce_dim_config)
+    projections = reduce_dims(sampled_opinions, reduce_dim_config)
         
-    labels, clusters = clustering(sampled_voters, candidates, length(parties), clustering_config)
+    labels, clusters = clustering(sampled_voters, clustering_config)
 
     n = 3
     plot = Plots.plot(size = Plots.default(:size) .* (1, n), layout = (n, 1), bottom_margin = 10Plots.mm, left_margin = 5Plots.mm)
 
+    title = name(reduce_dim_config) * "_" * name(clustering_config) * "_" * string(length(sampled_voter_ids))
     draw_voter_vis!(plot[1, 1], projections, clusters, title)
-    draw_degree_distr!(plot[2, 1], Graphs.degree_histogram(model.social_network))
-    draw_edge_distances!(plot[3, 1], get_edge_distances(model.social_network, model.voters))
+
+    draw_degree_distr!(plot[2, 1], Graphs.degree_histogram(social_network))
+
+    draw_edge_distances!(plot[3, 1], get_edge_distances(social_network, voters))
 
     return plot
 end
+
+function model_vis2(model, sampled_voter_ids, reduce_dim_config, clustering_config)
+    visualizations = []
+    social_network = get_social_network(model)
+    voters = get_voters(model)
+
+    #voter visualization
+    sampled_voters = voters[sampled_voter_ids]
+    sampled_opinions = reduce(hcat, get_opinion(sampled_voters))
+
+    projections = reduce_dims(sampled_opinions, reduce_dim_config)
+        
+    labels, clusters = clustering(sampled_voters, clustering_config)
+
+    title = name(reduce_dim_config) * "_" * name(clustering_config) * "_" * string(length(sampled_voter_ids))
+    push!(visualizations, draw_voter_vis(projections, clusters, title))
+
+    push!(visualizations, draw_degree_distr(Graphs.degree_histogram(social_network)))
+
+    push!(visualizations, draw_edge_distances(get_edge_distances(social_network, voters)))
+
+    return visualizations
+end
+
+"""
+Loads all logs from one experiment and returns dictionary of visualizations
+"""
+function gather_vis2(exp_dir, sampled_voter_ids, dim_reduction_config, clustering_config)
+    timestamps = sort([parse(Int64, split(splitext(file)[1], "_")[end]) for file in readdir(exp_dir) if split(file, "_")[1] == "model"])
+    visualizations = []
+
+    for t in timestamps
+        model_log = load_log(exp_dir, t) 
+        push!(visualizations, stack_visualizations(model_vis2(model_log, sampled_voter_ids, dim_reduction_config, clustering_config)))
+        
+    end
+    
+    return visualizations
+end
+
 function init_metrics(model, can_count)
     g = get_social_network(model)
     voters = get_voters(model)
@@ -152,6 +197,13 @@ function metrics_vis(metrics, candidates, parties, exp_dir=Nothing)
     return plots
 end
 
+function draw_voter_vis(projections, clusters, title, exp_dir=Nothing, counter=[0])
+    plot = Plots.plot()
+    draw_voter_vis!(plot, projections, clusters, title, exp_dir, counter)
+    
+    return plot
+end
+
 function draw_voter_vis!(plot, projections, clusters, title, exp_dir=Nothing, counter=[0])
     cluster_colors  = Colors.distinguishable_colors(length(clusters))
 
@@ -166,6 +218,13 @@ function draw_voter_vis!(plot, projections, clusters, title, exp_dir=Nothing, co
         Plots.savefig(plot, "$(exp_dir)/images/$(title)_$(counter[1]).png")
     end
 
+    return plot
+end
+
+function draw_heat_vis(projections, difference, title, exp_dir=Nothing, counter=[0])
+    plot = Plots.plot()
+    draw_heat_vis!(plot, projections, difference, title, exp_dir, counter)
+    
     return plot
 end
 
@@ -195,6 +254,13 @@ function get_edge_distances2(social_network, voters)
     end
 
     return distances
+end
+
+function draw_edge_distances(distances)
+    plot = Plots.plot()
+    draw_edge_distances!(plot, distances)
+
+    return plot
 end
 
 function draw_edge_distances!(plot, distances)
@@ -290,4 +356,10 @@ function ego(social_network, node_id, depth)
     end
 
     return induced_subgraph(social_network, ego_nodes)
+end
+
+function stack_visualizations(visualizations)
+    n = length(visualizations)
+    
+    return Plots.plot(visualizations... ,size = Plots.default(:size) .* (1, n), layout = (n, 1), bottom_margin = 10Plots.mm, left_margin = 5Plots.mm, legend=true)
 end

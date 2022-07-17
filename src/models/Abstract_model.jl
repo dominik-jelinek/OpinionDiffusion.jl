@@ -10,9 +10,12 @@ end
 function run!(model::T, diffusion_config, logger=nothing::Union{Nothing, Logger}) where T<:Abstract_model
     diffusion!(model, diffusion_config)
 
-    if logger !== nothing && logger.diff_counter[1] % diffusion_config.checkpoint == 0
+    if logger !== nothing
         logger.diff_counter[1] += 1
-        save_log(logger, model)
+        
+        if logger.diff_counter[1] % diffusion_config.checkpoint == 0
+            save_log(logger, model)
+        end
     end
 end
 
@@ -101,6 +104,10 @@ function load_log(exp_dir::String, idx::Int64)
     end
     
     return load("$(exp_dir)/model_$(idx).jld2", "model")
+end
+
+function load_log(exp_dir::String, model_name::String)
+    return load("$(exp_dir)/$(model_name)", "model")
 end
 
 function load_logs(exp_dir::String, start_idx::Int64, end_idx::Int64)

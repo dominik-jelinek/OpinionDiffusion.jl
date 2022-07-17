@@ -2,6 +2,7 @@ abstract type Abstract_clustering_config <: Config end
 @kwdef struct Kmeans_clustering_config <: Abstract_clustering_config
     cluster_count::Int64
 end
+name(config::Kmeans_clustering_config) = "K-means"
 
 function clustering(voters, clustering_config::Kmeans_clustering_config)
     opinions = reduce(hcat, get_opinion(voters))
@@ -17,6 +18,7 @@ end
 @kwdef struct GM_clustering_config <: Abstract_clustering_config
     cluster_count::Int64
 end
+name(config::GM_clustering_config) = "GM"
 
 function clustering(voters, clustering_config::GM_clustering_config)
     opinions = reduce(hcat, get_opinion(voters))
@@ -34,6 +36,7 @@ end
     candidates::Vector{Candidate}
     parties_count::Int64
 end
+name(config::Party_clustering_config) = "Party"
 
 """
 Cluster voters based on highest ranked candidate
@@ -49,14 +52,14 @@ function clustering(voters, clustering_config::Party_clustering_config)
 end
 
 @kwdef struct DBSCAN_clustering_config <: Abstract_clustering_config
-    cluster_count::Int64
+    eps::Float64
+    minpts::Int64
 end
+name(config::DBSCAN_clustering_config) = "DBSCAN"
 
 function clustering(voters, clustering_config::DBSCAN_clustering_config)
-    opinions = reduce(hcat, get_opinion(voters))
-
-    res = Clustering.DBSCAN(opinions, clustering_config.cluster_count; maxiter=200)
-    labels = res.assignments
+    res = Clustering.dbscan(get_distance(voters), clustering_config.eps, clustering_config.minpts)
+    labels = res.assignments .+1
     
     clusters = clusterize(labels, clustering_config.cluster_count)
     

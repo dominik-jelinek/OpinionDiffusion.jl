@@ -63,14 +63,13 @@ include("configs.jl")
 include("parsing.jl")
 include("utils.jl")
 
-include("voting.jl")
-include("dim_reduction.jl")
-include("clustering.jl")
-
-
 include("voters/Abstract_voter.jl")
 include("voters/Kendall_voter.jl")
 include("voters/Spearman_voter.jl")
+
+include("voting.jl")
+include("dim_reduction.jl")
+include("clustering.jl")
 
 include("graphs/graph.jl")
 include("graphs/barabasi_albert.jl")
