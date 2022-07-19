@@ -32,6 +32,8 @@ function run_ensemble(model::Abstract_model, ensemble_size, diffusions, init_met
         end
 
         metrics_ens[i] = metrics
+        display(get_frequent_votes(get_votes(get_voters(model_cp)), 15))
+        println("________________________________________________________________________")
     end
 
     gathered_metrics = OpinionDiffusion.gather_metrics(metrics_ens)
@@ -66,6 +68,12 @@ function run_ensemble_model(ensemble_size, diffusions, election, init_metrics, c
 
     return gathered_metrics
 end
+
+#create models from configs
+#get metrics
+# cc
+# diameter
+# avg edge distance
 
 function diffusion!(model::T, diffusion_config) where T <: Abstract_model
     voter_diffusion!(model, diffusion_config.evolve_vertices, diffusion_config.voter_diff_config)

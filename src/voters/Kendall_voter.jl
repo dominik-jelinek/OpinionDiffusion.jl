@@ -59,12 +59,13 @@ Encodes vote into space of dimension can_ount choose 2
 """
 function kendall_encoding(vote::Vote, can_count)
    inv_vote = invert_vote(vote, can_count)
+   n = choose2(can_count)
 
-   opinion = Vector{Float64}(undef, choose2(can_count))
+   opinion = Vector{Float64}(undef, n)
    counter = 1
    for can_1 in 1:can_count-1
       for can_2 in can_1+1:can_count
-         opinion[counter] = get_penalty(inv_vote[can_1], inv_vote[can_2], choose2(can_count))
+         opinion[counter] = get_penalty(inv_vote[can_1], inv_vote[can_2], n)
          counter += 1
       end
    end
@@ -85,10 +86,11 @@ function step!(self::Kendall_voter, model, voter_diff_config::Kendall_voter_diff
    neighbor = voters[neighbor_id]
 
    if rand() <= voter_diff_config.attract_proba
-      voters[self.ID] = attract_flip(self, neighbor, model.can_count)
-      voters[neighbor.ID] = attract_flip(neighbor, self, model.can_count)
+      voters[self.ID] = attract(self, neighbor, model.can_count)
+      voters[neighbor.ID] = attract(neighbor, self, model.can_count)
    else
-      #repel_flip!(self, neighbor)
+      voters[self.ID] = repel(self, neighbor, model.can_count)
+      voters[neighbor.ID] = repel(neighbor, self, model.can_count)
    end
 end
 
@@ -107,14 +109,15 @@ If it is bigger than the stubborness of respective voter, it is executed.
    
    
 =#
-function attract_flip(self, neighbor, can_count; log_lvl=0)
+function attract(self, neighbor, can_count; log_lvl=0)
    if get_distance(self, neighbor) == 0.0
       return self
    end
 
    if rand() > self.stubborness
       #actions = get_feasible_actions(self, neighbor, can_count)
-      actions = get_distance_preserving_actions(self, neighbor, can_count)
+      actions = get_distance_preserving_actions_dec(self, neighbor, can_count)
+
       if log_lvl > 2
          println("Feasible actions: ", actions)
       end
@@ -127,14 +130,68 @@ function attract_flip(self, neighbor, can_count; log_lvl=0)
       end
       
       # filter restack operation whenever unstack is available, resulting in smaller steps
-      actions = unique(x->x[1], sort(actions, by=x->x[3], rev=true))
+      min_change = maximum([x[3] for x in actions])
+      actions = [action for action in actions if action[3] == min_change]
+      action = actions[rand(1:length(actions))]
+
+      if log_lvl > 1
+         println("Action:", action)
+      end
+
+      #self = apply_action(action, self, can_count)
+      if rand() < 0.5 / abs(action[3])
+         self = apply_action2(action, self, can_count)
+      end
+   end
+
+   return self
+end
+
+function repel(self, neighbor, can_count; log_lvl=0)
+   # we are assuming that opinions are normalized
+   max_distance = choose2(can_count)
+   max_possible = max_distance
+   for bucket in neighbor.vote
+      if length(bucket) > 1
+         max_possible -= choose2(length(bucket)) * 0.5
+      end
+   end
+
+   if isapprox(get_distance(self, neighbor) * max_distance, max_possible)
+      return self
+   end
+
+   if rand() > self.stubborness
+      #actions = get_feasible_actions(self, neighbor, can_count)
+      actions = get_distance_preserving_actions_inc(self, neighbor, can_count)
+
+      if log_lvl > 2
+         println("DP inc: ", actions)
+      end
+
+      if length(actions) == 0
+         println(to_string(self.vote))
+         println(to_string(neighbor.vote))
+         println("d_uv: ", get_distance(self, neighbor))
+         println("max:  ", max_possible/max_distance)
+         error("No DP actions found, but not maximal distance")
+         return
+      end
+      
+      # pick the action with the smallest change in KT distance
+      min_change = minimum([x[3] for x in actions])
+      actions = [action for action in actions if action[3] == min_change]
       action = actions[rand(1:length(actions))]
 
       if log_lvl > 1
          println("Action:", action)
       end
       #self = apply_action(action, self, can_count)
-      self = apply_action2(action, self, can_count)
+
+      # if the change of KT distance for smallest action is 2 then there is 50% chance that the acttion will be successful
+      if rand() < 0.5 / action[3]
+         self = apply_action2(action, self, can_count)
+      end
    end
 
    return self
@@ -272,45 +329,96 @@ function get_extremes(bucket_set, inverted_vote)
    return (bucket[findall(pos_in_v .== pos_min)], pos_min), (bucket[findall(pos_in_v .== pos_max)], pos_max)
 end
 
-function get_distance_preserving_actions(u::Kendall_voter, v::Kendall_voter, can_count)
+function get_distance_preserving_actions_dec(u::Kendall_voter, v::Kendall_voter, can_count)
    # vector of new votes and opinions for voter u if we choose specific action 
-   feasible_actions = Vector{Tuple{Vector{Int64}, Int64, Float64, Symbol}}()
+   DP_actions = Vector{Tuple{Vector{Int64}, Int64, Float64, Symbol}}()
    inverted = invert_vote(get_vote(v), can_count)
-   max_distance = choose2(can_count)
+
    # check first bucket possible unstack
    (l_mins, l_pos_min), (l_maxs, l_pos_max) = get_extremes(u.vote[1], inverted)
    if l_pos_min != l_pos_max
-      push!(feasible_actions, (l_mins, 1, -length(l_mins) * (length(u.vote[1]) - length(l_mins)) * 0.5 / max_distance, :unstack_left))
-      push!(feasible_actions, (l_maxs, 1, -length(l_maxs) * (length(u.vote[1]) - length(l_maxs)) * 0.5 / max_distance, :unstack_right))
+      push!(DP_actions, (l_mins, 1, -length(l_mins) * (length(u.vote[1]) - length(l_mins)) * 0.5, :unstack_left))
+      push!(DP_actions, (l_maxs, 1, -length(l_maxs) * (length(u.vote[1]) - length(l_maxs)) * 0.5, :unstack_right))
    end
 
    for i in 2:length(u.vote)
       (r_mins, r_pos_min), (r_maxs, r_pos_max) = get_extremes(u.vote[i], inverted)
-      # check for possible unbuckets
+      # check for possible unstack
       if r_pos_min != r_pos_max
-         push!(feasible_actions, (r_mins, i, -length(r_mins) * (length(u.vote[i]) - length(r_mins)) * 0.5 / max_distance, :unstack_left))
-         push!(feasible_actions, (r_maxs, i, -length(r_maxs) * (length(u.vote[i]) - length(r_maxs)) * 0.5 / max_distance, :unstack_right))
+         push!(DP_actions, (r_mins, i, -length(r_mins) * (length(u.vote[i]) - length(r_mins)) * 0.5, :unstack_left))
+         push!(DP_actions, (r_maxs, i, -length(r_maxs) * (length(u.vote[i]) - length(r_maxs)) * 0.5, :unstack_right))
       end
 
-      # check for possible rebuckets
+      # check for possible restack from the left bucket to the right bucket
       # if there are candidates from the right bucket that have position less than right most candidates from left bucket 
       # then at least those pairs of candidates will increase Kendall-tau distance
       if l_pos_max >= r_pos_max 
-         l_change = -length(l_maxs) * (length(u.vote[i - 1]) - length(l_maxs)) * 0.5 / max_distance
-         r_change = -length(l_maxs) * length(u.vote[i]) * 0.5 / max_distance
-         push!(feasible_actions, (l_maxs, i - 1, l_change + r_change, :restack_right))
+         l_change = -length(l_maxs) * (length(u.vote[i - 1]) - length(l_maxs)) * 0.5
+         r_change = -length(l_maxs) * length(u.vote[i]) * 0.5
+         push!(DP_actions, (l_maxs, i - 1, l_change + r_change, :restack_right))
       end
 
+      # check for possible restack from the right bucket to the left bucket
       if r_pos_min <= l_pos_min
-         l_change = -length(r_mins) * length(u.vote[i - 1]) * 0.5 / max_distance
-         r_change = -length(r_mins) * (length(u.vote[i]) - length(r_mins)) * 0.5 / max_distance
-         push!(feasible_actions, (r_mins, i, l_change + r_change, :restack_left))
+         l_change = -length(r_mins) * length(u.vote[i - 1]) * 0.5
+         r_change = -length(r_mins) * (length(u.vote[i]) - length(r_mins)) * 0.5
+         push!(DP_actions, (r_mins, i, l_change + r_change, :restack_left))
       end
 
       (l_mins, l_pos_min), (l_maxs, l_pos_max) = (r_mins, r_pos_min), (r_maxs, r_pos_max)
    end
 
-   return feasible_actions
+   return DP_actions
+end
+
+function get_distance_preserving_actions_inc(u::Kendall_voter, v::Kendall_voter, can_count)
+   # vector of new votes and opinions for voter u if we choose specific action 
+   DP_actions = Vector{Tuple{Vector{Int64}, Int64, Float64, Symbol}}()
+   inverted = invert_vote(get_vote(v), can_count)
+
+   # check first bucket possible unstack
+   (l_mins, l_pos_min), (l_maxs, l_pos_max) = get_extremes(u.vote[1], inverted)
+   if length(u.vote[1]) > 1
+      for can in l_mins
+         push!(DP_actions, ([can], 1, (length(u.vote[1]) - 1) * 0.5, :unstack_right))
+      end
+
+      for can in l_maxs
+         push!(DP_actions, ([can], 1, (length(u.vote[1]) - 1) * 0.5, :unstack_left))
+      end
+   end
+
+   for i in 2:length(u.vote)
+      (r_mins, r_pos_min), (r_maxs, r_pos_max) = get_extremes(u.vote[i], inverted)
+      # check for possible unstack of right bucket
+      if length(u.vote[i]) > 1
+         for can in r_mins
+            push!(DP_actions, ([can], i, (length(u.vote[1]) - 1) * 0.5, :unstack_right))
+         end
+
+         for can in r_maxs
+            push!(DP_actions, ([can], i, (length(u.vote[1]) - 1) * 0.5, :unstack_left))
+         end
+      end
+
+      # check for possible restack from the left bucket to the right bucket
+      if l_pos_min < r_pos_min
+         for can in l_mins
+            push!(DP_actions, ([can] , i - 1, (length(u.vote[i - 1]) - 1) + (length(u.vote[i])), :restack_right))
+         end
+      end
+
+      # check for possible restack from the right bucket to the left bucket
+      if r_pos_max > r_pos_max
+         for can in r_maxs
+            push!(DP_actions, ([can], i, (length(u.vote[i - 1])) + (length(u.vote[i]) - 1), :restack_left))
+         end
+      end
+
+      (l_mins, l_pos_min), (l_maxs, l_pos_max) = (r_mins, r_pos_min), (r_maxs, r_pos_max)
+   end
+
+   return DP_actions
 end
 
 function unbucket(u_opinion, v_opinion, u_vote, bucket_idx, can_count)
@@ -513,8 +621,6 @@ function get_penalty(pos_1, pos_2, max_distance = nothing)
    return max_distance === nothing ? penalty : penalty / max_distance
 end
 
-
-
 function test_pair_KT(fst, snd, can_count; log_lvl=0)
    fst = deepcopy(fst)
    snd = deepcopy(snd)
@@ -527,14 +633,16 @@ function test_pair_KT(fst, snd, can_count; log_lvl=0)
    k = 0
    while dist != 0.0 
       if log_lvl > 1
-         println(fst.vote)
-         println(snd.vote)
+         println(to_string(fst.vote))
+         println(to_string(snd.vote))
       end
 
-      new_fst = attract_flip(fst, snd, can_count; log_lvl=log_lvl)
+      new_fst = attract(fst, snd, can_count; log_lvl=log_lvl)
 
-      if k == can_count*can_count
-         error("Failed to converge in time")
+      if k == choose2(can_count)*10
+         println(to_string(fst.vote))
+         println(to_string(snd.vote))
+         error("Failed to converge in time:", k)
          break
       end
       k += 1
@@ -569,7 +677,7 @@ function test_random_KT(n, can_count; log_lvl=0)
    voters = Vector{Kendall_voter}(undef, n)
    for i in 1:n
       vote = get_random_vote(can_count)
-      voters[i] = Kendall_voter(69, vote, kendall_encoding(vote, can_count), 0.0, 0.0)
+      voters[i] = Kendall_voter(69, kendall_encoding(vote, can_count), vote, 0.0, 0.0)
    end
 
    ratios = []

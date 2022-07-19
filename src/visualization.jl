@@ -8,20 +8,18 @@ function gather_metrics(ens_metrics)
 
     res = Dict()
     for metric in keys(ens_metrics[1])
-        #println(metric)
         matrix = transpose(hcat([run[metric] for run in ens_metrics]...))
-        if matrix[1,1] isa Number
+        
+        if matrix[1, 1] isa Number #number
             res[metric] = [Statistics.quantile(col, [0.0, 0.25, 0.5, 0.75, 1.0]) for col in eachcol(matrix)]
+        
         else
             res[metric] = []
             for col in eachcol(matrix)                
                 matrix_vect = vcat(col...)
                 push!(res[metric], [Statistics.quantile(col, [0.0, 0.25, 0.5, 0.75, 1.0]) for col in eachcol(matrix_vect)])
             end
-
         end
-        #display(res[metric])
-
     end
 
     return res
@@ -272,16 +270,20 @@ function draw_edge_distances!(plot, distances)
                          xlabel = "Distance")
 end
 
-function draw_range(min, value, max; c=1, label)
+function draw_range(min, value, max; c=1, label, x=nothing)
     plot = Plots.plot()
-    draw_range!(plot, min, value, max; c=c, label=label)
+    draw_range!(plot, min, value, max; c=c, label=label, x=x)
 
     return plot
 end
 
-function draw_range!(plot, min, value, max; c=1, label)
-    Plots.plot!(plot, 1:length(min), min, fillrange = max, fillalpha = 0.25, c = c, linewidth = 0, label=label)
-    Plots.plot!(plot, 1:length(value), value, linewidth = 3, label = label, c = c)
+function draw_range!(plot, min, value, max; c=1, label, x=nothing)
+    if x === nothing
+        x = 1:length(value)
+    end
+
+    Plots.plot!(plot, x, min, fillrange = max, fillalpha = 0.25, c = c, linewidth = 0, label="")
+    Plots.plot!(plot, x, value, linewidth = 3, label = label, c = c)
 end
 
 function draw_metric(values, title::String; log_idx=nothing)

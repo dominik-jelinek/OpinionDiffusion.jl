@@ -14,11 +14,13 @@ end
 end
 
 function General_model(election, can_count::Int64, model_config)
-    println("Initializing voters:")
-    @time voters = init_voters(election, can_count, model_config.voter_init_config)
+    #println("Initializing voters:")
+    #@time 
+    voters = init_voters(election, can_count, model_config.voter_init_config)
 
-    println("Initializing graph:")
-    @time social_network = init_graph(voters, model_config.graph_init_config)
+    #println("Initializing graph:")
+    #@time 
+    social_network = init_graph(voters, model_config.graph_init_config)
 
     return General_model(voters, social_network, can_count)
 end

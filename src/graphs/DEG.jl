@@ -23,7 +23,7 @@ function get_DEG(voters, targed_deg_distr, target_cc; popularity_ratio=1.0, log_
     rds = Random.shuffle(targed_deg_distr)
     T = floor(target_cc * sum([choose2(rd) for rd in rds]) / 3)
 
-    println("M: ", M, " T: ", T)
+    #println("M: ", M, " T: ", T)
     limit = M * 3
     i = 0
     while T > 0
@@ -89,8 +89,8 @@ function get_DEG(voters, targed_deg_distr, target_cc; popularity_ratio=1.0, log_
         # we decrease T even when no new triangles were created as is written in the paper
         #T -= 1
     end
-    println("M: ", M, " T: ", T)
-    println(global_clustering_coefficient(social_network))
+    #println("M: ", M, " T: ", T)
+    #println(global_clustering_coefficient(social_network))
     i = 0
     while M > 0
         if limit <= i
@@ -140,7 +140,7 @@ function get_DEG_distances(voters, targed_deg_distr, target_cc; popularity_ratio
     rds = Random.shuffle(targed_deg_distr)
     T = floor(target_cc * sum([choose2(rd) for rd in rds]) / 3)
 
-    println("M: ", M, " T: ", T)
+    #println("M: ", M, " T: ", T)
     limit = M * 10
     i = 0
     distances = get_distance(voters)
@@ -209,8 +209,8 @@ function get_DEG_distances(voters, targed_deg_distr, target_cc; popularity_ratio
         # we decrease T even when no new triangles were created as is written in the paper
         #T -= 1
     end
-    println("M: ", M, " T: ", T)
-    println(global_clustering_coefficient(social_network))
+    #println("M: ", M, " T: ", T)
+    #println(global_clustering_coefficient(social_network))
     
     i = 0
     while M > 0

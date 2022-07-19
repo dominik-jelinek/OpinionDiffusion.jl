@@ -112,3 +112,22 @@ function filter_candidates(election, candidates, remove_candidates, can_count)
 	
 	return new_election, new_candidates
 end
+
+function to_string(vote::Vote)
+	string = []
+	for bucket in vote
+		push!(string, join(bucket, " "))
+	end
+
+	return join(string, " | ")
+end
+
+function get_frequent_votes(votes, n)
+	frequencies = Dict()
+	for vote in votes
+		frequencies[vote] = get(frequencies, vote, 0) + 1
+	end
+	frequencies = collect(sort(frequencies, rev=true; byvalue=true))[1:min(length(frequencies), n)]
+	
+	return [(to_string(vote), freq) for (vote, freq) in frequencies]
+end

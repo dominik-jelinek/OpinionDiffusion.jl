@@ -54,6 +54,7 @@ export draw_range!, draw_voting_res
 export voters, social_network
 export load_model, restart_model, save_ensemble
 export test_KT
+export to_string
 
 Bucket = Set{Int64}
 Vote = Vector{Bucket}
