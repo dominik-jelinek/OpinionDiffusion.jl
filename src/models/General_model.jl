@@ -1,6 +1,6 @@
 struct General_model <: Abstract_model
     voters::Vector{Abstract_voter}
-    social_network::MetaGraphs.MetaGraph
+    social_network::AbstractGraph
     can_count::Int64
 end
 
@@ -10,7 +10,7 @@ end
 end
 
 @kwdef struct General_graph_diff_config <: Abstract_graph_diff_config
-    popularity_ratio::Float64
+    homophily::Float64
 end
 
 function General_model(election, can_count::Int64, model_config)
@@ -54,7 +54,7 @@ function graph_diffusion!(model::General_model, evolve_edges, graph_diff_config:
     vertex_ids = StatsBase.sample(1:length(voters), sample_size, replace=true)
 
     for id in vertex_ids
-        edge_diffusion!(voters[id], model, graph_diff_config.popularity_ratio)
+        edge_diffusion!(voters[id], model, graph_diff_config.homophily)
     end
 end
 
@@ -86,63 +86,4 @@ function edge_diffusion!(self, model, popularity_ratio)
 
     to_add = StatsBase.sample(1:length(voters), StatsBase.Weights(probs))
     add_edge!(social_network, ID, to_add)
-end
-
-function edge_diffusion2!(start, model, popularity_ratio, n)
-    voters, social_network = get_voters(model), get_social_network(model)
-    self = start
-
-    #remove one neighboring edge from the start of chain
-    degree_probs = 1 ./ degree(social_network, neibrs)
-    distance_probs = 2 .^ distances[neibrs]
-    probs = popularity_ratio .* degree_probs ./ sum(degree_probs) + (1.0 - popularity_ratio) .* distance_probs ./ sum(distance_probs)
-
-    to_remove = StatsBase.sample(1:length(neibrs), StatsBase.Weights(probs))
-    rem_edge!(social_network, ID, neibrs[to_remove])
-
-    #start the chain by adding one edge from the start of chain
-    degree_probs = degree(social_network)
-    distance_probs = (1 / 2) .^ distances
-    probs = popularity_ratio .* degree_probs ./ sum(degree_probs) + (1.0 - popularity_ratio) .* distance_probs ./ sum(distance_probs)
-    probs[ID] = 0.0
-    probs[neighbors(social_network, ID)] .= 0.0
-
-    to_add = StatsBase.sample(1:length(voters), StatsBase.Weights(probs))
-    add_edge!(social_network, ID, to_add)
-
-    self = voters[to_add]
-    for i in 1:n-1
-        ID = self.ID
-        distances = get_distance(self, voters)
-        neibrs = neighbors(social_network, ID)
-
-        #remove two neighboring edges
-        degree_probs = 1 ./ degree(social_network, neibrs)
-        distance_probs = 2 .^ distances[neibrs]
-        probs = popularity_ratio .* degree_probs ./ sum(degree_probs) + (1.0 - popularity_ratio) .* distance_probs ./ sum(distance_probs)
-
-        to_remove = StatsBase.sample(1:length(neibrs), StatsBase.Weights(probs), 2, replace=false)
-        rem_edge!(social_network, ID, neibrs[to_remove[1]])
-        rem_edge!(social_network, ID, neibrs[to_remove[2]])
-
-        #add one edge
-        degree_probs = degree(social_network)
-        distance_probs = (1 / 2) .^ distances
-        probs = popularity_ratio .* degree_probs ./ sum(degree_probs) + (1.0 - popularity_ratio) .* distance_probs ./ sum(distance_probs)
-        probs[ID] = 0.0
-        probs[neighbors(social_network, ID)] .= 0.0
-
-        to_add = StatsBase.sample(1:length(voters), StatsBase.Weights(probs))
-        add_edge!(social_network, ID, to_add)
-
-        self = voters[to_add]
-    end
-
-    #remove one neighboring edge from last node in chain
-    degree_probs = 1 ./ degree(social_network, neibrs)
-    distance_probs = 2 .^ distances[neibrs]
-    probs = popularity_ratio .* degree_probs ./ sum(degree_probs) + (1.0 - popularity_ratio) .* distance_probs ./ sum(distance_probs)
-
-    to_remove = StatsBase.sample(1:length(neibrs), StatsBase.Weights(probs))
-    rem_edge!(social_network, ID, neibrs[to_remove])
 end

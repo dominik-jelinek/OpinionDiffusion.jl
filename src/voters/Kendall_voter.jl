@@ -20,7 +20,7 @@ end
 function Kendall_voter(ID, vote, can_count, openmindedness_distr::Distributions.ContinuousUnivariateDistribution, stubbornness_distr::Distributions.ContinuousUnivariateDistribution)
    opinion = kendall_encoding(vote, can_count)
    openmindedness = rand(openmindedness_distr)
-   stubbornness = rand(stubbornness_distr)
+   stubbornness = 0.5#rand(stubbornness_distr)
 
    return Kendall_voter(ID, opinion, vote, openmindedness, stubbornness)
 end

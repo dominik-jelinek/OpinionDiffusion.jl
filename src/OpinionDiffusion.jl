@@ -39,7 +39,7 @@ export get_opinion, get_vote, get_votes, get_distance
 export get_voters, get_social_network
 
 export General_model_config, General_graph_diff_config, Diffusion_config
-export weighted_AB_graph_config, DEG_graph_config
+export BA_graph_config, DEG_graph_config
 
 export Spearman_voter_init_config, Spearman_voter_diff_config
 export Kendall_voter_init_config, Kendall_voter_diff_config

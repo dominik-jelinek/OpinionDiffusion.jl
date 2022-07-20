@@ -1,39 +1,3 @@
-function barabasi_albert_graph(voters::Vector{T}, m::Integer) where T <: Abstract_voter
-   if m > length(voters)
-      throw(ArgumentError("Argument m for Barabasi-Albert graph creation is higher than number of voters."))
-   end
-
-   social_network = Graphs.SimpleGraph(length(voters))
-   rand_perm = Random.shuffle(1:length(voters))
-   
-   degrees = zeros(Float64, length(voters))
-   for i in 1:m
-      degrees[i] = 1.0
-   end
-
-   probs = zeros(Float64, length(voters))
-   for i in m+1:length(voters)
-      self = rand_perm[i]
-      
-      #calculate distribution of probabilities for each previously added vertex
-      for j in 1:i-1
-         probs[j] = degrees[j] * 1.0/(1.0 + get_distance(voters[self], voters[rand_perm[j]]))
-      end
-      edge_ends = StatsBase.sample(1:length(voters), StatsBase.Weights(probs), m, replace=false)
-      
-      #add edges
-      self = rand_perm[i]
-      for edge_end in edge_ends
-         Graphs.add_edge!(social_network, self, rand_perm[edge_end]) #probs[j] - 1.0
-         degrees[edge_end] += 1
-      end
-      degrees[i] += 1.0 + m 
-
-   end
-
-   return social_network
-end
-
 function init_graph(n::Int, edges::Vector{Graphs.SimpleGraphs.SimpleEdge{Int64}})
    g = Graphs.SimpleGraphFromIterator(edges)
    
@@ -42,27 +6,71 @@ function init_graph(n::Int, edges::Vector{Graphs.SimpleGraphs.SimpleEdge{Int64}}
    return g
 end
 
-# Not used below___________________________________________________________________
+function get_cluster_graph(g, clusters, labels, projections)
+   cluster_graph = MetaGraph(length(clusters))
+   set_prop!(cluster_graph, :ne, ne(g))
+   set_prop!(cluster_graph, :nv, nv(g))
 
-function createClusteredMetaGraph(g, clusters, labels)
-   G = MetaGraph(length(clusters))
+   cluster_colors  = Colors.distinguishable_colors(length(clusters))
    #each vertex has the size equal to coresponding group size
-   for i in 1:length(clusters)
-      set_prop!(G, i, :size, length(clusters[i]))
+   for (i, cluster) in enumerate(clusters)
+      set_prop!(cluster_graph, i, :size, length(cluster))
+      set_prop!(cluster_graph, i, :color, cluster_colors[i])
+      if length(cluster) > 1
+         set_prop!(cluster_graph, i, :pos, Statistics.mean(projections[:, collect(cluster)], dims=2))
+      else
+         set_prop!(cluster_graph, i, :pos, [0,0])
+      end
    end
+
    #for each edge in graph add one to grouped graph and if there is one already
    #increase the size of it
    for e in edges(g)
-      if add_edge!(G, labels[src(e)], labels[dst(e)])
-         set_prop!(G, labels[src(e)], labels[dst(e)], :weight, 1)
-      else
-         if labels[src(e)] != labels[dst(e)] #prohibit self edges
-            weight = get_prop(G, labels[src(e)], labels[dst(e)], :weight)
-            set_prop!(G, labels[src(e)], labels[dst(e)], :weight, weight + 1)
+      if labels[src(e)] == labels[dst(e)]
+         if has_prop(cluster_graph, :self_edges)
+            self_edges = get_prop(cluster_graph, labels[src(e)], :self_edges)
+            set_prop!(cluster_graph, labels[src(e)], :self_edges, self_edges + 1)
+         else
+            set_prop!(cluster_graph, labels[src(e)], :self_edges, 1)
          end
+         continue
+      end
+
+      if add_edge!(cluster_graph, labels[src(e)], labels[dst(e)])
+         set_prop!(cluster_graph, labels[src(e)], labels[dst(e)], :weight, 1)
+      else
+         weight = get_prop(cluster_graph, labels[src(e)], labels[dst(e)], :weight)
+         set_prop!(cluster_graph, labels[src(e)], labels[dst(e)], :weight, weight + 1)
       end
    end
-   return G
+
+   return cluster_graph
+end
+
+function draw_cluster_graph(g)
+   nodesize = [get_prop(g, v, :size) for v in vertices(g)]
+   xs = [get_prop(g, v, :pos)[1, 1] for v in vertices(g)]
+   ys = [-get_prop(g, v, :pos)[2, 1] for v in vertices(g)]
+   #edgesizes = [get_prop(G, e, :weight) / (get_prop(G, src(e), :size) * get_prop(G, dst(e), :size)) for e in edges(G)]
+   edgesizes = [get_prop(g, e, :weight) for e in edges(g)]
+   c = [get_prop(g, v, :color) for v in vertices(g)]
+   #=edgesizes = []
+   for e in edges(G)
+      src_self = has_prop(G, src(e), :self_edges) ? get_prop(G, src(e), :self_edges) : 0
+      dst_self = has_prop(G, dst(e), :self_edges) ? get_prop(G, dst(e), :self_edges) : 0
+      expected_edges = (get_prop(G, src(e), dst(e), :weight) + src_self + dst_self) * (2*get_prop(G, src(e), :size) * get_prop(G, dst(e), :size)) / (get_prop(G, src(e), :size) + get_prop(G, dst(e), :size))
+      ratio = get_prop(G, src(e), dst(e), :weight) / expected_edges
+      push!(edgesizes, round(ratio, digits=2))
+   end=#
+   edgelabels = edgesizes
+   #[round(get_prop(G, :nv) * get_prop(G, e, :weight) / (2*get_prop(G, src(e), :size) * get_prop(G, dst(e), :size)), digits=2) for e in edges(G)]
+
+   return GraphPlot.gplot(g, xs, ys, 
+                           nodesize=nodesize,
+                           #nodelabel=1:Graphs.nv(G), 
+                           edgelinewidth=edgesizes,
+                           nodefillc=c,
+                           edgelabel=edgelabels)
 end
 
 function drawGraph(g, clustering, K)
@@ -74,80 +82,4 @@ function drawGraph(g, clustering, K)
       nodesize=nodesize,
       #edgestrokec=colorant"red",
       layout=GraphPlot.spring_layout)
-end
-
-function drawClusteredMetaGraph(G)
-   nodesize = [get_prop(G, v, :size) for v in vertices(G)]
-   #edgesizes = [get_prop(G, e, :weight) for e in edges(G)]
-   edgesizes = [1000*get_prop(G, e, :weight) / (get_prop(G, src(e), :size) * get_prop(G, dst(e), :size)) for e in edges(G)]
-   
-   display(edgesizes)
-   display(GraphPlot.gplot(G,
-      nodelabel=1:Graphs.nv(G), 
-      nodesize=nodesize,
-      edgelinewidth=edgesizes,
-      layout=circular_layout))
-end
-
-#__________________________________________________________________
-
-function initGraphCompr(database, p, minFriends, maxFriends) #WIP
-   g = SimpleGraph(length(database))
-   totalDistance = 0
-
-   lowerFriendProb = minFriends/length(database)
-   upperFriendProb = maxFriends/length(database)
-
-   candidateBuffer = zeros(Int32, length(database[1]))
-   comprDBpref, comprDBgrp = compressDB(database)
-   for i in 1:length(comprDBpref)-1
-      #based on Kendall tau value assign minFriends to maxFriends edges
-      for j in i+1:length(comprDBpref)
-         distance = kendallTau!(comprDBpref[i],comprDBpref[j], p, candidateBuffer)
-         prob = translateRange(0.0, 1.0, lowerFriendProb, upperFriendProb, 1.0 - distance)
-         totalDistance += length(comprDBgrp[i])*length(comprDBgrp[j])*distance
-
-         #edgesToAdd = ceil(Int, prob*length(comprDBgrp[i])*length(comprDBgrp[j]))
-         #x = rand(1:length(comprDBgrp[i]), edgesToAdd)
-         #y = rand(1:length(comprDBgrp[j]), edgesToAdd)
-         #for k in 1:length(x)
-         #   add_edge!(g,comprDBgrp[i][x[k]],comprDBgrp[j][y[k]])
-         #end
-
-         for k in 1:length(comprDBgrp[i])
-            for l in 1:length(comprDBgrp[j])
-               if rand() <= prob
-                  add_edge!(g,comprDBgrp[i][k],comprDBgrp[j][l])
-               end
-            end
-         end
-
-      end
-   end
-   return g, totalDistance
-end
-
-function initGraphCompr(database, p::Float64, normalize::Bool, f::Function) #WIP
-   g = SimpleGraph(length(database))
-   totalDistance = 0.0
-
-   candidateBuffer = zeros(Int32, length(database[1]))
-   comprDBpref, comprDBgrp = compressDB(database)
-   for i in 1:length(comprDBpref)-1
-      #based on Kendall tau value assign minFriends to maxFriends edges
-      for j in i+1:length(comprDBpref)
-         distance = kendallTau!(comprDBpref[i],comprDBpref[j], p, candidateBuffer, normalize)
-         totalDistance += length(comprDBgrp[i])*length(comprDBgrp[j])*distance
-
-         for k in 1:length(comprDBgrp[i])
-            for l in 1:length(comprDBgrp[j])
-               if rand() <= f(distance)
-                  add_edge!(g,comprDBgrp[i][k],comprDBgrp[j][l])
-               end
-            end
-         end
-
-      end
-   end
-   return g, totalDistance/pairsCount(length(database))
 end

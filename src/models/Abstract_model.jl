@@ -69,12 +69,6 @@ function run_ensemble_model(ensemble_size, diffusions, election, init_metrics, c
     return gathered_metrics
 end
 
-#create models from configs
-#get metrics
-# cc
-# diameter
-# avg edge distance
-
 function diffusion!(model::T, diffusion_config) where T <: Abstract_model
     voter_diffusion!(model, diffusion_config.evolve_vertices, diffusion_config.voter_diff_config)
     graph_diffusion!(model, diffusion_config.evolve_edges, diffusion_config.graph_diff_config)

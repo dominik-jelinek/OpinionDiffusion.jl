@@ -104,9 +104,13 @@ function model_vis2(model, sampled_voter_ids, reduce_dim_config, clustering_conf
     projections = reduce_dims(sampled_opinions, reduce_dim_config)
         
     labels, clusters = clustering(sampled_voters, clustering_config)
-
     title = name(reduce_dim_config) * "_" * name(clustering_config) * "_" * string(length(sampled_voter_ids))
     push!(visualizations, draw_voter_vis(projections, clusters, title))
+
+    g = get_cluster_graph(Graphs.induced_subgraph(social_network, sampled_voter_ids)[1], clusters, labels, projections)
+    println(modularity(g, labels))
+    
+    push!(visualizations, draw_cluster_graph(g))
 
     push!(visualizations, draw_degree_distr(Graphs.degree_histogram(social_network)))
 
@@ -180,7 +184,7 @@ function update_metrics!(model, diffusion_metrics, can_count)
 end
 
 function metrics_vis(metrics, candidates, parties, exp_dir=Nothing)
-    degrees = draw_range(metrics["min_degrees"], metrics["avg_degrees"], metrics["max_degrees"], title="Degree range", xlabel="Diffusions", ylabel="Degree", value_label="avg")
+    degrees = draw_range(metrics["min_degrees"], metrics["avg_degrees"], metrics["max_degrees"], title="Degree range", xlabel="Timestamp", ylabel="Degree", value_label="avg")
 
     plurality = draw_voting_res(candidates, parties, reduce(hcat, metrics["plurality_votings"])', "Plurality voting")
     borda = draw_voting_res(candidates, parties, reduce(hcat, metrics["borda_votings"])', "Borda voting")
@@ -298,7 +302,7 @@ function draw_metric!(plot, values, title::String; log_idx=nothing)
     c = log_idx === nothing ? 1 : log_idx
 
     draw_range!(plot, [x[2] for x in values], [x[3] for x in values], [x[4] for x in values], label=label, c=c)
-    Plots.plot!(plot, title=title, xlabel="t", ylabel="Value", yformatter = :plain)
+    Plots.plot!(plot, title=title, xlabel="Timestamp", ylabel="Value", yformatter = :plain)
 
     return plot
 end
@@ -340,7 +344,7 @@ function draw_voting_res!(plot, candidates, parties, result, title::String; log_
 
     for (i, col) in enumerate(eachcol(result))
         draw_range!(plot, [x[2] for x in col], [x[3] for x in col], [x[4] for x in col], c=c[i], label=names[i])
-        Plots.plot!(plot, title=title, xlabel="t", ylabel="Percentage", yformatter = :plain)
+        Plots.plot!(plot, title=title, xlabel="Timestamp", ylabel="Percentage", yformatter = :plain)
     end
 end
 

@@ -21,7 +21,7 @@ end
 function Spearman_voter(ID, vote, weights, openmindedness_distr::Distributions.ContinuousUnivariateDistribution, stubbornness_distr::Distributions.ContinuousUnivariateDistribution)
     opinion = spearman_encoding(vote, weights)
     openmindedness = rand(openmindedness_distr)
-    stubbornness = rand(stubbornness_distr)
+    stubbornness = 0.5#rand(stubbornness_distr)
 
     return Spearman_voter(ID, opinion, openmindedness, stubbornness)
 end
