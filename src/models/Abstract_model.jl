@@ -1,4 +1,14 @@
 abstract type Abstract_model end
+abstract type Abstract_graph_init_config <: Config end
+abstract type Abstract_graph_diff_config <: Config end
+
+@kwdef struct Diffusion_config <: Config
+    checkpoint::Int64
+    evolve_vertices::Float64
+    evolve_edges::Float64
+    voter_diff_config::Abstract_voter_diff_config
+    graph_diff_config::Abstract_graph_diff_config
+end
 
 get_voters(model::T) where T <: Abstract_model = model.voters 
 get_social_network(model::T) where T <: Abstract_model = model.social_network
@@ -32,8 +42,9 @@ function run_ensemble(model::Abstract_model, ensemble_size, diffusions, init_met
         end
 
         metrics_ens[i] = metrics
-        display(get_frequent_votes(get_votes(get_voters(model_cp)), 15))
-        println("________________________________________________________________________")
+        display(get_frequent_votes(get_votes(get_voters(model_cp)), 5))
+        println()
+        println("_____________________________________________________")
     end
 
     gathered_metrics = OpinionDiffusion.gather_metrics(metrics_ens)
@@ -58,6 +69,9 @@ function run_ensemble_model(ensemble_size, diffusions, election, init_metrics, c
         end
 
         ens_metrics[i] = metrics
+        display(get_frequent_votes(get_votes(get_voters(model_cp)), 5))
+        println()
+        println("_____________________________________________________")
     end
 
     gathered_metrics = gather_metrics(ens_metrics)

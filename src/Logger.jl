@@ -58,7 +58,6 @@ function load_model(model_dir::String, exp_dir::String, idx::Int64, overwrite::B
         diff_counter = [0]
     end
 
-    
     return model, Logger(model_dir, exp_dir, diff_counter)
 end
 

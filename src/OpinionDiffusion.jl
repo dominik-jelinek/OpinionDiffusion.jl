@@ -58,8 +58,7 @@ export to_string
 
 Bucket = Set{Int64}
 Vote = Vector{Bucket}
-
-include("configs.jl")
+abstract type Config end
 
 include("parsing.jl")
 include("utils.jl")
@@ -67,6 +66,9 @@ include("utils.jl")
 include("voters/Abstract_voter.jl")
 include("voters/Kendall_voter.jl")
 include("voters/Spearman_voter.jl")
+
+include("models/Abstract_model.jl")
+include("models/General_model.jl")
 
 include("voting.jl")
 include("dim_reduction.jl")
@@ -76,11 +78,7 @@ include("graphs/graph.jl")
 include("graphs/barabasi_albert.jl")
 include("graphs/DEG.jl")
 
-include("models/Abstract_model.jl")
-include("models/General_model.jl")
-
 include("Logger.jl")
-
 include("visualization.jl")
 
 end
