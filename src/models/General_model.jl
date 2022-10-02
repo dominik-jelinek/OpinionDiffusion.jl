@@ -13,14 +13,12 @@ end
     homophily::Float64
 end
 
-function General_model(election, can_count::Int64, model_config)
+function General_model(election, can_count::Int64, model_config; rng=Random.GLOBAL_RNG)
     #println("Initializing voters:")
-    #@time 
-    voters = init_voters(election, can_count, model_config.voter_init_config)
+    voters = init_voters(election, can_count, model_config.voter_init_config; rng=rng)
 
     #println("Initializing graph:")
-    #@time 
-    social_network = init_graph(voters, model_config.graph_init_config)
+    social_network = init_graph(voters, model_config.graph_init_config; rng=rng)
 
     return General_model(voters, social_network, can_count)
 end
@@ -47,18 +45,18 @@ end
 """
 Pick a random voter remove one edge based on inverse that it was created and the add one edge
 """
-function graph_diffusion!(model::General_model, evolve_edges, graph_diff_config::General_graph_diff_config)
+function graph_diffusion!(model::General_model, evolve_edges, graph_diff_config::General_graph_diff_config; rng=Random.Global)
     voters = get_voters(model)
     
     sample_size = ceil(Int, evolve_edges * length(voters))
-    vertex_ids = StatsBase.sample(1:length(voters), sample_size, replace=true)
+    vertex_ids = StatsBase.sample(rng, 1:length(voters), sample_size, replace=true)
 
     for id in vertex_ids
-        edge_diffusion!(voters[id], model, graph_diff_config.homophily)
+        edge_diffusion!(voters[id], model, graph_diff_config.homophily; rng=rng)
     end
 end
 
-function edge_diffusion!(self, model, popularity_ratio)
+function edge_diffusion!(self, model, popularity_ratio; rng=Random.Global)
     voters, social_network = get_voters(model), get_social_network(model)
     ID = self.ID
     distances = get_distance(self, voters)
@@ -74,7 +72,7 @@ function edge_diffusion!(self, model, popularity_ratio)
     distance_probs = 2 .^ distances[neibrs]
     probs = popularity_ratio .* degree_probs ./ sum(degree_probs) + (1.0 - popularity_ratio) .* distance_probs ./ sum(distance_probs)
 
-    to_remove = StatsBase.sample(1:length(neibrs), StatsBase.Weights(probs))
+    to_remove = StatsBase.sample(rng, 1:length(neibrs), StatsBase.Weights(probs))
     rem_edge!(social_network, ID, neibrs[to_remove])
 
     #add edge
@@ -84,6 +82,6 @@ function edge_diffusion!(self, model, popularity_ratio)
     probs[ID] = 0.0
     probs[neighbors(social_network, ID)] .= 0.0
 
-    to_add = StatsBase.sample(1:length(voters), StatsBase.Weights(probs))
+    to_add = StatsBase.sample(rng, 1:length(voters), StatsBase.Weights(probs))
     add_edge!(social_network, ID, to_add)
 end

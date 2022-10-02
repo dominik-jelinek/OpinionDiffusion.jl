@@ -6,24 +6,25 @@
     homophily::Float64
 end
 
-function init_graph(voters, graph_init_config::DEG_graph_config)
+function init_graph(voters, graph_init_config::DEG_graph_config; rng=Random.GLOBAL_RNG)
 	pareto = Distributions.truncated(Distributions.Pareto(graph_init_config.exp, graph_init_config.scale); upper=graph_init_config.max_degree)
-	target_deg_distr = Int.(round.(rand(pareto, length(voters))))
+	target_deg_distr = Int.(round.(rand(rng, pareto, length(voters))))
 
     return get_DEG(
         voters,
         target_deg_distr,
         graph_init_config.target_cc,
-        homophily=graph_init_config.homophily
+        homophily=graph_init_config.homophily,
+        rng=rng
     )
 end
 
-function get_DEG(voters, targed_deg_distr, target_cc; homophily=0.0)
+function get_DEG(voters, targed_deg_distr, target_cc; rng=Random.GLOBAL_RNG, homophily=0.0)
     n = length(voters)
     social_network = SimpleGraph(n)
 
     M = floor(sum(targed_deg_distr) / 2)
-    rds = Random.shuffle(targed_deg_distr)
+    rds = Random.shuffle(rng, targed_deg_distr)
     T = floor(target_cc * sum([choose2(rd) for rd in rds]) / 3)
 
     #println("M: ", M, " T: ", T)
@@ -40,18 +41,18 @@ function get_DEG(voters, targed_deg_distr, target_cc; homophily=0.0)
 
         nonzero = findall(x -> x > 0, rds)
         rds_nonzero = rds[nonzero]
-        u = StatsBase.sample(1:length(rds_nonzero), StatsBase.Weights(rds_nonzero))
+        u = StatsBase.sample(rng, 1:length(rds_nonzero), StatsBase.Weights(rds_nonzero))
 
         distances_u = distances[u, nonzero]
         probs = ((1.0 - homophily) .* rds_nonzero ./ sum(rds_nonzero)) .+ homophily .* distances_u ./ sum(distances_u)
         probs[u] = 0.0
-        v = StatsBase.sample(1:n, StatsBase.Weights(probs))
+        v = StatsBase.sample(rng, 1:n, StatsBase.Weights(probs))
 
         distances_v = distances[v, nonzero]
         probs = (1.0 - homophily) .* rds_nonzero ./ sum(rds_nonzero) .+ homophily .* (distances_u ./ sum(distances_u) .+ distances_v ./ sum(distances_v)) ./ 2
         probs[u] = 0.0
         probs[v] = 0.0
-        w = StatsBase.sample(1:n, StatsBase.Weights(probs))
+        w = StatsBase.sample(rng, 1:n, StatsBase.Weights(probs))
 
         u, v, w = nonzero[u], nonzero[v], nonzero[w]
 
@@ -94,12 +95,12 @@ function get_DEG(voters, targed_deg_distr, target_cc; homophily=0.0)
 
         nonzero = findall(x -> x > 0, rds)
         rds_nonzero = rds[nonzero]
-        u = StatsBase.sample(1:length(rds_nonzero), StatsBase.Weights(rds_nonzero))
+        u = StatsBase.sample(rng, 1:length(rds_nonzero), StatsBase.Weights(rds_nonzero))
 
         distances_u = distances[u, nonzero]
         probs = (1.0 - homophily) .* rds_nonzero ./ sum(rds_nonzero) .+ homophily .* distances_u ./ sum(distances_u)
         probs[u] = 0.0
-        v = StatsBase.sample(1:n, StatsBase.Weights(probs))
+        v = StatsBase.sample(rng, 1:n, StatsBase.Weights(probs))
 
         u, v = nonzero[u], nonzero[v]
 

@@ -98,7 +98,7 @@ function draw_metric!(plot, values, title::String; linestyle=:solid, log_idx=not
 end
 
 #___________________________________________________________________
-# MODEL
+# model
 
 function model_vis(model, sampled_voter_ids, reduce_dim_config, clustering_config)
     social_network = get_social_network(model)
@@ -281,6 +281,10 @@ function gather_metrics(ens_metrics)
 
     res = Dict()
     for metric in keys(ens_metrics[1])
+        if metric == "seed"
+            continue
+        end
+
         matrix = transpose(hcat([run[metric] for run in ens_metrics]...))
         
         if matrix[1, 1] isa Number #number

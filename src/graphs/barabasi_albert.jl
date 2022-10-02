@@ -4,17 +4,17 @@
 end
 
 function init_graph(voters, graph_init_config::BA_graph_config)
-    return barabasi_albert_graph(voters, graph_init_config.m, graph_init_config.homophily)
+    return barabasi_albert_graph(voters, graph_init_config.m; homophily=graph_init_config.homophily, rng=rng)
 end
 
-function barabasi_albert_graph(voters::Vector{T}, m::Integer, homophily=0.0) where T <: Abstract_voter
+function barabasi_albert_graph(voters::Vector{T}, m::Integer; homophily=0.0, rng=Random.GLOBAL_RNG) where T <: Abstract_voter
     if m > length(voters)
         throw(ArgumentError("Argument m for Barabasi-Albert graph creation is higher than number of voters."))
     end
     n = length(voters)
     social_network = SimpleGraph(n)
 
-    rand_perm = Random.shuffle(1:n)
+    rand_perm = Random.shuffle(rng, 1:n)
     voters_perm = voters[rand_perm]
 
     # add first node that is connected to all other nodes
@@ -41,7 +41,7 @@ function barabasi_albert_graph(voters::Vector{T}, m::Integer, homophily=0.0) whe
         @inbounds for j in eachindex(distances)
             probs[j] = (1.0 - homophily) * degrees[j] / degree_sum + homophily * distances[j] / dist_sum
         end
-        edge_ends = StatsBase.sample(1:n, StatsBase.Weights(probs), m, replace=false)
+        edge_ends = StatsBase.sample(rng, 1:n, StatsBase.Weights(probs), m, replace=false)
 
 
         #add edges

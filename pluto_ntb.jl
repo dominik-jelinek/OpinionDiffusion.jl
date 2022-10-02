@@ -102,7 +102,7 @@ Plots.bar(sum(counts, dims = 2), legend=false, xticks=1:length(src_candidates), 
 md"## Sample voters and remove unnecessary candidates"
 
 # ╔═╡ ad94415f-fc56-4a2f-9068-e05d8633aafe
-init_sample_size = 2000
+init_sample_size = 1000
 
 # ╔═╡ 8ea22c93-1fe3-44b2-88c1-fb6ccd195866
 if input_filename == "ED-00001-00000001.toc"
@@ -177,19 +177,6 @@ md"## Graph config"
 # ╔═╡ 48a2cf2b-bd86-4131-a230-290124cc5f48
 md"#### DEG target degree distribution"
 
-# ╔═╡ 3b67247a-7dd8-49e7-ad88-64a8dad90d17
-begin
-	pareto = Distributions.truncated(Distributions.Pareto(exp, scale); upper=max_degree)
-	
-	target_degree_distr = Int.(round.(rand(pareto, init_sample_size)))
-end
-
-# ╔═╡ 25374289-3cf1-4d27-887f-a47f9794f2bc
-Plots.histogram(target_degree_distr)
-
-# ╔═╡ 7069907d-2949-4f68-9602-9bef9ff46064
-sum(target_degree_distr) / init_sample_size
-
 # ╔═╡ c4dfe306-aad8-4248-bc9e-c2de841a7354
 md"#### Select a method for graph generation"
 
@@ -214,6 +201,19 @@ else# graph_type == "BA"
 										homophily=homophily
 									)
 end
+
+# ╔═╡ 3b67247a-7dd8-49e7-ad88-64a8dad90d17
+begin
+	pareto = Distributions.truncated(Distributions.Pareto(graph_init_config.exp, graph_init_config.scale); upper=graph_init_config.max_degree)
+	
+	target_degree_distr = Int.(round.(rand(pareto, init_sample_size)))
+end
+
+# ╔═╡ 25374289-3cf1-4d27-887f-a47f9794f2bc
+Plots.histogram(target_degree_distr)
+
+# ╔═╡ 7069907d-2949-4f68-9602-9bef9ff46064
+sum(target_degree_distr) / init_sample_size
 
 # ╔═╡ 338aa155-a4fb-4ff9-b27d-fc5481abb58d
 md"## Model config"
@@ -364,13 +364,13 @@ diffusion_config = Diffusion_config(
     )
 
 # ╔═╡ d877c5d0-89af-48b9-bcd0-c1602d58339f
-diffusions = 300
+diffusions = 100
 
 # ╔═╡ 27a60724-5d19-419f-b208-ffa0c78e2505
 ensemble_size = 5
 
 # ╔═╡ 87c573c1-69a4-4a61-bbb8-acb716f8ec6d
-ensemble_model = true
+ensemble_model = false
 
 # ╔═╡ de772425-25de-4228-b12e-d567b8ceb20f
 md"## Run diffusion"
@@ -632,6 +632,12 @@ Graphs.induced_subgraph(model.social_network, Graphs.neighborhood(model.social_n
 # ╔═╡ 87320bc9-e825-4aa8-84ea-9fd75b7ff4fd
 md"#### Compare diffusions"
 
+# ╔═╡ af643514-f20f-436b-966d-05021b566b1e
+ensemble_logs = [
+	"logs/model_ensemble_2022-07-20_12-50-15.jld2",
+	"logs/model_ensemble_2022-07-20_17-03-08.jld2"
+]
+
 # ╔═╡ 4add7dc5-0af8-4179-a496-a46767cc85ef
 [
 	"logs/model_2022-05-29_10-20-40/ensemble_2022-05-29_19-12-38.jld2",
@@ -640,7 +646,7 @@ md"#### Compare diffusions"
 ]
 
 # ╔═╡ fa876197-2401-4b54-8b56-e4abdf8f8801
- ensemble_logs = ["logs/" * file for file in readdir("logs") if split(file, "_")[2] == "ensemble"][1:end]
+ #ensemble_logs = ["logs/" * file for file in readdir("logs") if split(file, "_")[2] == "ensemble"][1:end]
 
 # ╔═╡ 48a2a821-f104-49da-b4e3-de7280f2eb03
 model_configs = [OpinionDiffusion.load(log, "model_config") for log in ensemble_logs]
@@ -766,10 +772,12 @@ if cb_run
 			run!(model, diffusion_config, logger)
 			update_metrics!(model, metrics, length(candidates))
 		end
-	elseif ensemble_model
-		gathered_metrics = OpinionDiffusion.run_ensemble_model(ensemble_size, diffusions, election, init_metrics, length(candidates), update_metrics!, model_config, diffusion_config, true)
+	elseif !ensemble_model
+		result = OpinionDiffusion.run_ensemble(model, ensemble_size, diffusions, metrics, update_metrics!, diffusion_config, logger)
+		gathered_metrics = gather_metrics([diffusion["metrics"] for diffusion in result])
 	else
-		gathered_metrics = OpinionDiffusion.run_ensemble(model, ensemble_size, diffusions, metrics, update_metrics!, diffusion_config, logger)
+		result = OpinionDiffusion.run_ensemble_model(ensemble_size, diffusions, election, init_metrics, length(candidates), update_metrics!, model_config, diffusion_config, true)
+		gathered_metrics = gather_metrics([diffusion["metrics"] for diffusion in result])
 	end
 end
 
@@ -892,9 +900,6 @@ end
 
 # ╔═╡ 840c2562-c444-4422-9cf8-e82429163627
 draw_voting_rules(gathered_metrics, ["plurality_votings", "borda_votings", "positions"], candidates, parties)
-
-# ╔═╡ 8dfa696b-7245-441e-be3f-87ee652ab2a3
-draw_voting_rules(gathered_metrics, ["plurality_votings", "borda_votings"], candidates, parties)
 
 # ╔═╡ ff89eead-5bf5-4d52-9134-aa415ae156b7
 function compare_voting_rules(logs, voting_rules, candidates, parties)
@@ -1068,7 +1073,6 @@ compare_metrics_vis(ensemble_logs, ["unique_votes", "avg_vote_length", "avg_edge
 # ╠═e518a2db-a02e-4cfb-8587-f892fd9cbc85
 # ╠═09d34d24-0fb0-4cc6-8ab6-c0d55b3346d0
 # ╠═840c2562-c444-4422-9cf8-e82429163627
-# ╠═8dfa696b-7245-441e-be3f-87ee652ab2a3
 # ╟─0932e410-4a74-42b3-86c5-ac40f6be3543
 # ╟─563c5195-fd67-48d8-9b01-a73ea756a7ba
 # ╠═228f2d0b-b964-4133-b0bc-fee7d9fe298f
@@ -1115,6 +1119,7 @@ compare_metrics_vis(ensemble_logs, ["unique_votes", "avg_vote_length", "avg_edge
 # ╠═ceadcd2d-42ac-4332-a49c-589cde3d500d
 # ╠═141d26c0-65f2-4266-b5a8-5b4b4c28f16e
 # ╟─87320bc9-e825-4aa8-84ea-9fd75b7ff4fd
+# ╠═af643514-f20f-436b-966d-05021b566b1e
 # ╠═4add7dc5-0af8-4179-a496-a46767cc85ef
 # ╠═fa876197-2401-4b54-8b56-e4abdf8f8801
 # ╠═48a2a821-f104-49da-b4e3-de7280f2eb03

@@ -48,7 +48,7 @@ export clustering, Kmeans_clustering_config, GM_clustering_config, Party_cluster
 export reduce_dims, MDS_dim_reduction_config, Tsne_dim_reduction_config, PCA_dim_reduction_config
 
 export plurality_voting, borda_voting, copeland_voting, get_positions
-export clustering, draw_voter_vis, draw_heat_vis, unify_projections!
+export clustering, draw_voter_vis, draw_heat_vis, unify_projections!, gather_metrics
 export get_edge_distances, draw_degree_distr, draw_edge_distances
 export draw_range!, draw_voting_res
 export voters, social_network

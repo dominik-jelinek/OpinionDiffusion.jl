@@ -17,21 +17,16 @@ end
 	attract_proba::Float64
 end
 
-function Kendall_voter(ID, vote, can_count, openmindedness_distr::Distributions.ContinuousUnivariateDistribution, stubbornness_distr::Distributions.ContinuousUnivariateDistribution)
-   opinion = kendall_encoding(vote, can_count)
-   openmindedness = rand(openmindedness_distr)
-   stubbornness = 0.5#rand(stubbornness_distr)
-
-   return Kendall_voter(ID, opinion, vote, openmindedness, stubbornness)
-end
-
-function init_voters(election, can_count, voter_config::Kendall_voter_init_config)
+function init_voters(election, can_count, voter_config::Kendall_voter_init_config; rng=Random.GLOBAL_RNG)
    openmindedness_distr = Distributions.Truncated(voter_config.openmindedness_distr, 0.0, 1.0)
    stubbornness_distr = Distributions.Truncated(voter_config.stubbornness_distr, 0.0, 1.0)
 
    voters = Vector{Kendall_voter}(undef, length(election))
    for (i, vote) in enumerate(election)
-       voters[i] = Kendall_voter(i, vote, can_count, openmindedness_distr, stubbornness_distr)
+      opinion = kendall_encoding(vote, can_count)
+      openmindedness = rand(rng, openmindedness_distr)
+      stubbornness = 0.5#rand(rng, stubbornness_distr)
+      voters[i] = Kendall_voter(i, opinion, vote, openmindedness, stubbornness)
    end
 
    return voters
@@ -73,7 +68,7 @@ function kendall_encoding(vote::Vote, can_count)
    return opinion
 end
 
-function step!(self::Kendall_voter, model, voter_diff_config::Kendall_voter_diff_config)
+function step!(self::Kendall_voter, model, voter_diff_config::Kendall_voter_diff_config; rng=Random.GLOBAL_RNG)
    voters = get_voters(model)
    social_network = get_social_network(model)
    neighbors_ = neighbors(social_network, self.ID)
@@ -82,10 +77,10 @@ function step!(self::Kendall_voter, model, voter_diff_config::Kendall_voter_diff
       return
    end
 
-   neighbor_id = neighbors_[rand(1:end)]
+   neighbor_id = neighbors_[rand(rng, 1:length(neighbors_))]
    neighbor = voters[neighbor_id]
 
-   if rand() <= voter_diff_config.attract_proba
+   if rand(rng) <= voter_diff_config.attract_proba
       voters[self.ID] = attract(self, neighbor, model.can_count)
       voters[neighbor.ID] = attract(neighbor, self, model.can_count)
    else
@@ -109,12 +104,12 @@ If it is bigger than the stubborness of respective voter, it is executed.
    
    
 =#
-function attract(self, neighbor, can_count; log_lvl=0)
+function attract(self, neighbor, can_count; rng=Random.GLOBAL_RNG, log_lvl=0)
    if get_distance(self, neighbor) == 0.0
       return self
    end
 
-   if rand() > self.stubborness
+   if rand(rng) > self.stubborness
       #actions = get_feasible_actions(self, neighbor, can_count)
       actions = get_distance_preserving_actions_dec(self, neighbor, can_count)
 
@@ -132,14 +127,14 @@ function attract(self, neighbor, can_count; log_lvl=0)
       # filter restack operation whenever unstack is available, resulting in smaller steps
       min_change = maximum([x[3] for x in actions])
       actions = [action for action in actions if action[3] == min_change]
-      action = actions[rand(1:length(actions))]
+      action = actions[rand(rng, 1:length(actions))]
 
       if log_lvl > 1
          println("Action:", action)
       end
 
       #self = apply_action(action, self, can_count)
-      if rand() < 0.5 / abs(action[3])
+      if rand(rng) < 0.5 / abs(action[3])
          self = apply_action2(action, self, can_count)
       end
    end
@@ -147,7 +142,7 @@ function attract(self, neighbor, can_count; log_lvl=0)
    return self
 end
 
-function repel(self, neighbor, can_count; log_lvl=0)
+function repel(self, neighbor, can_count; log_lvl=0, rng=Random.GLOBAL_RNG)
    # we are assuming that opinions are normalized
    max_distance = choose2(can_count)
    max_possible = max_distance
@@ -161,7 +156,7 @@ function repel(self, neighbor, can_count; log_lvl=0)
       return self
    end
 
-   if rand() > self.stubborness
+   if rand(rng) > self.stubborness
       #actions = get_feasible_actions(self, neighbor, can_count)
       actions = get_distance_preserving_actions_inc(self, neighbor, can_count)
 
@@ -181,7 +176,7 @@ function repel(self, neighbor, can_count; log_lvl=0)
       # pick the action with the smallest change in KT distance
       min_change = minimum([x[3] for x in actions])
       actions = [action for action in actions if action[3] == min_change]
-      action = actions[rand(1:length(actions))]
+      action = actions[rand(rng, 1:length(actions))]
 
       if log_lvl > 1
          println("Action:", action)
@@ -189,7 +184,7 @@ function repel(self, neighbor, can_count; log_lvl=0)
       #self = apply_action(action, self, can_count)
 
       # if the change of KT distance for smallest action is 2 then there is 50% chance that the acttion will be successful
-      if rand() < 0.5 / action[3]
+      if rand(rng) < 0.5 / action[3]
          self = apply_action2(action, self, can_count)
       end
    end

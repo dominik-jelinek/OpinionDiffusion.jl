@@ -18,14 +18,6 @@ end
     normalize_shifts::Union{Nothing, Tuple{Bool, Float64, Float64}}
 end
 
-function Spearman_voter(ID, vote, weights, openmindedness_distr::Distributions.ContinuousUnivariateDistribution, stubbornness_distr::Distributions.ContinuousUnivariateDistribution)
-    opinion = spearman_encoding(vote, weights)
-    openmindedness = rand(openmindedness_distr)
-    stubbornness = 0.5#rand(stubbornness_distr)
-
-    return Spearman_voter(ID, opinion, openmindedness, stubbornness)
-end
-
 function get_max_distance(can_count, weights)
     a = Vote()
     b = Vote()
@@ -37,13 +29,16 @@ function get_max_distance(can_count, weights)
     return get_distance(spearman_encoding(a, weights), spearman_encoding(b, weights))
 end
 
-function init_voters(election, can_count, voter_config::Spearman_voter_init_config)
+function init_voters(election, can_count, voter_config::Spearman_voter_init_config; rng=Random.GLOBAL_RNG)
     openmindedness_distr = Distributions.Truncated(voter_config.openmindedness_distr, 0.0, 1.0)
     stubbornness_distr = Distributions.Truncated(voter_config.stubbornness_distr, 0.0, 1.0)
     
     voters = Vector{Spearman_voter}(undef, length(election))
     for (i, vote) in enumerate(election)
-        voters[i] = Spearman_voter(i, vote, voter_config.weights, openmindedness_distr, stubbornness_distr)
+        opinion = spearman_encoding(vote, weights)
+        openmindedness = rand(rng, openmindedness_distr)
+        stubbornness = 0.5#rand(rng, stubbornness_distr)
+        voters[i] = Spearman_voter(i, opinion, openmindedness, stubbornness)
     end
 
     return voters
@@ -102,7 +97,7 @@ function get_pos(voter::Spearman_voter, can)
     return get_opinion(voter)[can]
 end
 
-function step!(self::Spearman_voter, model, voter_diff_config::Spearman_voter_diff_config)
+function step!(self::Spearman_voter, model, voter_diff_config::Spearman_voter_diff_config; rng=Random.GLOBAL_RNG)
     voters = get_voters(model)
     social_network = get_social_network(model)
     neighbors_ = neighbors(social_network, self.ID)
@@ -111,7 +106,7 @@ function step!(self::Spearman_voter, model, voter_diff_config::Spearman_voter_di
         return
     end
         
-    neighbor_id = neighbors_[rand(1:end)]
+    neighbor_id = neighbors_[rand(rng, 1:end)]
     neighbor = voters[neighbor_id]
 
     average_all!(self, neighbor, voter_diff_config.attract_proba, voter_diff_config.change_rate, voter_diff_config.normalize_shifts)
@@ -121,7 +116,7 @@ function average_all!(voter_1::Spearman_voter, voter_2::Spearman_voter, attract_
     shifts_1 = (voter_2.opinion - voter_1.opinion) / 2
     shifts_2 = shifts_1 .* (-1.0)
     
-    if rand() > attract_proba
+    if rand(rng) > attract_proba
         #repel
         shifts_1, shifts_2 = shifts_2, shifts_1
     end

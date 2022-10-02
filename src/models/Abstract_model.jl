@@ -17,86 +17,98 @@ function graph_diffusion!(model::T, graph_diff_config::U) where {T <: Abstract_m
     throw(NotImplementedError("graph_diffusion!"))
 end
 
-function run!(model::T, diffusion_config, logger=nothing::Union{Nothing, Logger}) where T<:Abstract_model
-    diffusion!(model, diffusion_config)
+function run!(model::T, diffusion_config; rng=rng) where T<:Abstract_model
+    diffusion!(model, diffusion_config; rng=rng)
+end
 
-    if logger !== nothing
-        logger.diff_counter[1] += 1
+function run!(model::T, diffusion_config, logger; rng=rng) where T<:Abstract_model
+    run!(model, diffusion_config; rng=rng)
+
+    logger.diff_counter[1] += 1
         
-        if logger.diff_counter[1] % diffusion_config.checkpoint == 0
-            save_log(logger, model)
-        end
+    if logger.diff_counter[1] % diffusion_config.checkpoint == 0
+        save_log(logger, model)
     end
 end
 
 function run_ensemble(model::Abstract_model, ensemble_size, diffusions, init_metrics, update_metrics!, diffusion_config, logger=nothing)
-    metrics_ens = Vector{Any}(undef, ensemble_size)
+    ens_metrics = Vector{Any}(undef, ensemble_size)
 
     @threads for i in 1:ensemble_size
         model_cp = deepcopy(model)
         metrics = deepcopy(init_metrics)
+        
+        diffusion_seed = rand(UInt32)
+        rng = MersenneTwister(diffusion_seed)
 
         for j in 1:diffusions
-            run!(model_cp, diffusion_config)
+            run!(model_cp, diffusion_config; rng=rng)
             update_metrics!(model_cp, metrics)
         end
 
-        metrics_ens[i] = metrics
+        ens_metrics[i] = Dict(  "diffusion_seed" => diffusion_seed, 
+                                "metrics" => metrics)
         display(get_frequent_votes(get_votes(get_voters(model_cp)), 5))
         println()
+        println(diffusion_seed)
         println("_____________________________________________________")
     end
 
-    gathered_metrics = OpinionDiffusion.gather_metrics(metrics_ens)
-
 	if logger != nothing
-		save_ensemble(logger.model_dir, diffusion_config, gathered_metrics)
+		save_ensemble(logger.model_dir, diffusion_config, ens_metrics)
 	end
 
-    return gathered_metrics
+    return ens_metrics
 end
 
 function run_ensemble_model(ensemble_size, diffusions, election, init_metrics, can_count, update_metrics!, model_config, diffusion_config, log=false)
     ens_metrics = Vector{Any}(undef, ensemble_size)
+    
+    diffusion_seed = rand(UInt32)
 
     @threads for i in 1:ensemble_size
-        model = General_model(election, can_count, model_config)
+        model_seed = rand(UInt32)
+        model_rng = MersenneTwister(model_seed)
+        model = General_model(election, can_count, model_config; rng=model_rng)
         metrics = init_metrics(model, can_count)
 
+        rng = MersenneTwister(diffusion_seed)
         for j in 1:diffusions
-            run!(model, diffusion_config)
+            run!(model, diffusion_config; rng=rng)
             update_metrics!(model, metrics)
         end
 
-        ens_metrics[i] = metrics
-        display(get_frequent_votes(get_votes(get_voters(model_cp)), 5))
+        ens_metrics[i] = Dict(  "model_seed" => model_seed, 
+                                "diffusion_seed" => diffusion_seed, 
+                                "metrics" => metrics)
+
+        display(get_frequent_votes(get_votes(get_voters(model)), 5))
         println()
+        println(model_seed)
         println("_____________________________________________________")
     end
 
-    gathered_metrics = gather_metrics(ens_metrics)
-
 	if log
-		save_ensemble(model_config, diffusion_config, gathered_metrics)
+		save_ensemble(model_config, diffusion_config, ens_metrics)
 	end
 
-    return gathered_metrics
+    return ens_metrics
 end
 
-function diffusion!(model::T, diffusion_config) where T <: Abstract_model
-    voter_diffusion!(model, diffusion_config.evolve_vertices, diffusion_config.voter_diff_config)
-    graph_diffusion!(model, diffusion_config.evolve_edges, diffusion_config.graph_diff_config)
+function diffusion!(model::T, diffusion_config; rng=Random.GLOBAL_RNG) where T <: Abstract_model
+    voter_diffusion!(model, diffusion_config.evolve_vertices, diffusion_config.voter_diff_config; rng=rng)
+    graph_diffusion!(model, diffusion_config.evolve_edges, diffusion_config.graph_diff_config; rng=rng)
 end
 
-function voter_diffusion!(model::T, evolve_vertices, voter_diff_config::U) where 
+function voter_diffusion!(model::T, evolve_vertices, voter_diff_config::U; rng=Random.Global) where 
     {T <: Abstract_model, U <: Abstract_voter_diff_config}
 
     voters = get_voters(model)
     sample_size = ceil(Int, evolve_vertices * length(voters))
-    vertex_ids = StatsBase.sample(1:length(voters), sample_size, replace=true)
+    vertex_ids = StatsBase.sample(rng, 1:length(voters), sample_size, replace=true)
     
     for id in vertex_ids
-        step!(voters[id], model, voter_diff_config)
+        step!(voters[id], model, voter_diff_config; rng=rng)
     end
 end
 
