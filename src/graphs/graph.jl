@@ -14,51 +14,118 @@ function get_cluster_graph(model, clusters, labels, projections)
    set_prop!(cluster_graph, :ne, ne(g))
    set_prop!(cluster_graph, :nv, nv(g))
 
-   cluster_colors  = Colors.distinguishable_colors(length(clusters))
    #each vertex has the size equal to coresponding group size
-   for (i, cluster) in enumerate(clusters)
-      set_prop!(cluster_graph, i, :size, length(cluster))
-      set_prop!(cluster_graph, i, :color, cluster_colors[i])
-      if length(cluster) > 1
-         set_prop!(cluster_graph, i, :pos, Statistics.mean(projections[:, collect(cluster)], dims=2))
-      else
-         set_prop!(cluster_graph, i, :pos, [0,0])
-      end
+   for (i, (label, indices)) in enumerate(clusters)
+      set_prop!(cluster_graph, i, :label, label)
+      set_prop!(cluster_graph, i, :indices, indices)
+      set_prop!(cluster_graph, i, :pos, Statistics.mean(projections[:, collect(indices)], dims=2))
    end
 
    #for each edge in graph add one to grouped graph and if there is one already
    #increase the size of it
    for e in edges(g)
-      if add_edge!(cluster_graph, labels[src(e)], labels[dst(e)])
-         set_prop!(cluster_graph, labels[src(e)], labels[dst(e)], :weight, 1)
-         set_prop!(cluster_graph, labels[src(e)], labels[dst(e)], :dist, get_distance(voters[src(e)], voters[dst(e)]))
+      src_ = findfirst(x-> x[1] == labels[src(e)], clusters)
+      dst_ = findfirst(x-> x[1] == labels[dst(e)], clusters)
+      edge = Edge(src_, dst_)
+      if add_edge!(cluster_graph, edge)
+         set_prop!(cluster_graph, edge, :weight, 1)
+         set_prop!(cluster_graph, edge, :dist, get_distance(voters[src(e)], voters[dst(e)]))
       else
-         weight = get_prop(cluster_graph, labels[src(e)], labels[dst(e)], :weight)
-         set_prop!(cluster_graph, labels[src(e)], labels[dst(e)], :weight, weight + 1)
+         weight = get_prop(cluster_graph, edge, :weight)
+         set_prop!(cluster_graph, edge, :weight, weight + 1)
 
-         dist = get_prop(cluster_graph, labels[src(e)], labels[dst(e)], :dist)
-         set_prop!(cluster_graph, labels[src(e)], labels[dst(e)], :dist, dist + get_distance(voters[src(e)], voters[dst(e)]))
+         dist = get_prop(cluster_graph, edge, :dist)
+         set_prop!(cluster_graph, edge, :dist, dist + get_distance(voters[src(e)], voters[dst(e)]))
       end
-   end
-
-   for e in edges(cluster_graph)
-      weight = get_prop(cluster_graph, src(e), dst(e), :weight)
-      dist = get_prop(cluster_graph, src(e), dst(e), :dist)
-      set_prop!(cluster_graph, src(e), dst(e), :dist, dist / weight)
    end
 
    return cluster_graph
 end
 
-function draw_cluster_graph(g)
-   nodesize = [get_prop(g, v, :size) for v in vertices(g)]
+function weighted_in_degree(g, v, self_loops=false)
+   in_edges = inneighbors(g, v)
+   degree = 0
+   
+   for in_edge in in_edges
+      if self_loops || in_edge != v
+         degree += get_prop(g, v, in_edge, :weight)
+      end
+   end
+
+   return degree
+end
+
+function cluster_graph_metrics(cluster_graph::AbstractMetaGraph, g, voters, can_count)
+   vertex_metrics = Dict{Any, Dict}()
+   edge_metrics = Dict{Any, Dict}()
+   
+   for v in vertices(cluster_graph)
+      indices = collect(get_prop(cluster_graph, v, :indices))
+      subgraph = induced_subgraph(g, indices)[1]
+
+      preferences = get_opinion(voters[indices])
+
+      distances = get_distance(preferences)
+      vertex_metrics[v] = Dict(
+         :size => length(indices),
+         :avg_positions => get_positions(voters[indices], can_count),
+         :self_edges => has_edge(cluster_graph, v, v) ? get_prop(cluster_graph, v, v, :weight) : 0,
+         :clustering_coefficient => Graphs.global_clustering_coefficient(subgraph),
+         :opinion_diameter => maximum(distances),
+         :graph_diameter => Graphs.diameter(subgraph),
+         :median_opinion_distance => get_median_distance(distances)
+      )
+   end
+
+   for e in edges(cluster_graph)
+      weight = get_prop(cluster_graph, src(e), dst(e), :weight)
+      dist = get_prop(cluster_graph, src(e), dst(e), :dist)
+      avg_dist = dist / weight
+
+      if src(e) == dst(e)
+         edge_ratios = nothing
+         homophily = nothing
+      else
+         if is_directed(cluster_graph)
+            edge_ratios = weight / weighted_in_degree(cluster_graph, dst(e))
+         else
+            to_src = weight / weighted_in_degree(cluster_graph, src(e))
+            to_dst = weight / weighted_in_degree(cluster_graph, dst(e))
+            edge_ratios = (to_dst, to_src)
+         end
+
+         # expected number of edges between two clusters in a random graph.
+         random_edges = 2 * length(get_prop(cluster_graph, src(e), :indices)) * length(get_prop(cluster_graph, dst(e), :indices)) / (nv(g) * ne(g))
+         # number of edges encountered divided by the expectation in a random graph.
+         # if the number is higher than 1, the clusters are more similar than expected.
+         # if the number is lower than 1, the clusters are less similar than expected.
+         homophily = weight / random_edges
+      end
+
+      #proportion of out edges from src to dst, and in edges from dst to src (impact)
+
+      edge_metrics[e] = Dict(
+         :weight => weight,
+         :dist => dist,
+         :avg_dist => avg_dist,
+         :edge_ratios => edge_ratios,
+         :homophily => homophily
+      )
+   end
+
+   return vertex_metrics, edge_metrics
+end
+
+function draw_cluster_graph(g, cluster_metrics)
+   colors = Colors.distinguishable_colors(get_prop(g, nv(g), :label))
+   nodesize = [length(get_prop(g, v, :indices)) for v in vertices(g)]
    xs = [get_prop(g, v, :pos)[1, 1] for v in vertices(g)]
    ys = [-get_prop(g, v, :pos)[2, 1] for v in vertices(g)]
    #edgesizes = [get_prop(G, e, :weight) / (get_prop(G, src(e), :size) * get_prop(G, dst(e), :size)) for e in edges(G)]
    edgesizes = [ src(e) != dst(e) ? round(digits=2, get_prop(g, e, :weight)) : 0 for e in edges(g)]
-   distances = [ src(e) != dst(e) ? round(digits=2, get_prop(g, e, :dist)) : "" for e in edges(g)]
+   distances = [ src(e) != dst(e) ? round(digits=2, get_prop(g, e, :dist) / get_prop(g, e, :weight)) : "" for e in edges(g)]
 
-   c = [get_prop(g, v, :color) for v in vertices(g)]
+   c = [colors[get_prop(g, v, :label)] for v in vertices(g)]
    #=edgesizes = []
    for e in edges(G)
       src_self = has_prop(G, src(e), :self_edges) ? get_prop(G, src(e), :self_edges) : 0

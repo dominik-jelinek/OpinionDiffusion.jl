@@ -13,6 +13,12 @@ end
 get_voters(model::T) where T <: Abstract_model = model.voters 
 get_social_network(model::T) where T <: Abstract_model = model.social_network
 
+function init_model(election, can_count::Int64, model_config; rng=Random.GLOBAL_RNG)
+    throw(NotImplementedError("graph_diffusion!"))
+end
+
+init_model(election, can_count::Int64, model_config, seed) = init_model(election, can_count, model_config; rng=Random.MersenneTwister(seed))
+
 function graph_diffusion!(model::T, graph_diff_config::U) where {T <: Abstract_model, U <: Abstract_graph_diff_config}
     throw(NotImplementedError("graph_diffusion!"))
 end
@@ -69,7 +75,7 @@ function run_ensemble_model(ensemble_size, diffusions, election, init_metrics, c
     @threads for i in 1:ensemble_size
         model_seed = rand(UInt32)
         model_rng = MersenneTwister(model_seed)
-        model = General_model(election, can_count, model_config; rng=model_rng)
+        model = init_model(election, can_count, model_config; rng=model_rng)
         metrics = init_metrics(model, can_count)
 
         rng = MersenneTwister(diffusion_seed)
@@ -110,6 +116,8 @@ function voter_diffusion!(model::T, evolve_vertices, voter_diff_config::U; rng=R
     for id in vertex_ids
         step!(voters[id], model, voter_diff_config; rng=rng)
     end
+
+    return vertex_ids
 end
 
 function save_log(model::T, model_dir) where T<:Abstract_model

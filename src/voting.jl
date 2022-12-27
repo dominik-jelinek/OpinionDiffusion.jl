@@ -12,7 +12,20 @@ function drawElectionResult(candidates, parties, result)
     )
 end
 
-function plurality_voting(votes::Vector{Vote}, can_count,  normalize::Bool)
+"""
+    plurality_voting(votes::Vector{Vote}, can_count::Int, normalize::Bool=false)
+
+Returns the plurality scores for each candidate participating in the election. If `normalize` is true, the votes are normalized to sum to 100.
+
+# Arguments
+- `votes::Vector{Vote}`: The votes in the election.
+- `can_count::Int`: The number of candidates in the election.
+- `normalize::Bool`: If true, the votes are normalized to sum to 100.
+
+# Returns
+- `Vector{Float64}`: The plurality scores for each candidate.
+"""
+function plurality_voting(votes::Vector{Vote}, can_count::Int,  normalize::Bool=false)
     result = zeros(Float64, can_count)
 
     for vote in votes
@@ -21,10 +34,23 @@ function plurality_voting(votes::Vector{Vote}, can_count,  normalize::Bool)
         end
     end
 
-    return normalize ? (result/sum(result))*100 : result
+    return normalize ? (result/sum(result)) * 100 : result
 end
 
-function borda_voting(votes::Vector{Vote}, can_count, normalize::Bool)
+"""
+    borda_voting(votes::Vector{Vote}, can_count::Int, normalize::Bool=false)
+
+Returns the Borda scores for each candidate participating in the election. If `normalize` is true, the votes are normalized to sum to 100.
+
+# Arguments
+- `votes::Vector{Vote}`: The votes in the election.
+- `can_count::Int`: The number of candidates in the election.
+- `normalize::Bool`: If true, the votes are normalized to sum to 100.
+
+# Returns
+- `Vector{Float64}`: The Borda scores for each candidate.
+"""
+function borda_voting(votes::Vector{Vote}, can_count::Int, normalize::Bool=false)
     result = zeros(Float64, can_count)
     
     for vote in votes
@@ -42,7 +68,20 @@ function borda_voting(votes::Vector{Vote}, can_count, normalize::Bool)
     return normalize ? (result/sum(result))*100 : result
 end
 
-function copeland_voting(votes::Vector{Vote}, can_count) #TO DO rewrite with sets
+"""
+    copeland_voting(votes::Vector{Vote}, can_count::Int, normalize::Bool=false)
+
+Returns the Copeland scores for each candidate participating in the election. If `normalize` is true, the votes are normalized to sum to 100.
+
+# Arguments
+- `votes::Vector{Vote}`: The votes in the election.
+- `can_count::Int`: The number of candidates in the election.
+- `normalize::Bool`: If true, the votes are normalized to sum to 100.
+
+# Returns
+- `Vector{Float64}`: The Copeland scores for each candidate.
+"""
+function copeland_voting(votes::Vector{Vote}, can_count::Int) #TO DO rewrite with sets
     result = zeros(Float64, can_count, can_count)
     alpha = 0.5
 
@@ -77,7 +116,19 @@ function copeland_voting(votes::Vector{Vote}, can_count) #TO DO rewrite with set
     return scores
 end
 
-function get_positions(voters, can_count)
+"""
+    get_positions(votes::Vector{Vote}, can_count::Int)
+
+Returns the average positions of each candidate in the votes.
+
+# Arguments
+- `votes::Vector{Vote}`: The votes in the election.
+- `can_count::Int`: The number of candidates in the election.
+
+# Returns
+- `Vector{Float64}`: The average positions of each candidate.
+"""
+function get_positions(voters::Vector{Abstract_voter}, can_count::Int)
     res = zeros(can_count)
 
     for can in 1:can_count

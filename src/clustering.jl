@@ -10,7 +10,7 @@ function clustering(voters, clustering_config::Kmeans_clustering_config)
     kmeans_res = Clustering.kmeans(opinions, clustering_config.cluster_count; maxiter=200)
     labels = kmeans_res.assignments
     
-    clusters = clusterize(labels, clustering_config.cluster_count)
+    clusters = clusterize(labels)
     
     return labels, clusters
 end
@@ -27,14 +27,13 @@ function clustering(voters, clustering_config::GM_clustering_config)
     gm = ScikitLearn.GaussianMixture(n_components=clustering_config.cluster_count).fit(data_T)
     labels = gm.predict(data_T) .+ 1
     
-    clusters = clusterize(labels, clustering_config.cluster_count)
+    clusters = clusterize(labels)
     
     return labels, clusters
 end
 
 @kwdef struct Party_clustering_config <: Abstract_clustering_config
     candidates::Vector{Candidate}
-    parties_count::Int64
 end
 name(config::Party_clustering_config) = "Party"
 
@@ -46,7 +45,7 @@ function clustering(voters, clustering_config::Party_clustering_config)
 
     labels = [candidates[iterate(get_vote(voter)[1])[1]].party for voter in voters] 
     
-    clusters = clusterize(labels, clustering_config.parties_count)
+    clusters = clusterize(labels)
     
     return labels, clusters
 end
@@ -61,24 +60,31 @@ function clustering(voters, clustering_config::DBSCAN_clustering_config)
     res = Clustering.dbscan(get_distance(voters), clustering_config.eps, clustering_config.minpts)
     labels = res.assignments .+1
     
-    clusters = clusterize(labels, clustering_config.cluster_count)
+    clusters = clusterize(labels)
     
     return labels, clusters
 end
 
 """
-Split labels into clusters
-"""
-function clusterize(labels, cluster_count)
-    clusters = Vector{Set{Int64}}(undef, cluster_count)
-    for i in 1:cluster_count
-        clusters[i] = Set(findall(x->x==i, labels))
-    end
+    clusterize(labels::Vector{Int64})
 
+For each unique label creates a set of indices of voters with that label. 
+
+# Arguments
+- `labels`: a vector of labels
+
+# Returns
+- `clusters`: a vector of tuples (label, set of indices)
+"""
+function clusterize(labels::Vector{Int64})
+    unique_labels = sort(unique(labels))
+    
+    clusters = [(label, Set(findall(x->x==label, labels))) for label in unique_labels]
+   
     return clusters
 end
 
-"""
+""" TODO
 Finds the best bijection from clusters to template_clusters based on set overlap
 """
 function unify_labels!(template_clusters, clusters)

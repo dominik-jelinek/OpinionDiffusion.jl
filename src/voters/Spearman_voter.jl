@@ -35,7 +35,7 @@ function init_voters(election, can_count, voter_config::Spearman_voter_init_conf
     
     voters = Vector{Spearman_voter}(undef, length(election))
     for (i, vote) in enumerate(election)
-        opinion = spearman_encoding(vote, weights)
+        opinion = spearman_encoding(vote, voter_config.weights)
         openmindedness = rand(rng, openmindedness_distr)
         stubbornness = 0.5#rand(rng, stubbornness_distr)
         voters[i] = Spearman_voter(i, opinion, openmindedness, stubbornness)

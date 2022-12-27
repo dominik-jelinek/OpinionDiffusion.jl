@@ -31,7 +31,7 @@ import YAML
 
 
 export parse_data
-export General_model
+export init_model
 export Logger
 export run!
 export save_log, load_log, load_logs

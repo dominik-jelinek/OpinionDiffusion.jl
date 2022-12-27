@@ -141,9 +141,10 @@ function model_vis2(model, sampled_voter_ids, reduce_dim_config, clustering_conf
     push!(visualizations, draw_voter_vis(projections, clusters, title))
 
     g = get_cluster_graph(model, clusters, labels, projections)
+    cluster_metrics = cluster_graph_metrics(g, social_network, voters, 4)
     println(modularity(g, labels))
     
-    push!(visualizations, draw_cluster_graph(g))
+    push!(visualizations, draw_cluster_graph(g, cluster_metrics))
 
     push!(visualizations, draw_degree_distr(Graphs.degree_histogram(social_network)))
 
@@ -160,13 +161,11 @@ function draw_voter_vis(projections, clusters, title, exp_dir=Nothing, counter=[
 end
 
 function draw_voter_vis!(plot, projections, clusters, title, exp_dir=Nothing, counter=[0])
-    cluster_colors  = Colors.distinguishable_colors(length(clusters))
+    cluster_colors = Colors.distinguishable_colors(clusters[end][1])
+    print(cluster_colors)
 
-    idxes = collect(clusters[1])
-    Plots.scatter!(plot, Tuple(eachrow(projections[:, idxes])), c=cluster_colors[1], label=length(clusters[1]), title=title)
-    for i in 2:length(clusters)
-        idxes = collect(clusters[i])
-        Plots.scatter!(plot, Tuple(eachrow(projections[:, idxes])), c=cluster_colors[i], label=length(clusters[i]), alpha=0.4)
+    for (label, indices) in clusters
+        Plots.scatter!(plot, Tuple(eachrow(projections[:, collect(indices)])), c=cluster_colors[label], label=length(indices), alpha=0.4)
     end
    
     if exp_dir != Nothing

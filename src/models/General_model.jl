@@ -13,7 +13,7 @@ end
     homophily::Float64
 end
 
-function General_model(election, can_count::Int64, model_config; rng=Random.GLOBAL_RNG)
+function init_model(election, can_count::Int64, model_config::General_model_config; rng=Random.GLOBAL_RNG)
     #println("Initializing voters:")
     voters = init_voters(election, can_count, model_config.voter_init_config; rng=rng)
 
@@ -23,29 +23,21 @@ function General_model(election, can_count::Int64, model_config; rng=Random.GLOB
     return General_model(voters, social_network, can_count)
 end
 
-function General_model(election, voter_init_config, social_network, can_count::Int64)
-    if length(election) != ne(social_network)
-        error("Number of voters does not equal the number of vertices")
-        return
-    end
-
-    println("Initializing voters:")
-    @time voters = init_voters(election, can_count, voter_init_config)
-
-    return General_model(voters, social_network, can_count)
-end
-
-function General_model(voters, graph_init_config::Abstract_graph_init_config, can_count::Int64)
-    println("Initializing graph:")
-    @time social_network = generate_graph(voters, graph_init_config)
-
-    return General_model(voters, social_network, can_count)
-end
-
 """
-Pick a random voter remove one edge based on inverse that it was created and the add one edge
+    graph_diffusion!(model::General_model, evolve_edges::Float64, graph_diff_config::General_graph_diff_config; rng=Random.GLOBAL_RNG)
+
+Diffuses the graph of the model by modifying edges according to the graph diffusion configuration.
+
+# Arguments
+- `model::General_model`: The model to diffuse.
+- `evolve_edges::Float64`: The proportion of voters that will have their edges modified.
+- `graph_diff_config::General_graph_diff_config`: The configuration of the graph diffusion.
+- `rng::AbstractRNG`: The random number generator to use.
+
+# Returns
+- ID's of the voters that had their edges modified.
 """
-function graph_diffusion!(model::General_model, evolve_edges, graph_diff_config::General_graph_diff_config; rng=Random.Global)
+function graph_diffusion!(model::General_model, evolve_edges::Float64, graph_diff_config::General_graph_diff_config; rng=Random.Global)
     voters = get_voters(model)
     
     sample_size = ceil(Int, evolve_edges * length(voters))
@@ -54,6 +46,8 @@ function graph_diffusion!(model::General_model, evolve_edges, graph_diff_config:
     for id in vertex_ids
         edge_diffusion!(voters[id], model, graph_diff_config.homophily; rng=rng)
     end
+
+    return vertex_ids
 end
 
 function edge_diffusion!(self, model, popularity_ratio; rng=Random.Global)
