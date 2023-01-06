@@ -280,16 +280,15 @@ function gather_metrics(ens_metrics)
 
     res = Dict()
     for metric in keys(ens_metrics[1])
-        if metric == "seed"
-            continue
-        end
-
+        # create a matrix out of all the runs for specific metric
         matrix = transpose(hcat([run[metric] for run in ens_metrics]...))
         
-        if matrix[1, 1] isa Number #number
+        if matrix[1, 1] isa Number 
+            # number
             res[metric] = [Statistics.quantile(col, [0.0, 0.25, 0.5, 0.75, 1.0]) for col in eachcol(matrix)]
         
         else
+            # vector
             res[metric] = []
             for col in eachcol(matrix)                
                 matrix_vect = vcat(col...)

@@ -37,6 +37,25 @@ function run!(model::T, diffusion_config, logger; rng=rng) where T<:Abstract_mod
     end
 end
 
+function run!(model::T, diffusion_config, diffusions, logger; rng=rng) where T<:Abstract_model
+    for j in 1:diffusions
+        run!(model, diffusion_config, logger; rng=rng)
+    end
+end
+
+function run(election, can_count, model_config, model_seed, diffusion_config, diffusions, diffusion_seed) where T<:Abstract_model
+    model_rng = MersenneTwister(model_seed)
+    model = init_model(election, can_count, model_config; rng=model_rng)
+    logger = Logger(model)
+    
+    rng = MersenneTwister(diffusion_seed)
+    for j in 1:diffusions
+        run!(model, diffusion_config, logger; rng=rng)
+    end
+
+    return logger
+end
+
 function run_ensemble(model::Abstract_model, ensemble_size, diffusions, init_metrics, update_metrics!, diffusion_config, logger=nothing)
     ens_metrics = Vector{Any}(undef, ensemble_size)
 
@@ -60,7 +79,7 @@ function run_ensemble(model::Abstract_model, ensemble_size, diffusions, init_met
         println("_____________________________________________________")
     end
 
-	if logger != nothing
+	if logger !== nothing
 		save_ensemble(logger.model_dir, diffusion_config, ens_metrics)
 	end
 
@@ -70,14 +89,13 @@ end
 function run_ensemble_model(ensemble_size, diffusions, election, init_metrics, can_count, update_metrics!, model_config, diffusion_config, log=false)
     ens_metrics = Vector{Any}(undef, ensemble_size)
     
-    diffusion_seed = rand(UInt32)
-
     @threads for i in 1:ensemble_size
         model_seed = rand(UInt32)
         model_rng = MersenneTwister(model_seed)
         model = init_model(election, can_count, model_config; rng=model_rng)
         metrics = init_metrics(model, can_count)
 
+        diffusion_seed = rand(UInt32)
         rng = MersenneTwister(diffusion_seed)
         for j in 1:diffusions
             run!(model, diffusion_config; rng=rng)

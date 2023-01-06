@@ -29,6 +29,9 @@ using Profile
 # ╔═╡ c51a1af4-f235-40fa-b828-183e10b2f111
 using OpinionDiffusion, PlutoUI
 
+# ╔═╡ 0009fe9c-117f-433c-b65f-2a0835aca0b9
+using DataFrames
+
 # ╔═╡ 957eb9d7-12d6-4a22-8338-4e8535b54c71
 md"# Opinion diffusion"
 
@@ -363,7 +366,7 @@ diffusion_config = Diffusion_config(
         checkpoint = 10, #only for a run without ensembling
 		evolve_vertices = 1.0,
 		evolve_edges = 0.0,
-        voter_diff_config = voter_type isa Spearman_voter_init_config ? voter_diff_config_sp : voter_diff_config_kt,
+        voter_diff_config = voter_init_config isa Spearman_voter_init_config ? voter_diff_config_sp : voter_diff_config_kt,
         graph_diff_config = General_graph_diff_config(
             homophily = homophily
         )
@@ -388,6 +391,29 @@ Execution barrier $(@bind cb_run CheckBox())
 
 ---
 """
+
+# ╔═╡ f2ca9891-3663-4ec6-bc69-e454faabba53
+reduce(.+, dfs) ./ length(dfs)
+
+# ╔═╡ 3fe9215c-ba2f-4aaa-bcb0-1eb8f1982db8
+md"""
+---
+Execution barrier $(@bind anal_run CheckBox())
+
+---
+"""
+
+# ╔═╡ 1173f5f8-b355-468c-8bfb-beebff5ba12b
+function extreme_runs(result, metric, can)
+	values = [run["metrics"][metric][end][can] for run in result]
+	return argmin(values), argmax(values)
+end
+
+# ╔═╡ 0cf5fa96-ff32-4853-b6c7-ef1843f5281f
+function extreme_runs(result, metric)
+	values = [run["metrics"][metric][end] for run in result]
+	return argmin(values), argmax(values)
+end
 
 # ╔═╡ 56d7f1d9-f291-446b-8281-013d017102f2
 #model_metrics = ensemble_init_model_AB(3, election, length(candidates), init_metrics, update_metrics!, model_config, diffusion_config)
@@ -467,7 +493,7 @@ md"Dimensionality reduction for visualisation of high dimensional opinions"
 md"""Dimensionality reduction method: $(@bind dim_reduction_method Select(["PCA", "Tsne", "MDS"], default="PCA"))"""
 
 # ╔═╡ 54855884-22b3-42e0-9120-c5f049043899
-out_dim = 3
+out_dim = 2
 
 # ╔═╡ 390be9ec-29a1-4138-952e-fc4eb5eb2ecb
 if dim_reduction_method == "PCA"
@@ -608,6 +634,15 @@ clusters
 # ╔═╡ cd8ffe9d-e990-43ed-ad77-28067d1536ed
 draw_degree_distr(Graphs.degree_histogram(model_log.social_network))
 
+# ╔═╡ 10704554-3d11-428e-b05f-2747ae86af92
+md"### Compare Two runs"
+
+# ╔═╡ 7f6914c0-4b6a-4923-8069-637afade93e1
+
+
+# ╔═╡ 59039b0b-6225-4fb6-a43b-eb0eadcf5e4c
+
+
 # ╔═╡ a0cd5f7e-1267-4e2c-bb71-873d5096a7da
 md"### Node visualization"
 
@@ -658,7 +693,7 @@ Graphs.induced_subgraph(model.social_network, Graphs.neighborhood(model.social_n
 #ego_project = reduce_dim(sampled_opinions, reduce_dim_config)[:, egon[2]]
 
 # ╔═╡ 87320bc9-e825-4aa8-84ea-9fd75b7ff4fd
-md"#### Compare diffusions"
+md"#### Compare ensemble diffusions"
 
 # ╔═╡ af643514-f20f-436b-966d-05021b566b1e
 ensemble_logs = [
@@ -808,6 +843,31 @@ if cb_run
 		gathered_metrics = gather_metrics([diffusion["metrics"] for diffusion in result])
 	end
 end
+
+# ╔═╡ 12ffda44-7cee-48a7-999b-2224c3549dea
+gathered_metrics
+
+# ╔═╡ 6deeecf9-f727-4b5d-82c5-f4f9a85eb55c
+result
+
+# ╔═╡ a4f875d7-685e-43bb-a806-be6ae6547ffb
+extremes = extreme_runs(result, "plurality_votings", 4)
+
+# ╔═╡ 3eb2368f-5cdf-4f43-84fa-478865936371
+min_model_seed, min_diffusion_seed = result[extremes[1]]["model_seed"], result[extremes[1]]["diffusion_seed"]
+
+# ╔═╡ 5cd2dbf8-5a55-4690-b16d-8b1432015054
+max_model_seed, max_diffusion_seed = result[extremes[2]]["model_seed"], result[extremes[2]]["diffusion_seed"]
+
+# ╔═╡ c86a8e9f-c5e9-4931-8923-dcf114df3118
+if anal_run
+	min_logger = OpinionDiffusion.run(election, length(candidates), model_config, min_model_seed, diffusion_config, diffusions, min_diffusion_seed)
+
+	max_logger = OpinionDiffusion.run(election, length(candidates), model_config, max_model_seed, diffusion_config, diffusions, max_diffusion_seed)
+end
+
+# ╔═╡ 9883316d-c845-4a4d-a4f8-b8022727cb0b
+min_log_idxs = sort([parse(Int64, split(splitext(file)[1], "_")[end]) for file in readdir(min_logger.exp_dir) if split(file, "_")[1] == "model"])
 
 # ╔═╡ e518a2db-a02e-4cfb-8587-f892fd9cbc85
 gathered_metrics
@@ -1006,7 +1066,7 @@ compare_metrics_vis(ensemble_logs, ["unique_votes", "avg_vote_length", "avg_edge
 # ╟─55836ee2-8ea9-4b42-bdcc-3f5dab0cef20
 # ╠═ff873978-d93f-4ba2-aadd-6cfd3b136e3d
 # ╟─46e8650e-f57d-48d7-89de-1c72e12dea45
-# ╠═bcc5468c-2a49-409d-b810-05fc30f4edca
+# ╟─bcc5468c-2a49-409d-b810-05fc30f4edca
 # ╠═c6ccf2a8-e045-4da9-bbdb-270327c2d53f
 # ╟─c8522415-1fd9-4c06-bf2a-38ab23153b56
 # ╠═21f341c3-4d38-4449-b0f8-62e4ab14c99b
@@ -1085,6 +1145,17 @@ compare_metrics_vis(ensemble_logs, ["unique_votes", "avg_vote_length", "avg_edge
 # ╟─de772425-25de-4228-b12e-d567b8ceb20f
 # ╟─20819900-1129-4ff1-b97e-d079ffce8ab8
 # ╠═f6b4ba47-f9d2-42f0-9c86-e9810be7b810
+# ╠═12ffda44-7cee-48a7-999b-2224c3549dea
+# ╠═f2ca9891-3663-4ec6-bc69-e454faabba53
+# ╠═0009fe9c-117f-433c-b65f-2a0835aca0b9
+# ╠═6deeecf9-f727-4b5d-82c5-f4f9a85eb55c
+# ╠═a4f875d7-685e-43bb-a806-be6ae6547ffb
+# ╠═3eb2368f-5cdf-4f43-84fa-478865936371
+# ╠═5cd2dbf8-5a55-4690-b16d-8b1432015054
+# ╟─3fe9215c-ba2f-4aaa-bcb0-1eb8f1982db8
+# ╠═c86a8e9f-c5e9-4931-8923-dcf114df3118
+# ╠═1173f5f8-b355-468c-8bfb-beebff5ba12b
+# ╠═0cf5fa96-ff32-4853-b6c7-ef1843f5281f
 # ╠═66267f11-eac9-4fbd-814f-89897f74a046
 # ╠═de7a5c20-d5d6-4fe5-b7c3-561b17a90143
 # ╠═eccddfc6-2e57-4f9e-88f3-88166fc5da11
@@ -1109,13 +1180,13 @@ compare_metrics_vis(ensemble_logs, ["unique_votes", "avg_vote_length", "avg_edge
 # ╠═05eedffd-c82a-4dbd-8608-5fa00f9d0bae
 # ╟─9f7f56db-8a73-40f7-bb47-9570e41a634f
 # ╟─b203aed5-3231-4e19-a961-089c0a4cf8c6
-# ╟─868986e9-09f5-483e-9b8e-11b5ab6082fd
+# ╠═868986e9-09f5-483e-9b8e-11b5ab6082fd
 # ╠═54855884-22b3-42e0-9120-c5f049043899
 # ╠═390be9ec-29a1-4138-952e-fc4eb5eb2ecb
 # ╠═e80cfc91-fc51-4216-a74c-39038d77c9db
 # ╠═008cbbe1-949d-4be7-9178-9bfa27c6e2a8
 # ╟─52893c8c-d1b5-482a-aae7-b3ec5c590b77
-# ╟─e60db281-0bd0-4eb6-94fa-4c30766464fd
+# ╠═e60db281-0bd0-4eb6-94fa-4c30766464fd
 # ╠═ca8a24e4-ce3b-47d9-ad39-8507fa910a9d
 # ╠═c81ebbcb-c709-4713-a2b4-cf4bb48eb0da
 # ╠═f0eed2be-799f-46bb-968b-b70462cc06fd
@@ -1142,7 +1213,11 @@ compare_metrics_vis(ensemble_logs, ["unique_votes", "avg_vote_length", "avg_edge
 # ╠═7bff8689-580e-43b5-9614-65b6f482eb5c
 # ╠═e814359f-3e70-48ab-9b57-aed8bcaf0102
 # ╠═cd8ffe9d-e990-43ed-ad77-28067d1536ed
-# ╟─a0cd5f7e-1267-4e2c-bb71-873d5096a7da
+# ╟─10704554-3d11-428e-b05f-2747ae86af92
+# ╠═9883316d-c845-4a4d-a4f8-b8022727cb0b
+# ╠═7f6914c0-4b6a-4923-8069-637afade93e1
+# ╠═59039b0b-6225-4fb6-a43b-eb0eadcf5e4c
+# ╠═a0cd5f7e-1267-4e2c-bb71-873d5096a7da
 # ╠═53586e20-27c6-4804-8d22-4b78ca6adf74
 # ╠═596452b2-e74b-4a20-b3e0-3a918ffef042
 # ╠═84d258fb-bd87-4d37-a3d1-bc8f43477da3

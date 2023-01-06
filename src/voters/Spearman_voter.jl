@@ -109,10 +109,10 @@ function step!(self::Spearman_voter, model, voter_diff_config::Spearman_voter_di
     neighbor_id = neighbors_[rand(rng, 1:end)]
     neighbor = voters[neighbor_id]
 
-    average_all!(self, neighbor, voter_diff_config.attract_proba, voter_diff_config.change_rate, voter_diff_config.normalize_shifts)
+    average_all!(self, neighbor, voter_diff_config.attract_proba, voter_diff_config.change_rate, voter_diff_config.normalize_shifts; rng=rng)
 end
 
-function average_all!(voter_1::Spearman_voter, voter_2::Spearman_voter, attract_proba, change_rate, normalize=nothing)
+function average_all!(voter_1::Spearman_voter, voter_2::Spearman_voter, attract_proba, change_rate, normalize=nothing; rng=Random.GLOBAL_RNG)
     shifts_1 = (voter_2.opinion - voter_1.opinion) / 2
     shifts_2 = shifts_1 .* (-1.0)
     
