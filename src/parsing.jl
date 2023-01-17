@@ -1,4 +1,5 @@
 struct Candidate
+   ID::Int64
    name::String
    party::Int64
 end
@@ -51,9 +52,9 @@ function parse_candidates(lines)
 
       if party == "Non-P" || !(party in parties)
          push!(parties, party)
-         candidates[i] = Candidate(line[1:end-length(party)-2], length(parties))
+         candidates[i] = Candidate(i, line[1:end-length(party)-2], length(parties))
       else
-         candidates[i] = Candidate(line[1:end-length(party)-2], findfirst(x->x==party, parties)) 
+         candidates[i] = Candidate(i, line[1:end-length(party)-2], findfirst(x->x==party, parties)) 
       end
    end
 

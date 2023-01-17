@@ -9,12 +9,12 @@ import Base.@kwdef
 
 using MetaGraphs
 using Graphs
-using SimpleWeightedGraphs
 
-import Gadfly
 import Plots
 import StatsPlots
 import GraphPlot
+import KernelDensity
+using Makie, GraphMakie, CairoMakie
 
 import Distances
 import Clustering
@@ -36,7 +36,7 @@ export Logger
 export run!
 export save_log, load_log, load_logs
 export get_opinion, get_vote, get_votes, get_distance
-export get_voters, get_social_network
+export get_voters, get_social_network, get_candidates
 
 export General_model_config, General_graph_diff_config, Diffusion_config
 export BA_graph_config, DEG_graph_config

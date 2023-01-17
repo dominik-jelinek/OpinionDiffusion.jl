@@ -66,6 +66,7 @@ function cluster_graph_metrics(cluster_graph::AbstractMetaGraph, g, voters, can_
       preferences = get_opinion(voters[indices])
 
       distances = get_distance(preferences)
+      println(distances)
       vertex_metrics[v] = Dict(
          :size => length(indices),
          :avg_positions => get_positions(voters[indices], can_count),
@@ -137,12 +138,32 @@ function draw_cluster_graph(g, cluster_metrics)
    edgelabels = distances
    #[round(get_prop(G, :nv) * get_prop(G, e, :weight) / (2*get_prop(G, src(e), :size) * get_prop(G, dst(e), :size)), digits=2) for e in edges(G)]
 
-   return GraphPlot.gplot(g, xs, ys, 
+   return GraphPlot.gplot(g, xs, ys,
                            nodesize=nodesize,
                            #nodelabel=1:Graphs.nv(G), 
                            edgelinewidth=edgesizes,
                            nodefillc=c,
                            edgelabel=edgelabels)
+end
+
+function draw_cluster_graph2(f, g)
+   colors = Colors.distinguishable_colors(get_prop(g, nv(g), :label))
+   nodesize = [length(get_prop(g, v, :indices)) / 5 for v in vertices(g)]
+   xs = [get_prop(g, v, :pos)[1, 1] for v in vertices(g)]
+   ys = [get_prop(g, v, :pos)[2, 1] for v in vertices(g)]
+   #edgesizes = [get_prop(G, e, :weight) / (get_prop(G, src(e), :size) * get_prop(G, dst(e), :size)) for e in edges(G)]
+   edgesizes = [ src(e) != dst(e) ? round(digits=2, get_prop(g, e, :weight)) : 0 for e in edges(g)]
+   distances = [ src(e) != dst(e) ? round(digits=2, get_prop(g, e, :dist) / get_prop(g, e, :weight)) : "" for e in edges(g)]
+
+   c = [colors[get_prop(g, v, :label)] for v in vertices(g)]
+   
+   edgelabels = distances
+   #[round(get_prop(G, :nv) * get_prop(G, e, :weight) / (2*get_prop(G, src(e), :size) * get_prop(G, dst(e), :size)), digits=2) for e in edges(G)]
+   
+   graphplot!(f[1, 1], g, layout=g -> Point.(zip(xs, ys)), node_color=c, node_size=nodesize)
+   #hidedecorations!(ax); hidespines!(ax)
+   #ax.aspect = DataAspect()
+   return f
 end
 
 function ego(social_network, node_id, depth)

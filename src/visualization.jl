@@ -1,53 +1,3 @@
-# METRICS
-
-function init_metrics(model, can_count)
-    g = get_social_network(model)
-    voters = get_voters(model)
-
-	histogram = Graphs.degree_histogram(g)
-    keyss = collect(keys(histogram))
-	
-	metrics = Dict()
-	metrics["min_degrees"] = [minimum(keyss)]
-	metrics["avg_degrees"] = [Graphs.ne(g) * 2 / Graphs.nv(g)]
-    metrics["max_degrees"] = [maximum(keyss)]
-    metrics["clustering_coeff"] = [Graphs.global_clustering_coefficient(g)]
-
-    #election results
-	votes = get_votes(voters)
-	metrics["avg_vote_length"] = [StatsBase.mean([length(vote) for vote in votes])]
-    metrics["mean_nei_dist"] = [StatsBase.mean([StatsBase.mean(get_distance(voter, voters[Graphs.neighbors(g, voter.ID)])) for voter in voters])]
-    metrics["unique_votes"] = [length(unique(votes))]
-
-    metrics["plurality_votings"] = [plurality_voting(votes, can_count, true)]
-    metrics["borda_votings"] = [borda_voting(votes, can_count, true)]
-    metrics["copeland_votings"] = [copeland_voting(votes, can_count)]
-	
-	return metrics
-end
-
-function update_metrics!(model, diffusion_metrics, can_count)
-    g = get_social_network(model)
-    voters = get_voters(model)
-
-    dict = Graphs.degree_histogram(g)
-    keyss = collect(keys(dict))
-	
-    push!(diffusion_metrics["min_degrees"], minimum(keyss))
-    push!(diffusion_metrics["avg_degrees"], Graphs.ne(g) * 2 / Graphs.nv(g))
-    push!(diffusion_metrics["max_degrees"], maximum(keyss))
-    push!(diffusion_metrics["clustering_coeff"], Graphs.global_clustering_coefficient(g))
-    
-    votes = get_votes(voters)
-	push!(diffusion_metrics["avg_vote_length"], StatsBase.mean([length(vote) for vote in votes]))    
-    push!(diffusion_metrics["mean_nei_dist"], StatsBase.mean([StatsBase.mean(get_distance(voter, voters[Graphs.neighbors(g, voter.ID)])) for voter in voters]))
-    push!(diffusion_metrics["unique_votes"], length(unique(votes)))
-
-    push!(diffusion_metrics["plurality_votings"], plurality_voting(votes, can_count, true))
-    push!(diffusion_metrics["borda_votings"], borda_voting(votes, can_count, true))
-    push!(diffusion_metrics["copeland_votings"], copeland_voting(votes, can_count))
-end
-
 function metrics_vis(metrics, candidates, parties, exp_dir=Nothing)
     degrees = draw_range(metrics["min_degrees"], metrics["avg_degrees"], metrics["max_degrees"], title="Degree range", xlabel="Timestamp", ylabel="Degree", value_label="avg")
 
@@ -99,32 +49,6 @@ end
 
 #___________________________________________________________________
 # model
-
-function model_vis(model, sampled_voter_ids, reduce_dim_config, clustering_config)
-    social_network = get_social_network(model)
-    voters = get_voters(model)
-
-    #voter visualization
-    sampled_voters = voters[sampled_voter_ids]
-    sampled_opinions = reduce(hcat, get_opinion(sampled_voters))
-
-    projections = reduce_dims(sampled_opinions, reduce_dim_config)
-        
-    labels, clusters = clustering(sampled_voters, clustering_config)
-
-    n = 3
-    plot = Plots.plot(size = Plots.default(:size) .* (1, n), layout = (n, 1), bottom_margin = 10Plots.mm, left_margin = 5Plots.mm)
-
-    title = name(reduce_dim_config) * "_" * name(clustering_config) * "_" * string(length(sampled_voter_ids))
-    draw_voter_vis!(plot[1, 1], projections, clusters, title)
-
-    draw_degree_distr!(plot[2, 1], Graphs.degree_histogram(social_network))
-
-    draw_edge_distances!(plot[3, 1], get_edge_distances(social_network, voters))
-
-    return plot
-end
-
 function model_vis2(model, sampled_voter_ids, reduce_dim_config, clustering_config)
     visualizations = []
     social_network = get_social_network(model)
@@ -140,11 +64,16 @@ function model_vis2(model, sampled_voter_ids, reduce_dim_config, clustering_conf
     title = name(reduce_dim_config) * "_" * name(clustering_config) * "_" * string(length(voters))
     push!(visualizations, draw_voter_vis(projections, clusters, title))
 
+    dens = KernelDensity.kde((projections[1, :], projections[2, :]))
+    push!(visualizations, Plots.heatmap(dens, title="Voter map", c=Plots.cgrad([:blue, :white,:red, :yellow])))
     g = get_cluster_graph(model, clusters, labels, projections)
-    cluster_metrics = cluster_graph_metrics(g, social_network, voters, 4)
-    println(modularity(g, labels))
-    
-    push!(visualizations, draw_cluster_graph(g, cluster_metrics))
+    cluster_metrics = nothing#cluster_graph_metrics(g, social_network, voters, 4)
+    #println(modularity(g, labels))
+    f = Figure()
+    heatmap(f[1, 1], dens, colormap=[:blue, :white,:red, :yellow])
+    f = draw_cluster_graph2(f, g)
+   
+    push!(visualizations, f)
 
     push!(visualizations, draw_degree_distr(Graphs.degree_histogram(social_network)))
 
@@ -162,7 +91,6 @@ end
 
 function draw_voter_vis!(plot, projections, clusters, title, exp_dir=Nothing, counter=[0])
     cluster_colors = Colors.distinguishable_colors(clusters[end][1])
-    print(cluster_colors)
 
     for (label, indices) in clusters
         Plots.scatter!(plot, Tuple(eachrow(projections[:, collect(indices)])), c=cluster_colors[label], label=length(indices), alpha=0.4)
@@ -351,9 +279,9 @@ function gather_vis2(exp_dir, sampled_voter_ids, dim_reduction_config, clusterin
     visualizations = []
 
     for t in timestamps
-        model_log = load_log(exp_dir, t) 
-        push!(visualizations, stack_visualizations(model_vis2(model_log, sampled_voter_ids, dim_reduction_config, clustering_config)))
-        
+        model_log = load_log(exp_dir, t)
+        push!(visualizations, model_vis2(model_log, sampled_voter_ids, dim_reduction_config, clustering_config))
+        #push!(visualizations, stack_visualizations(model_vis2(model_log, sampled_voter_ids, dim_reduction_config, clustering_config)))
     end
     
     return visualizations
@@ -361,6 +289,5 @@ end
 
 function stack_visualizations(visualizations)
     n = length(visualizations)
-    
     return Plots.plot(visualizations... ,size = Plots.default(:size) .* (1, n), layout = (n, 1), bottom_margin = 10Plots.mm, left_margin = 5Plots.mm, legend=true)
 end

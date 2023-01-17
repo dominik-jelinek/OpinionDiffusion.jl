@@ -1,7 +1,7 @@
 struct General_model <: Abstract_model
     voters::Vector{Abstract_voter}
     social_network::AbstractGraph
-    can_count::Int64
+    candidates::Vector{Candidate}
 end
 
 @kwdef struct General_model_config
@@ -13,14 +13,14 @@ end
     homophily::Float64
 end
 
-function init_model(election, can_count::Int64, model_config::General_model_config; rng=Random.GLOBAL_RNG)
+function init_model(election, candidates, model_config::General_model_config; rng=Random.GLOBAL_RNG)
     #println("Initializing voters:")
-    voters = init_voters(election, can_count, model_config.voter_init_config; rng=rng)
+    voters = init_voters(election, length(candidates), model_config.voter_init_config; rng=rng)
 
     #println("Initializing graph:")
     social_network = init_graph(voters, model_config.graph_init_config; rng=rng)
 
-    return General_model(voters, social_network, can_count)
+    return General_model(voters, social_network, candidates)
 end
 
 """
@@ -38,16 +38,18 @@ Diffuses the graph of the model by modifying edges according to the graph diffus
 - ID's of the voters that had their edges modified.
 """
 function graph_diffusion!(model::General_model, evolve_edges::Float64, graph_diff_config::General_graph_diff_config; rng=Random.Global)
+    actions = Vector{Action}()
+
     voters = get_voters(model)
     
     sample_size = ceil(Int, evolve_edges * length(voters))
     vertex_ids = StatsBase.sample(rng, 1:length(voters), sample_size, replace=true)
 
     for id in vertex_ids
-        edge_diffusion!(voters[id], model, graph_diff_config.homophily; rng=rng)
+        append!(actions, edge_diffusion!(voters[id], model, graph_diff_config.homophily; rng=rng))
     end
 
-    return vertex_ids
+    return actions
 end
 
 function edge_diffusion!(self, model, popularity_ratio; rng=Random.Global)

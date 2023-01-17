@@ -104,7 +104,7 @@ function filter_candidates(election, candidates, remove_candidates, can_count)
 	new_candidates = Vector{OpinionDiffusion.Candidate}()
 	for (i, can) in enumerate(candidates)
 		if i ∉ remove_candidates
-			push!(new_candidates, OpinionDiffusion.Candidate(can.name, can.party))
+			push!(new_candidates, OpinionDiffusion.Candidate(can.ID, can.name, can.party))
 		end
 	end
 	

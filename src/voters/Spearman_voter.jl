@@ -103,21 +103,23 @@ function step!(self::Spearman_voter, model, voter_diff_config::Spearman_voter_di
     neighbors_ = neighbors(social_network, self.ID)
     
     if length(neighbors_) == 0
-        return
+        return []
     end
         
     neighbor_id = neighbors_[rand(rng, 1:end)]
     neighbor = voters[neighbor_id]
 
-    average_all!(self, neighbor, voter_diff_config.attract_proba, voter_diff_config.change_rate, voter_diff_config.normalize_shifts; rng=rng)
+    return average_all!(self, neighbor, voter_diff_config.attract_proba, voter_diff_config.change_rate, voter_diff_config.normalize_shifts; rng=rng)
 end
 
 function average_all!(voter_1::Spearman_voter, voter_2::Spearman_voter, attract_proba, change_rate, normalize=nothing; rng=Random.GLOBAL_RNG)
     shifts_1 = (voter_2.opinion - voter_1.opinion) / 2
     shifts_2 = shifts_1 .* (-1.0)
     
+    method = "attract"
     if rand(rng) > attract_proba
         #repel
+        method = "repel"
         shifts_1, shifts_2 = shifts_2, shifts_1
     end
 
@@ -126,8 +128,11 @@ function average_all!(voter_1::Spearman_voter, voter_2::Spearman_voter, attract_
         shifts_2 = normalize_shifts(shifts_2, voter_2.opinion, normalize[2], normalize[3])
     end
 
+    cp_1 = deepcopy(voter_1)
+    cp_2 = deepcopy(voter_2)
     voter_1.opinion .+= shifts_1 * (1.0 - voter_1.stubbornness) * change_rate
     voter_2.opinion .+= shifts_2 * (1.0 - voter_2.stubbornness) * change_rate
+    return [Action(method, (voter_2.ID, voter_1.ID), cp_1, voter_1), Action(method, (voter_1.ID, voter_2.ID), cp_2, voter_2)]
 end
 
 function normalize_shifts(shifts::Vector{Float64}, opinion::Vector{Float64}, min_opin, max_opin)
