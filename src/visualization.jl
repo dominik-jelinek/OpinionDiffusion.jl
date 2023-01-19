@@ -55,13 +55,13 @@ function model_vis2(model, sampled_voter_ids, reduce_dim_config, clustering_conf
     voters = get_voters(model)
 
     #voter visualization
-    #sampled_voters = voters[sampled_voter_ids]
-    sampled_opinions = reduce(hcat, get_opinion(voters))
+    sampled_voters = voters[sampled_voter_ids]
+    sampled_opinions = reduce(hcat, get_opinion(sampled_voters))
 
     projections = reduce_dims(sampled_opinions, reduce_dim_config)
         
-    labels, clusters = clustering(voters, clustering_config)
-    title = name(reduce_dim_config) * "_" * name(clustering_config) * "_" * string(length(voters))
+    labels, clusters = clustering(sampled_voters, clustering_config)
+    title = name(reduce_dim_config) * "_" * name(clustering_config) * "_" * string(length(sampled_voters))
     push!(visualizations, draw_voter_vis(projections, clusters, title))
 
     dens = KernelDensity.kde((projections[1, :], projections[2, :]))

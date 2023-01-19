@@ -92,12 +92,22 @@ elseif dim_reduction_method == "Tsne"
         											reduce_dims = 0,
         											max_iter = 3000,
         											perplexity = 100.0)
-else# dim_reduction_method == "MDS"
+else dim_reduction_method == "MDS"
 	dim_reduction_config = MDS_dim_reduction_config(out_dim)
 end
 
 # ╔═╡ de79e133-798a-490b-a4c9-9f38d5f31a98
-md"""Clustering method: $(@bind clustering_method Select(["Kmeans", "GM", "Party", "DBSCAN"], default="Party"))"""
+md"""Clustering method: $(@bind clustering_method Select(["Kmeans", "GM", "Party", "DBSCAN", "Density"], default="Density"))"""
+
+# ╔═╡ 5d368a4f-d7ff-4ee7-a7b0-5c14fbe0fb48
+title = dim_reduction_method * "_" * clustering_method * "_" * string(length(sampled_voters))
+
+# ╔═╡ 9bf7d31b-7a4e-4ec9-99b9-d189c9b2297e
+begin
+	projections = reduce_dims(sampled_voters, dim_reduction_config)
+	#unify_projections!(projections, x_projections, y_projections, (max_x-min_x)/2, (max_y-min_y)/2)
+	projections
+end
 
 # ╔═╡ 60d1816d-5dd3-4166-bb11-8cd2307bc9ee
 if clustering_method == "Party"
@@ -106,15 +116,32 @@ elseif clustering_method == "Kmeans"
 	clustering_config = Kmeans_clustering_config(length(candidates))
 elseif clustering_method == "GM"
 	clustering_config = GM_clustering_config(length(candidates))
-else# clustering_method == "DBSCAN"
+elseif clustering_method == "DBSCAN"
 	clustering_config = DBSCAN_clustering_config(0.1, 3)
+else
+	clustering_config = Density_clustering_config(3, projections)
 end
 
 # ╔═╡ 1e6ea6b0-6fb6-4097-aa76-a29edafe5b2a
-labels, clusters = clustering(sampled_voters, clustering_config)
+labels, clusters, plt = clustering(sampled_voters, clustering_config)
 
-# ╔═╡ 5d368a4f-d7ff-4ee7-a7b0-5c14fbe0fb48
-title = dim_reduction_method * "_" * clustering_method * "_" * string(length(sampled_voters))
+# ╔═╡ 5000e501-4453-496c-90b9-ff312223b4d4
+plt
+
+# ╔═╡ ad8f309f-b3f1-4ed0-914f-675ffe23821f
+visualizations = OpinionDiffusion.gather_vis2(exp_dir_path, sampled_voter_ids, dim_reduction_config, clustering_config)
+
+# ╔═╡ f18be3eb-2007-46fe-9b9a-782796068f7f
+visualizations[1][3]
+
+# ╔═╡ d62e9041-1b7a-4abe-8097-20d98fd3659a
+if step > 0
+	prev_sampled_opinions = reduce(hcat, get_opinion(load_log(logger.exp_dir, step-1).voters[sampled_voter_ids]))
+	difference = sampled_opinions - prev_sampled_opinions
+	changes = vec(sum(abs.(difference), dims=1))
+	println(sum(changes))
+	draw_heat_vis(projections, changes, "Heat map")
+end
 
 # ╔═╡ 6f79058e-2243-4be1-aaf6-7e95d6f7c342
 begin
@@ -128,60 +155,20 @@ begin
 	min_y, max_y = minimum(_projections[2, :]), maximum(_projections[2, :])
 end
 
-# ╔═╡ d3801426-fe49-4c46-81b5-0e55a673bc27
-log_idxs = sort([parse(Int64, split(splitext(file)[1], "_")[end]) for file in readdir(logger.exp_dir) if split(file, "_")[1] == "model"])
-
-# ╔═╡ ad8f309f-b3f1-4ed0-914f-675ffe23821f
-visualizations = OpinionDiffusion.gather_vis2(exp_dir, sampled_voter_ids, dim_reduction_config, clustering_config)
-
-# ╔═╡ 9bf73e9c-0c2c-4829-8e93-e751f4491430
-@bind diff PlutoUI.Slider(1:10)
-
-# ╔═╡ 158cf3bb-ae19-4b8a-bed1-1e9d02dda226
-visualizations[diff][3]
-
-# ╔═╡ 440eba1f-12ad-4236-af35-0999b1356fe9
-#visualizations = OpinionDiffusion.gather_vis(logger.exp_dir, sampled_voter_ids, dim_reduction_config, clustering_config, parties, candidates)
-
-# ╔═╡ 9bf7d31b-7a4e-4ec9-99b9-d189c9b2297e
-begin
-	projections = reduce_dims(sampled_voters, dim_reduction_config)
-	#unify_projections!(projections, x_projections, y_projections, (max_x-min_x)/2, (max_y-min_y)/2)
-	projections
-end
-
-# ╔═╡ d62e9041-1b7a-4abe-8097-20d98fd3659a
-if step > 0
-	prev_sampled_opinions = reduce(hcat, get_opinion(load_log(logger.exp_dir, step-1).voters[sampled_voter_ids]))
-	difference = sampled_opinions - prev_sampled_opinions
-	changes = vec(sum(abs.(difference), dims=1))
-	println(sum(changes))
-	draw_heat_vis(projections, changes, "Heat map")
-end
-
 # ╔═╡ 127c5ea4-ee23-4e40-81f7-558582c130c6
 dens = kde((projections[1, :], projections[2, :]))
-
-# ╔═╡ 867f08b5-f3f2-4f02-a72d-c9be140408f2
-dens.x
-
-# ╔═╡ 7a907088-beca-4293-8b88-cdedd97c6e55
-dens.x.step.hi
 
 # ╔═╡ 58c0d57c-8cad-4150-8c5e-88cb3152d2e5
 density = round.(dens.density; digits=4) 
 
-# ╔═╡ a19ab92d-245a-4998-892f-42cbd3bc6906
-zeros(Bool, 5)
+# ╔═╡ 603e34db-fffe-4e25-ac72-618d060912cf
+Plots.heatmap(density, title="Voter map", c=Plots.cgrad([:blue, :white,:red, :yellow]))
+
+# ╔═╡ 5fbe700d-1817-4f2c-87f8-86c6a812cbdf
+maximum(density) / 100
 
 # ╔═╡ 1bb69cb2-a181-4ef7-b978-4374d8e3c813
 visualizations[diff][2]
-
-# ╔═╡ 849cd1e7-8102-4429-b061-05b0b99eb419
-a = [1,2,3,4]
-
-# ╔═╡ af931d28-dbd3-4c7d-ba50-02b7718b4894
-a[[0,0,1,0]]
 
 # ╔═╡ 5bb6293b-6dba-4843-ad08-373a0003b46e
 function find_local_maxima(a)
@@ -225,39 +212,33 @@ end
 
 # ╔═╡ e9066379-05df-4b01-a498-da0e614d3baa
 begin
-	peaks_mask_y = zeros(Bool, size(density, 1), size(density, 2))
-	for (i, col) in enumerate(eachcol(density)) peaks_mask_y[i, find_local_maxima(col)] .= true end 
+	peaks_mask_y = zeros(Int64, size(density, 1), size(density, 2))
+	for (i, col) in enumerate(eachcol(density)) peaks_mask_y[find_local_maxima(col), i] .= 1 end 
 end
 
 # ╔═╡ e5a064f1-4715-4c6b-b331-864b0b8503b8
 begin
-	drops_mask_y = zeros(Bool, size(density, 1), size(density, 2))
-	for (i, col) in enumerate(eachcol(density)) drops_mask_y[i, find_local_maxima(col .* -1)] .= -1 end 
+	drops_mask_y = zeros(Int64, size(density, 1), size(density, 2))
+	for (i, col) in enumerate(eachcol(density)) drops_mask_y[find_local_maxima(col .* -1), i] .= -1 end 
 end
 
 # ╔═╡ a4326151-238f-48f7-beb3-d0bab2aa250f
 begin
-	peaks_mask_x = zeros(Bool, size(density, 1), size(density, 2))
-	for (i, row) in enumerate(eachrow(density)) peaks_mask_x[find_local_maxima(row), i] .= true end 
+	peaks_mask_x = zeros(Int64, size(density, 1), size(density, 2))
+	for (i, row) in enumerate(eachrow(density)) peaks_mask_x[i, find_local_maxima(row)] .= 1 end 
 end
-
-# ╔═╡ f6d43271-70ce-4da7-b41a-a6e1dc222d23
-vec(CartesianIndices((size(density, 1), size(density, 2))))[vec(peaks_mask_y .& peaks_mask_x)]
 
 # ╔═╡ 29ebcf06-6e43-41fc-a403-17da32ad31c2
 Plots.heatmap(peaks_mask_y .& peaks_mask_x)
 
 # ╔═╡ 0cdc3faf-151b-45d6-8fe4-63d7a0cea57b
 begin
-	drops_mask_x = zeros(Bool, size(density, 1), size(density, 2))
-	for (i, row) in enumerate(eachrow(density)) drops_mask_x[find_local_maxima(row .* -1), i] .= -1 end 
+	drops_mask_x = zeros(Int64, size(density, 1), size(density, 2))
+	for (i, row) in enumerate(eachrow(density)) drops_mask_x[i, find_local_maxima(row .* -1)] .= -1 end 
 end
 
 # ╔═╡ ec7e4011-fe74-434a-a5b1-22dfec514d49
 Plots.heatmap((drops_mask_y .| drops_mask_x) .| (peaks_mask_y .& peaks_mask_x))
-
-# ╔═╡ 603e34db-fffe-4e25-ac72-618d060912cf
-Plots.heatmap(dens, title="Voter map", c=Plots.cgrad([:blue, :white,:red, :yellow]))
 
 # ╔═╡ 08948c84-c8d1-4b4d-87a6-113fdd3596f6
 heatmap(dens, colormap=[:blue, :white,:red, :yellow])
@@ -369,36 +350,29 @@ plots = Plots.plot([Plots.heatmap(count, yticks=1:length(src_candidates), xticks
 # ╟─e1599782-86c1-443e-8f4f-59e47fdd5f86
 # ╠═80a5d0d1-6522-4464-9eb4-bfd46b2124a1
 # ╠═2b59335e-14d5-4fee-acc7-af1e5e458c09
-# ╟─de79e133-798a-490b-a4c9-9f38d5f31a98
-# ╠═60d1816d-5dd3-4166-bb11-8cd2307bc9ee
+# ╠═de79e133-798a-490b-a4c9-9f38d5f31a98
 # ╠═1e6ea6b0-6fb6-4097-aa76-a29edafe5b2a
+# ╠═60d1816d-5dd3-4166-bb11-8cd2307bc9ee
+# ╠═5000e501-4453-496c-90b9-ff312223b4d4
+# ╠═ec7e4011-fe74-434a-a5b1-22dfec514d49
+# ╠═603e34db-fffe-4e25-ac72-618d060912cf
 # ╠═5d368a4f-d7ff-4ee7-a7b0-5c14fbe0fb48
-# ╠═6f79058e-2243-4be1-aaf6-7e95d6f7c342
 # ╠═d62e9041-1b7a-4abe-8097-20d98fd3659a
 # ╠═fc58665b-955b-4091-bd50-17ee0f8539ae
-# ╠═d3801426-fe49-4c46-81b5-0e55a673bc27
 # ╠═ad8f309f-b3f1-4ed0-914f-675ffe23821f
-# ╠═158cf3bb-ae19-4b8a-bed1-1e9d02dda226
-# ╠═9bf73e9c-0c2c-4829-8e93-e751f4491430
-# ╠═440eba1f-12ad-4236-af35-0999b1356fe9
+# ╠═f18be3eb-2007-46fe-9b9a-782796068f7f
 # ╠═9bf7d31b-7a4e-4ec9-99b9-d189c9b2297e
+# ╠═6f79058e-2243-4be1-aaf6-7e95d6f7c342
 # ╠═127c5ea4-ee23-4e40-81f7-558582c130c6
-# ╠═867f08b5-f3f2-4f02-a72d-c9be140408f2
-# ╠═7a907088-beca-4293-8b88-cdedd97c6e55
 # ╠═58c0d57c-8cad-4150-8c5e-88cb3152d2e5
-# ╠═a19ab92d-245a-4998-892f-42cbd3bc6906
+# ╠═5fbe700d-1817-4f2c-87f8-86c6a812cbdf
 # ╠═e9066379-05df-4b01-a498-da0e614d3baa
 # ╠═e5a064f1-4715-4c6b-b331-864b0b8503b8
 # ╠═a4326151-238f-48f7-beb3-d0bab2aa250f
 # ╠═0cdc3faf-151b-45d6-8fe4-63d7a0cea57b
 # ╠═1bb69cb2-a181-4ef7-b978-4374d8e3c813
-# ╠═ec7e4011-fe74-434a-a5b1-22dfec514d49
-# ╠═f6d43271-70ce-4da7-b41a-a6e1dc222d23
-# ╠═849cd1e7-8102-4429-b061-05b0b99eb419
-# ╠═af931d28-dbd3-4c7d-ba50-02b7718b4894
 # ╠═29ebcf06-6e43-41fc-a403-17da32ad31c2
 # ╠═5bb6293b-6dba-4843-ad08-373a0003b46e
-# ╠═603e34db-fffe-4e25-ac72-618d060912cf
 # ╠═08948c84-c8d1-4b4d-87a6-113fdd3596f6
 # ╠═05f14a3d-80a7-4ea6-8466-6f4d03fbe173
 # ╠═ed8fe954-4a93-4e89-9667-ef73b8e3495e
