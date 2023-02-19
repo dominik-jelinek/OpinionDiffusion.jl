@@ -49,7 +49,7 @@ end
 
 #___________________________________________________________________
 # model
-function model_vis2(model, sampled_voter_ids, reduce_dim_config, clustering_config)
+function model_vis2(model, sampled_voter_ids, reduce_dim_config, clustering_config, old_projections=nothing, old_clusters=nothing)
     visualizations = []
     social_network = get_social_network(model)
     voters = get_voters(model)
@@ -59,8 +59,20 @@ function model_vis2(model, sampled_voter_ids, reduce_dim_config, clustering_conf
     sampled_opinions = reduce(hcat, get_opinion(sampled_voters))
 
     projections = reduce_dims(sampled_opinions, reduce_dim_config)
-        
-    labels, clusters = clustering(sampled_voters, clustering_config)
+
+    if old_projections !== nothing
+        projections = unify_projections(old_projections, projections)
+    end
+    
+    labels, clusters = clustering(sampled_voters, clustering_config, projections)
+    if old_clusters !== nothing
+        unify_clusters!(old_clusters, clusters, old_projections, projections)
+        for (label, indices) in clusters
+            labels[collect(indices)] .= label
+        end
+    end
+    
+
     title = name(reduce_dim_config) * "_" * name(clustering_config) * "_" * string(length(sampled_voters))
     push!(visualizations, draw_voter_vis(projections, clusters, title))
 
@@ -79,7 +91,7 @@ function model_vis2(model, sampled_voter_ids, reduce_dim_config, clustering_conf
 
     push!(visualizations, draw_edge_distances(get_edge_distances(social_network, voters)))
 
-    return visualizations
+    return visualizations, projections, clusters
 end
 
 function draw_voter_vis(projections, clusters, title, exp_dir=Nothing, counter=[0])
@@ -277,10 +289,13 @@ Loads all logs from one experiment and returns dictionary of visualizations
 function gather_vis2(exp_dir, sampled_voter_ids, dim_reduction_config, clustering_config)
     timestamps = sort([parse(Int64, split(splitext(file)[1], "_")[end]) for file in readdir(exp_dir) if split(file, "_")[1] == "model"])
     visualizations = []
+    projections = nothing
+    clusters = nothing
 
     for t in timestamps
         model_log = load_log(exp_dir, t)
-        push!(visualizations, model_vis2(model_log, sampled_voter_ids, dim_reduction_config, clustering_config))
+        visualization, projections, clusters = model_vis2(model_log, sampled_voter_ids, dim_reduction_config, clustering_config, projections, clusters)
+        push!(visualizations, visualization)
         #push!(visualizations, stack_visualizations(model_vis2(model_log, sampled_voter_ids, dim_reduction_config, clustering_config)))
     end
     

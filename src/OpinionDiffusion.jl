@@ -24,7 +24,7 @@ using MultivariateStats
 import Statistics
 import StatsBase
 import Distributions
-#import ScikitLearn
+import GaussianMixtures
 
 using JLD2
 import YAML
@@ -44,8 +44,8 @@ export BA_graph_config, DEG_graph_config
 export Spearman_voter_init_config, Spearman_voter_diff_config
 export Kendall_voter_init_config, Kendall_voter_diff_config
 
-export clustering, Kmeans_clustering_config, GM_clustering_config, Party_clustering_config, DBSCAN_clustering_config, Density_clustering_config
 export reduce_dims, MDS_dim_reduction_config, Tsne_dim_reduction_config, PCA_dim_reduction_config
+export clustering, Kmeans_clustering_config, GM_clustering_config, Party_clustering_config, DBSCAN_clustering_config, Density_clustering_config
 
 export plurality_voting, borda_voting, copeland_voting, get_positions
 export clustering, draw_voter_vis, draw_heat_vis, unify_projections!, gather_metrics

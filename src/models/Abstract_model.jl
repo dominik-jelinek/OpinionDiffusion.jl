@@ -31,7 +31,7 @@ function graph_diffusion!(model::T, graph_diff_config::U) where {T <: Abstract_m
     throw(NotImplementedError("graph_diffusion!"))
 end
 
-function run!(model::T, diffusion_config; logger=nothing, metrics=nothing, update_metrics! =nothing, rng=rng) where T<:Abstract_model
+function run!(model::T, diffusion_config; logger=nothing, metrics=nothing, update_metrics! =nothing, rng=Random.GLOBAL_RNG) where T<:Abstract_model
     actions = diffusion!(model, diffusion_config; rng=rng)
     if metrics !== nothing
         update_metrics!(model, metrics)
@@ -48,7 +48,7 @@ function run!(model::T, diffusion_config; logger=nothing, metrics=nothing, updat
     return actions
 end
 
-function run!(model::T, diffusion_config, diffusions; logger=nothing, metrics=nothing, update_metrics! =nothing, rng=rng) where T<:Abstract_model
+function run!(model::T, diffusion_config, diffusions; logger=nothing, metrics=nothing, update_metrics! =nothing, rng=Random.GLOBAL_RNG) where T<:Abstract_model
     actions = Vector{Vector{Action}}()
     for j in 1:diffusions
         push!(actions, run!(model, diffusion_config; logger=logger, metrics=metrics, update_metrics! = update_metrics!, rng=rng))
@@ -137,7 +137,7 @@ function diffusion!(model::T, diffusion_config; rng=Random.GLOBAL_RNG) where T <
     return actions
 end
 
-function voter_diffusion!(model::T, evolve_vertices, voter_diff_config::U; rng=Random.Global) where 
+function voter_diffusion!(model::T, evolve_vertices, voter_diff_config::U; rng=Random.GLOBAL_RNG) where 
     {T <: Abstract_model, U <: Abstract_voter_diff_config}
     actions = Vector{Action}()
 

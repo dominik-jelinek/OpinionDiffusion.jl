@@ -320,7 +320,7 @@ length(unique(get_votes(get_voters(model))))
 
 # ╔═╡ a6590191-0fbd-41a9-a7c3-b99e68bb27aa
 begin
-	sample_size = min(512, length(model.voters))
+	sample_size = length(model.voters)
 	sampled_voter_ids = OpinionDiffusion.StatsBase.sample(1:length(model.voters), sample_size, replace=false)
 end
 
@@ -351,7 +351,7 @@ voter_diff_config_kt = Kendall_voter_diff_config(attract_proba = attract_proba)
 
 # ╔═╡ f43b3b4c-9075-414b-9694-83e7c841605f
 diffusion_config = Diffusion_config(
-        checkpoint = 10, #only for a run without ensembling
+        checkpoint = 1, #only for a run without ensembling
 		evolve_vertices = 1.0,
 		evolve_edges = 0.0,
         voter_diff_config = voter_init_config isa Spearman_voter_init_config ? voter_diff_config_sp : voter_diff_config_kt,
@@ -361,13 +361,18 @@ diffusion_config = Diffusion_config(
     )
 
 # ╔═╡ d877c5d0-89af-48b9-bcd0-c1602d58339f
-diffusions = 100
+diffusions = 50
 
 # ╔═╡ 27a60724-5d19-419f-b208-ffa0c78e2505
-ensemble_size = 5
+ensemble_size = 1
 
 # ╔═╡ 87c573c1-69a4-4a61-bbb8-acb716f8ec6d
 ensemble_model = true
+
+# ╔═╡ 971693bb-1a08-4266-a93b-c3e9d60d8bcd
+md"""
+Restart: $(@bind restart CheckBox())
+"""
 
 # ╔═╡ de772425-25de-4228-b12e-d567b8ceb20f
 md"## Run diffusion"
@@ -640,10 +645,7 @@ end
 # ╔═╡ f6b4ba47-f9d2-42f0-9c86-e9810be7b810
 if cb_run
 	if ensemble_size == 1
-		for i in 1:diffusions
-			run!(model, diffusion_config, logger)
-			update_metrics!(model, metrics)
-		end
+		result = run!(model, diffusion_config, diffusions, logger=logger, metrics=metrics, update_metrics! =update_metrics!)
 	elseif !ensemble_model
 		result = OpinionDiffusion.run_ensemble(model, ensemble_size, diffusions, metrics, update_metrics!, diffusion_config, logger)
 		gathered_metrics = gather_metrics([diffusion["metrics"] for diffusion in result])
@@ -946,6 +948,7 @@ compare_metrics_vis(ensemble_logs, ["unique_votes", "avg_vote_length", "avg_edge
 # ╠═d877c5d0-89af-48b9-bcd0-c1602d58339f
 # ╠═27a60724-5d19-419f-b208-ffa0c78e2505
 # ╠═87c573c1-69a4-4a61-bbb8-acb716f8ec6d
+# ╠═971693bb-1a08-4266-a93b-c3e9d60d8bcd
 # ╟─de772425-25de-4228-b12e-d567b8ceb20f
 # ╟─20819900-1129-4ff1-b97e-d079ffce8ab8
 # ╠═f6b4ba47-f9d2-42f0-9c86-e9810be7b810

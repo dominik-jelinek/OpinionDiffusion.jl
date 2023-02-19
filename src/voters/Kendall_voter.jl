@@ -72,7 +72,7 @@ function step!(self::Kendall_voter, model, voter_diff_config::Kendall_voter_diff
    voters = get_voters(model)
    social_network = get_social_network(model)
    neighbors_ = neighbors(social_network, self.ID)
-
+   can_count = length(model.candidates) 
    if length(neighbors_) == 0
       return []
    end
@@ -82,12 +82,12 @@ function step!(self::Kendall_voter, model, voter_diff_config::Kendall_voter_diff
 
    if rand(rng) <= voter_diff_config.attract_proba
       method = "attract"
-      voters[self.ID] = attract(self, neighbor, model.can_count)
-      voters[neighbor.ID] = attract(neighbor, self, model.can_count)
+      voters[self.ID] = attract(self, neighbor, can_count)
+      voters[neighbor.ID] = attract(neighbor, self, can_count)
    else
       method = "repel"
-      voters[self.ID] = repel(self, neighbor, model.can_count)
-      voters[neighbor.ID] = repel(neighbor, self, model.can_count)
+      voters[self.ID] = repel(self, neighbor, can_count)
+      voters[neighbor.ID] = repel(neighbor, self, can_count)
    end
 
    return [Action(method, (neighbor.ID, self.ID), self, voters[self.ID]), Action("repel", (self.ID, neighbor.ID), neighbor, voters[neighbor.ID])]
