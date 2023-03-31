@@ -197,7 +197,7 @@ function repel(self, neighbor, can_count; log_lvl=0, rng=Random.GLOBAL_RNG)
 end
 
 function delete_can!(vote, bucket_idx, can)
-   for i in 1:length(vote[bucket_idx])
+   for i in eachindex(vote[bucket_idx])
       if vote[bucket_idx][i] == can 
          deleteat!(vote[bucket_idx], i)
          break
@@ -286,13 +286,9 @@ function apply_action2(action, voter, can_count)
       delete_cans!(new_vote, bucket_idx, cans)
       insert!(new_vote, bucket_idx, Bucket(cans))
 
-      new_opinion = kendall_encoding(new_vote, can_count)
-
    elseif type == :unstack_right      
       delete_cans!(new_vote, bucket_idx, cans)
       insert!(new_vote, bucket_idx + 1, Bucket(cans))
-
-      new_opinion = kendall_encoding(new_vote, can_count)
 
    elseif type == :restack_left
       push!(new_vote[bucket_idx - 1], cans...)
@@ -302,9 +298,6 @@ function apply_action2(action, voter, can_count)
       else
          delete_cans!(new_vote, bucket_idx, cans)
       end
-      
-      new_opinion = kendall_encoding(new_vote, can_count)
-
    else
       push!(new_vote[bucket_idx + 1], cans...)
 
@@ -313,9 +306,9 @@ function apply_action2(action, voter, can_count)
       else
          delete_cans!(new_vote, bucket_idx, cans)
       end
-
-      new_opinion = kendall_encoding(new_vote, can_count)
    end
+
+   new_opinion = kendall_encoding(new_vote, can_count)
 
    return Kendall_voter(voter.ID, new_opinion, new_vote, voter.openmindedness, voter.stubborness)
 end
@@ -330,6 +323,7 @@ end
 
 function get_distance_preserving_actions_dec(u::Kendall_voter, v::Kendall_voter, can_count)
    # vector of new votes and opinions for voter u if we choose specific action 
+   # (cans, bucket_idx, distance_change, action)
    DP_actions = Vector{Tuple{Vector{Int64}, Int64, Float64, Symbol}}()
    inverted = invert_vote(get_vote(v), can_count)
 
@@ -448,7 +442,7 @@ function unbucket_right(can, opinion, bucket, can_count)
    max_distance = choose2(can_count)
 
    new_opinion = deepcopy(opinion)
-   for i in 1:length(bucket)
+   for i in eachindex(bucket)
       if bucket[i] != can
          new_opinion[get_index(bucket[i], can, can_count)] = can < bucket[i] ? 1.0 / max_distance : 0.0
       end
@@ -461,7 +455,7 @@ function unbucket_left(can, opinion, bucket, can_count)
    max_distance = choose2(can_count)
 
    new_opinion = deepcopy(opinion)
-   for i in 1:length(bucket)
+   for i in eachindex(bucket)
       if bucket[i] != can
          new_opinion[get_index(bucket[i], can, can_count)] = can < bucket[i] ? 0.0 : 1.0 / max_distance
       end
@@ -501,13 +495,13 @@ function rebucket_right(can, opinion, l_bucket, r_bucket, can_count)
    max_distance = choose2(can_count)
 
    new_opinion = deepcopy(opinion)
-   for i in 1:length(l_bucket)
+   for i in eachindex(l_bucket)
       if l_bucket[i] != can
          new_opinion[get_index(l_bucket[i], can, can_count)] = can < l_bucket[i] ? 1.0 / max_distance : 0.0
       end
    end
 
-   for i in 1:length(r_bucket)
+   for i in eachindex(r_bucket)
       new_opinion[get_index(r_bucket[i], can, can_count)] = 0.5 / max_distance
    end
 
@@ -519,11 +513,11 @@ function rebucket_left(can, opinion, l_bucket, r_bucket, can_count)
 
    new_opinion = deepcopy(opinion)
 
-   for i in 1:length(l_bucket)
+   for i in eachindex(l_bucket)
       new_opinion[get_index(l_bucket[i], can, can_count)] = 0.5 / max_distance
    end
 
-   for i in 1:length(r_bucket)
+   for i in eachindex(r_bucket)
       if r_bucket[i] != can
          new_opinion[get_index(r_bucket[i], can, can_count)] = can < r_bucket[i] ? 0.0 : 1.0 / max_distance
       end
@@ -540,7 +534,7 @@ function get_all_actions(voter_1, voter_2)
    actions = Vector{Int64}()
    diff = voter_1.opinion - voter_2.opinion
 
-   for i in 1:length(diff)
+   for i in eachindex(diff)
       if val != 0
          push!(actions, i)
       end
@@ -552,7 +546,7 @@ end
 function invert_vote(vote, can_count)
    pos = Vector{Int64}(undef, can_count)
 
-   for i in 1:length(vote)
+   for i in eachindex(vote)
       # iterate bucket
       for can in vote[i]
          pos[can] = i

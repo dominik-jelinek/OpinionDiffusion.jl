@@ -84,7 +84,7 @@ function parse_votes(lines, can_count) ::Vector{Vote}
       if length(voter_str) == 2
          no_pref = split(chop(voter_str[2]), ",")
          bucket = Bucket()
-         for j in 1:length(no_pref)
+         for j in eachindex(no_pref)
             push!(bucket, parse(Int64, no_pref[j]))
          end
          push!(vote, bucket)

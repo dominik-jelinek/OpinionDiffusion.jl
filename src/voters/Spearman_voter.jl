@@ -143,7 +143,7 @@ function normalize_shifts(shifts::Vector{Float64}, opinion::Vector{Float64}, min
     end
 
     normalized = Vector{Float64}(undef, length(shifts))
-    for i in 1:length(shifts)
+    for i in eachindex(shifts)
         normalized[i] = normalize_shift(shifts[i], opinion[i], min_opin, max_opin)
     end
 
