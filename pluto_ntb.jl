@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.19
+# v0.19.22
 
 using Markdown
 using InteractiveUtils
@@ -122,7 +122,7 @@ src_candidates
 filtered_election, candidates = OpinionDiffusion.filter_candidates(src_election, src_candidates, remove_candidates, length(src_candidates))
 
 # ╔═╡ ad94415f-fc56-4a2f-9068-e05d8633aafe
-init_sample_size = min(1000, length(filtered_election))
+init_sample_size = min(70000, length(filtered_election))
 
 # ╔═╡ 93b8909b-479c-422a-b475-2befadf5e9ec
 election = filtered_election[OpinionDiffusion.StatsBase.sample(1:length(filtered_election), init_sample_size, replace=false)]
@@ -137,7 +137,7 @@ md"### Voter config"
 md"#### Weighting of Spearman voter"
 
 # ╔═╡ a38a2e2e-e742-4c0b-9cf5-cd8376178300
-weighting_rate = 0.0
+weighting_rate = 1.0
 
 # ╔═╡ 342d3d34-4a3a-4f2d-811b-e9ab143504fd
 begin
@@ -148,14 +148,32 @@ begin
 		weights[i] = weights[i - 1] + weight_func(i - 1)
 	end
 	max_sp_distance = OpinionDiffusion.get_max_distance(length(candidates), weights)
-	weights = weights ./ max_sp_distance
+	#weights = weights ./ max_sp_distance
 end
+
+# ╔═╡ 32417505-579f-4cc7-8f21-b5aafed31db6
+sum(weights)
+
+# ╔═╡ d0a649dc-9bbc-449d-bfc9-34a18c1ef7a0
+u = OpinionDiffusion.spearman_encoding([Set([1]), Set([2]),Set([3]),Set(4), Set(5),Set(6),Set([7]), Set([8])], weights)
+
+# ╔═╡ edc6f4b9-6863-4fc4-ba5e-1c184d40c53d
+v = OpinionDiffusion.spearman_encoding([Set([1]), Set([2]),Set([3]),Set(4), Set(5),Set([6, 7]), Set([8])], weights)
+
+# ╔═╡ 278c8df9-1a14-48e3-9bb4-9023f736ae1b
+get_distance(u/sum(u), v/sum(v))
+
+# ╔═╡ 20f77dbd-ebd4-4e84-a96f-1d1643e9f897
+u/sum(u)
+
+# ╔═╡ 721ecdb2-3dcf-41b9-82c6-297710f7a4c9
+v/sum(v)
 
 # ╔═╡ c2d75170-789d-41b4-b30b-40b143d23702
 max_sp_distance
 
 # ╔═╡ 825b45d1-fe6a-4460-8fe2-b323019c56b6
-Plots.bar([string(i) * '-' * string(i + 1) for i in 1:length(candidates)-1], [weight_func(x) for x in 1:length(candidates)-1], legend=false)
+Plots.bar([string(i) * '-' * string(i + 1) for i in 1:length(candidates)-1], [weight_func(x) for x in 1:length(candidates)-1], legend=false, title="Bucket Distances")
 
 # ╔═╡ ed315e83-6d73-4f9a-afb9-f0174e08ef29
 md"#### Voter selection"
@@ -294,7 +312,7 @@ if cb_model && logging
 		model, logger = load_model(model_dir, exp_dir, idx, true)
 		
 	else # restart and create new experiment
-		model, logger = restart_model(model_dir)
+		model, logger = load_model(model_dir)
 	end
 elseif cb_model && !logging
 	if model_source == "new_model"
@@ -898,6 +916,12 @@ compare_metrics_vis(ensemble_logs, ["unique_votes", "avg_vote_length", "avg_edge
 # ╟─40fdc182-c693-48fb-99ee-43d1bc78d95f
 # ╠═a38a2e2e-e742-4c0b-9cf5-cd8376178300
 # ╠═342d3d34-4a3a-4f2d-811b-e9ab143504fd
+# ╠═32417505-579f-4cc7-8f21-b5aafed31db6
+# ╠═d0a649dc-9bbc-449d-bfc9-34a18c1ef7a0
+# ╠═edc6f4b9-6863-4fc4-ba5e-1c184d40c53d
+# ╠═278c8df9-1a14-48e3-9bb4-9023f736ae1b
+# ╠═20f77dbd-ebd4-4e84-a96f-1d1643e9f897
+# ╠═721ecdb2-3dcf-41b9-82c6-297710f7a4c9
 # ╠═c2d75170-789d-41b4-b30b-40b143d23702
 # ╠═825b45d1-fe6a-4460-8fe2-b323019c56b6
 # ╟─ed315e83-6d73-4f9a-afb9-f0174e08ef29
@@ -948,7 +972,7 @@ compare_metrics_vis(ensemble_logs, ["unique_votes", "avg_vote_length", "avg_edge
 # ╠═d877c5d0-89af-48b9-bcd0-c1602d58339f
 # ╠═27a60724-5d19-419f-b208-ffa0c78e2505
 # ╠═87c573c1-69a4-4a61-bbb8-acb716f8ec6d
-# ╠═971693bb-1a08-4266-a93b-c3e9d60d8bcd
+# ╟─971693bb-1a08-4266-a93b-c3e9d60d8bcd
 # ╟─de772425-25de-4228-b12e-d567b8ceb20f
 # ╟─20819900-1129-4ff1-b97e-d079ffce8ab8
 # ╠═f6b4ba47-f9d2-42f0-9c86-e9810be7b810
@@ -986,7 +1010,7 @@ compare_metrics_vis(ensemble_logs, ["unique_votes", "avg_vote_length", "avg_edge
 # ╟─52893c8c-d1b5-482a-aae7-b3ec5c590b77
 # ╠═e60db281-0bd0-4eb6-94fa-4c30766464fd
 # ╠═ca8a24e4-ce3b-47d9-ad39-8507fa910a9d
-# ╠═87320bc9-e825-4aa8-84ea-9fd75b7ff4fd
+# ╟─87320bc9-e825-4aa8-84ea-9fd75b7ff4fd
 # ╠═af643514-f20f-436b-966d-05021b566b1e
 # ╠═4add7dc5-0af8-4179-a496-a46767cc85ef
 # ╠═fa876197-2401-4b54-8b56-e4abdf8f8801

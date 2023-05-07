@@ -146,24 +146,28 @@ function draw_cluster_graph(g, cluster_metrics)
                            edgelabel=edgelabels)
 end
 
-function draw_cluster_graph2(f, g)
-   colors = Colors.distinguishable_colors(get_prop(g, nv(g), :label))
-   nodesize = [length(get_prop(g, v, :indices)) / 5 for v in vertices(g)]
+function draw_cluster_graph2(ax, g)
+   cluster_labels = [get_prop(g, v, :label) for v in vertices(g)]
+   colors = Colors.distinguishable_colors(maximum(cluster_labels))
+
+   nodesizes = [length(get_prop(g, v, :indices)) for v in vertices(g)]
+   nodesizes = [ nodesize/sum(nodesizes) * 100 for nodesize in nodesizes]
    xs = [get_prop(g, v, :pos)[1, 1] for v in vertices(g)]
    ys = [get_prop(g, v, :pos)[2, 1] for v in vertices(g)]
-   #edgesizes = [get_prop(G, e, :weight) / (get_prop(G, src(e), :size) * get_prop(G, dst(e), :size)) for e in edges(G)]
-   edgesizes = [ src(e) != dst(e) ? round(digits=2, get_prop(g, e, :weight)) : 0 for e in edges(g)]
+   edgesizes = [src(e) != dst(e) ? get_prop(g, e, :weight) / (length(get_prop(g, src(e), :indices)) * length(get_prop(g, dst(e), :indices))) * 100 : 0.0 for e in edges(g)]
+   #edgesizes = [ src(e) != dst(e) ? round(digits=2, get_prop(g, e, :weight)) : 0 for e in edges(g)]
+   #edgesizes = [ edgesize/sum(edgesizes) * 100 for edgesize in edgesizes]
    distances = [ src(e) != dst(e) ? round(digits=2, get_prop(g, e, :dist) / get_prop(g, e, :weight)) : "" for e in edges(g)]
 
-   c = [colors[get_prop(g, v, :label)] for v in vertices(g)]
+   c = colors[cluster_labels]
    
-   edgelabels = distances
+   edgelabels = [string(val) for val in distances]
    #[round(get_prop(G, :nv) * get_prop(G, e, :weight) / (2*get_prop(G, src(e), :size) * get_prop(G, dst(e), :size)), digits=2) for e in edges(G)]
    
-   graphplot!(f[1, 1], g, layout=g -> Point.(zip(xs, ys)), node_color=c, node_size=nodesize)
+   graphplot!(ax, g, layout=g -> Point.(zip(xs, ys)), node_color=c, node_size=nodesizes, edge_width=edgesizes, elabels=edgelabels)
    #hidedecorations!(ax); hidespines!(ax)
    #ax.aspect = DataAspect()
-   return f
+   #return f
 end
 
 function ego(social_network, node_id, depth)

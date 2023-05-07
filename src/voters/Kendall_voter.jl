@@ -1,11 +1,12 @@
 
 struct Kendall_voter <: Abstract_voter
    ID::Int64
-   opinion::Vector{Float64}
 
-   vote::Vote
-   openmindedness::Float64
-   stubborness::Float64
+   opinion::Vector{Float64} #BO
+   vote::Vote # BO
+
+   openmindedness::Float64 # graph
+   stubborness::Float64 # step
 end
 
 @kwdef struct Kendall_voter_init_config <: Abstract_voter_init_config

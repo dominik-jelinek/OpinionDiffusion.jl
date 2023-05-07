@@ -61,12 +61,12 @@ function model_vis2(model, sampled_voter_ids, reduce_dim_config, clustering_conf
     projections = reduce_dims(sampled_opinions, reduce_dim_config)
 
     if old_projections !== nothing
-        projections = unify_projections(old_projections, projections)
+        unify_projections!(old_projections, projections)
     end
     
     labels, clusters = clustering(sampled_voters, clustering_config, projections)
     if old_clusters !== nothing
-        unify_clusters!(old_clusters, clusters, old_projections, projections)
+        unify_clusters!(old_clusters, clusters)
         for (label, indices) in clusters
             labels[collect(indices)] .= label
         end
@@ -81,10 +81,10 @@ function model_vis2(model, sampled_voter_ids, reduce_dim_config, clustering_conf
     g = get_cluster_graph(model, clusters, labels, projections)
     cluster_metrics = nothing#cluster_graph_metrics(g, social_network, voters, 4)
     #println(modularity(g, labels))
+    
     f = Figure()
-    heatmap(f[1, 1], dens, colormap=[:blue, :white,:red, :yellow])
-    f = draw_cluster_graph2(f, g)
-   
+    draw_voter_KDE!(f[1, 1], projections)
+    draw_cluster_graph2(f[1, 1], g)
     push!(visualizations, f)
 
     push!(visualizations, draw_degree_distr(Graphs.degree_histogram(social_network)))
@@ -102,7 +102,7 @@ function draw_voter_vis(projections, clusters, title, exp_dir=Nothing, counter=[
 end
 
 function draw_voter_vis!(plot, projections, clusters, title, exp_dir=Nothing, counter=[0])
-    cluster_colors = Colors.distinguishable_colors(clusters[end][1])
+    cluster_colors = Colors.distinguishable_colors(maximum([cluster[1] for cluster in clusters]))
 
     for (label, indices) in clusters
         Plots.scatter!(plot, Tuple(eachrow(projections[:, collect(indices)])), c=cluster_colors[label], label=length(indices), alpha=0.4)
@@ -113,6 +113,11 @@ function draw_voter_vis!(plot, projections, clusters, title, exp_dir=Nothing, co
     end
 
     return plot
+end
+
+function draw_voter_KDE!(ax, projections)
+    dens = KernelDensity.kde((projections[1, :], projections[2, :]))
+    heatmap(ax, dens, colormap=[:blue, :white,:red, :yellow])
 end
 
 function draw_degree_distr(degree_distribution, exp_dir=Nothing, diff_counter=[0])
@@ -201,7 +206,8 @@ end
 function draw_edge_distances!(plot, distances)
     Plots.histogram!(plot, distances,
                          title = "Edge distance distribution",
-                         nbins = 20,
+                         nbins = 100,
+                         xlims = (0.0, 1.0),
                          legend = false,
                          ylabel = "Num. of vertices",
                          xlabel = "Distance")

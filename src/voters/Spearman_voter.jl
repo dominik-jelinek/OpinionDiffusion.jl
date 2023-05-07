@@ -1,9 +1,10 @@
 struct Spearman_voter <: Abstract_voter
     ID::Int64
-    opinion::Vector{Float64}
 
-    openmindedness::Float64
-    stubbornness::Float64
+    opinion::Vector{Float64} # cPBO
+
+    openmindedness::Float64 # graph
+    stubbornness::Float64 # step
 end
 
 @kwdef struct Spearman_voter_init_config <: Abstract_voter_init_config

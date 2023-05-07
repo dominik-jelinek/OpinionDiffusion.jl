@@ -20,7 +20,7 @@ function Logger(model::Abstract_model, model_name="model", exp_name="experiment"
     return Logger(model_dir, exp_dir, diff_counter)
 end
 
-function restart_model(model_dir::String, exp_name="experiment")
+function load_model(model_dir::String, exp_name="experiment")
     exp_dir = "$(model_dir)/$(exp_name)_" * Dates.format(now(), "yyyy-mm-dd_HH-MM-SS")
     mkpath(exp_dir)
     

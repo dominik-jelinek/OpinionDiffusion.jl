@@ -58,8 +58,14 @@ end
 name(config::DBSCAN_clustering_config) = "DBSCAN"
 
 function clustering(voters, clustering_config::DBSCAN_clustering_config, projections=nothing)
-    res = Clustering.dbscan(get_distance(projections === nothing ? voters : projections), clustering_config.eps, clustering_config.minpts)
-    labels = res.assignments .+1
+    opinions = projections === nothing ? reduce(hcat, get_opinion(voters)) : projections
+
+    res = Clustering.dbscan(opinions, clustering_config.eps; min_neighbors=clustering_config.minpts)
+    labels = Vector{Int64}(undef, length(voters))
+    for (i, dbscanCluster) in enumerate(res)
+        labels[dbscanCluster.core_indices] .= i
+        labels[dbscanCluster.boundary_indices] .= i
+    end
     
     clusters = clusterize(labels)
     
@@ -232,49 +238,50 @@ function clusterize(labels::Vector{Int64})
     return clusters
 end
 
-""" TODO
-Finds the best bijection from clusters to template_clusters based on set overlap
-"""
-function unify_clusters!(template_clusters, clusters, old_projections , projections)
-    jaccard_dist_sim = zeros(length(template_clusters), length(clusters))
-    mean_distance = 0
-    for i in eachindex(template_clusters)
-        for j in eachindex(sorted)
-            jaccard_sim = length(intersect(template_clusters[i][2], clusters[j][2])) / length(union(template_clusters[i][2], clusters[j][2]))
-            distance = get_avg_distance(old_projections[:, collect(template_clusters[i][2])], projections[:, collect(clusters[j][2])])
-            mean_distance += distance
+function jaccard_similarity(set1::Set{Int64}, set2::Set{Int64})
+    intersection_size = length(intersect(set1, set2))
+    union_size = length(union(set1, set2))
+    return intersection_size / union_size
+end
 
-            jaccard_dist_sim[i, j] = (1.0 - jaccard_sim) * distance
+function create_similarity_matrix(template_clusters, clusters)
+    matrix = Array{Float64}(undef, length(clusters), length(template_clusters))
+
+    for i in 1:length(clusters)
+        for j in 1:length(template_clusters)
+            matrix[i, j] = jaccard_similarity(clusters[i][2], template_clusters[j][2])
         end
     end
-    mean_distance = mean_distance / (length(template_clusters) * length(clusters))
 
-    # find best bijection until jaccard similarity is less than 0.5 * mean_distance
-    new_labels = zeros(length(clusters))
-    while true
-        val, min_idx = findmin(jaccard_dist_sim)
-        if val > 0.4 * mean_distance
+    return matrix
+end
+
+function unify_clusters!(template_clusters::Vector{Tuple{Int64, Set{Int64}}}, clusters::Vector{Tuple{Int64, Set{Int64}}})
+    similarity_matrix = create_similarity_matrix(template_clusters, clusters)
+    changed = Vector{Bool}(undef, length(clusters))
+
+    for _ in 1:length(template_clusters)
+        max_similarity, max_index = findmax(similarity_matrix)
+        if max_similarity == 0.0
             break
         end
+        cluster_index, template_index = Tuple(max_index)
 
-        new_labels[min_idx[2]] = template_clusters[min_idx[1]][1]
-        jaccard_dist_sim[min_idx[1], :] .= Inf
-        jaccard_dist_sim[:, min_idx[2]] .= Inf
+        template_id = template_clusters[template_index][1]
+        clusters[cluster_index] = (template_id, clusters[cluster_index][2])
+        changed[cluster_index] = true
+
+        similarity_matrix[cluster_index, :] .= 0.0
+        similarity_matrix[:, template_index] .= 0.0
     end
 
-    # create new labels for clusters that were not matched
-    max_label = maximum([label for (label, _) in template_clusters])
-    counter = 1
-    for i in eachindex(new_labels)
-        if new_labels[i] == 0
-            new_labels[i] = max_label + counter
+    max_ID = maximum([cluster[1] for cluster in template_clusters])
+    counter = 0
+    for i in 1:length(clusters)
+        if !changed[i]
+            clusters[i] = (max_ID + counter, clusters[i][2])
             counter += 1
         end
-    end
-
-    # update clusters
-    for i in eachindex(clusters)
-        clusters[i] = (new_labels[i], clusters[i][2])
     end
 end
 

@@ -70,7 +70,7 @@ include("voters/Spearman_voter.jl")
 include("models/Abstract_model.jl")
 include("models/General_model.jl")
 
-include("voting.jl")
+include("voting_rules.jl")
 include("dim_reduction.jl")
 include("clustering.jl")
 
