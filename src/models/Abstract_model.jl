@@ -13,8 +13,8 @@ end
 @kwdef struct Action
     operation::String
     ID::Union{Int64, Tuple{Int64, Int64}}
-    old_value
-    new_value
+    old
+    new
 end
 
 get_voters(model::T) where T <: Abstract_model = model.voters 
@@ -31,8 +31,29 @@ function graph_diffusion!(model::T, graph_diff_config::U) where {T <: Abstract_m
     throw(NotImplementedError("graph_diffusion!"))
 end
 
+function run(election, candidates, model_config, model_seed, diffusion_config, diffusions, diffusion_seed)
+    model_rng = MersenneTwister(model_seed)
+    model = init_model(election, candidates, model_config; rng=model_rng)
+    logger = Logger(model)
+    
+    rng = MersenneTwister(diffusion_seed)
+    actions = run!(model, diffusion_config, diffusions; logger=logger, rng=rng)
+
+    return logger, actions
+end
+
+function run!(model::T, diffusion_config, diffusions; logger=nothing, metrics=nothing, update_metrics! =nothing, rng=Random.GLOBAL_RNG) where T<:Abstract_model
+    actions = Vector{Vector{Action}}()
+    for j in 1:diffusions
+        push!(actions, run!(model, diffusion_config; logger=logger, metrics=metrics, update_metrics! = update_metrics!, rng=rng))
+    end
+
+    return actions
+end
+
 function run!(model::T, diffusion_config; logger=nothing, metrics=nothing, update_metrics! =nothing, rng=Random.GLOBAL_RNG) where T<:Abstract_model
     actions = diffusion!(model, diffusion_config; rng=rng)
+    
     if metrics !== nothing
         update_metrics!(model, metrics)
     end
@@ -46,27 +67,6 @@ function run!(model::T, diffusion_config; logger=nothing, metrics=nothing, updat
     end
 
     return actions
-end
-
-function run!(model::T, diffusion_config, diffusions; logger=nothing, metrics=nothing, update_metrics! =nothing, rng=Random.GLOBAL_RNG) where T<:Abstract_model
-    actions = Vector{Vector{Action}}()
-    for j in 1:diffusions
-        push!(actions, run!(model, diffusion_config; logger=logger, metrics=metrics, update_metrics! = update_metrics!, rng=rng))
-    end
-
-    return actions
-end
-
-
-function run(election, candidates, model_config, model_seed, diffusion_config, diffusions, diffusion_seed)
-    model_rng = MersenneTwister(model_seed)
-    model = init_model(election, candidates, model_config; rng=model_rng)
-    logger = Logger(model)
-    
-    rng = MersenneTwister(diffusion_seed)
-    actions = run!(model, diffusion_config, diffusions; logger=logger, rng=rng)
-
-    return logger, actions
 end
 
 function run_ensemble(model::Abstract_model, ensemble_size, diffusions, init_metrics, update_metrics!, diffusion_config, logger=nothing)

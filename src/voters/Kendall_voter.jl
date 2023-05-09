@@ -91,7 +91,7 @@ function step!(self::Kendall_voter, model, voter_diff_config::Kendall_voter_diff
       voters[neighbor.ID] = repel(neighbor, self, can_count)
    end
 
-   return [Action(method, (neighbor.ID, self.ID), self, voters[self.ID]), Action("repel", (self.ID, neighbor.ID), neighbor, voters[neighbor.ID])]
+   return [Action(method, (neighbor.ID, self.ID), self, deepcopy(voters[self.ID])), Action("repel", (self.ID, neighbor.ID), neighbor, deepcopy(voters[neighbor.ID]))]
 end
 
 #=

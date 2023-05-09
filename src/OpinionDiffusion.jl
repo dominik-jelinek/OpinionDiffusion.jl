@@ -37,6 +37,7 @@ export run!
 export save_log, load_log, load_logs
 export get_opinion, get_vote, get_votes, get_distance
 export get_voters, get_social_network, get_candidates
+export election_summary
 
 export General_model_config, General_graph_diff_config, Diffusion_config
 export BA_graph_config, DEG_graph_config

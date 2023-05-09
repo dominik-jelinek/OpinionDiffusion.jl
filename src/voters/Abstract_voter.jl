@@ -11,6 +11,10 @@ function step!(self::T, model, voter_diff_config::U) where
     throw(NotImplementedError("step!(self::T, model, voter_diff_config::U) where {T <: Abstract_voter, U <: Abstract_voter_diff_config}"))
 end
 
+function get_ID(voter::T) where T <: Abstract_voter
+    return voter.ID
+end
+
 function get_vote(voter::Abstract_voter; kwargs...) :: Vote
     throw(NotImplementedError("get_vote"))
 end

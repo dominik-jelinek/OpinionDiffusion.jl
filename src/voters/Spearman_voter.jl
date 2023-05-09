@@ -133,7 +133,7 @@ function average_all!(voter_1::Spearman_voter, voter_2::Spearman_voter, attract_
     cp_2 = deepcopy(voter_2)
     voter_1.opinion .+= shifts_1 * (1.0 - voter_1.stubbornness) * change_rate
     voter_2.opinion .+= shifts_2 * (1.0 - voter_2.stubbornness) * change_rate
-    return [Action(method, (voter_2.ID, voter_1.ID), cp_1, voter_1), Action(method, (voter_1.ID, voter_2.ID), cp_2, voter_2)]
+    return [Action(method, (voter_2.ID, voter_1.ID), cp_1, deepcopy(voter_1)), Action(method, (voter_1.ID, voter_2.ID), cp_2, deepcopy(voter_2))]
 end
 
 function normalize_shifts(shifts::Vector{Float64}, opinion::Vector{Float64}, min_opin, max_opin)

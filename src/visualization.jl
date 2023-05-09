@@ -1,3 +1,62 @@
+function init_metrics(model)
+    g = get_social_network(model)
+    voters = get_voters(model)
+	candidates = get_candidates(model)
+	can_count = length(candidates)
+	
+	histogram = Graphs.degree_histogram(g)
+    keyss = collect(keys(histogram))
+	
+	metrics = Dict()
+	metrics["min_degrees"] = [minimum(keyss)]
+	metrics["avg_degrees"] = [Graphs.ne(g) * 2 / Graphs.nv(g)]
+    metrics["max_degrees"] = [maximum(keyss)]
+	metrics["avg_edge_dist"] = [OpinionDiffusion.StatsBase.mean(OpinionDiffusion.get_edge_distances(g, voters))]
+    metrics["clustering_coeff"] = [Graphs.global_clustering_coefficient(g)]
+	#metrics["diameter"] = [Graphs.diameter(g)]
+    
+	#election results
+	votes = get_votes(voters)
+	metrics["avg_vote_length"] = [OpinionDiffusion.StatsBase.mean([length(vote) for vote in votes])]
+    metrics["unique_votes"] = [length(unique(votes))]
+	metrics["election_matrix"] = [sum(abs.(get_counts(votes, can_count)), dims=1)]
+
+    metrics["plurality_votings"] = [plurality_voting(votes, can_count, true)]
+    metrics["borda_votings"] = [borda_voting(votes, can_count, true)]
+    #metrics["copeland_votings"] = [copeland_voting(votes, can_count)]
+
+	metrics["positions"] = [get_positions(voters, can_count)]
+	
+	return metrics
+end
+
+function update_metrics!(model, diffusion_metrics)
+    g = get_social_network(model)
+    voters = get_voters(model)
+	candidates = get_candidates(model)
+	can_count = length(candidates)
+	
+    dict = Graphs.degree_histogram(g)
+    keyss = collect(keys(dict))
+	
+    push!(diffusion_metrics["min_degrees"], minimum(keyss))
+    push!(diffusion_metrics["avg_degrees"], Graphs.ne(g) * 2 / Graphs.nv(g))
+    push!(diffusion_metrics["max_degrees"], maximum(keyss))
+	push!(diffusion_metrics["avg_edge_dist"], OpinionDiffusion.StatsBase.mean(OpinionDiffusion.get_edge_distances(g, voters)))
+    push!(diffusion_metrics["clustering_coeff"], Graphs.global_clustering_coefficient(g))
+    #push!(diffusion_metrics["diameter"], Graphs.diameter(g))
+    
+    votes = get_votes(voters)
+	push!(diffusion_metrics["avg_vote_length"], OpinionDiffusion.StatsBase.mean([length(vote) for vote in votes]))
+    push!(diffusion_metrics["unique_votes"], length(unique(votes)))
+	push!(diffusion_metrics["election_matrix"], sum(abs.(get_counts(votes, can_count)), dims=1))
+
+    push!(diffusion_metrics["plurality_votings"], plurality_voting(votes, can_count, true))
+    push!(diffusion_metrics["borda_votings"], borda_voting(votes, can_count, true))
+    #push!(diffusion_metrics["copeland_votings"], copeland_voting(votes, can_count))
+    push!(diffusion_metrics["positions"], get_positions(voters, can_count))
+end
+
 function metrics_vis(metrics, candidates, parties, exp_dir=Nothing)
     degrees = draw_range(metrics["min_degrees"], metrics["avg_degrees"], metrics["max_degrees"], title="Degree range", xlabel="Timestamp", ylabel="Degree", value_label="avg")
 
@@ -49,7 +108,7 @@ end
 
 #___________________________________________________________________
 # model
-function model_vis2(model, sampled_voter_ids, reduce_dim_config, clustering_config, old_projections=nothing, old_clusters=nothing)
+function model_vis(model, sampled_voter_ids, reduce_dim_config, clustering_config, interm_calcs=Dict())
     visualizations = []
     social_network = get_social_network(model)
     voters = get_voters(model)
@@ -60,13 +119,13 @@ function model_vis2(model, sampled_voter_ids, reduce_dim_config, clustering_conf
 
     projections = reduce_dims(sampled_opinions, reduce_dim_config)
 
-    if old_projections !== nothing
-        unify_projections!(old_projections, projections)
+    if haskey(interm_calcs, "prev_projections")
+        unify_projections!(interm_calcs["prev_projections"], projections)
     end
     
     labels, clusters = clustering(sampled_voters, clustering_config, projections)
-    if old_clusters !== nothing
-        unify_clusters!(old_clusters, clusters)
+    if haskey(interm_calcs, "prev_clusters")
+        unify_clusters!(interm_calcs["prev_clusters"], clusters)
         for (label, indices) in clusters
             labels[collect(indices)] .= label
         end
@@ -90,8 +149,18 @@ function model_vis2(model, sampled_voter_ids, reduce_dim_config, clustering_conf
     push!(visualizations, draw_degree_distr(Graphs.degree_histogram(social_network)))
 
     push!(visualizations, draw_edge_distances(get_edge_distances(social_network, voters)))
+    
+    counts = get_counts(get_votes(sampled_voters), length(get_candidates(model)))
+    if haskey(interm_calcs, "prev_counts")
+        difference = counts - interm_calcs["prev_counts"]
+        sum_difference = sum(abs.(difference), dims=1)
+        push!(visualizations, heatmap(difference))
+    end
 
-    return visualizations, projections, clusters
+    interm_calcs["prev_projections"] = projections
+    interm_calcs["prev_clusters"] = clusters
+    interm_calcs["prev_counts"] = counts
+    return visualizations, interm_calcs
 end
 
 function draw_voter_vis(projections, clusters, title, exp_dir=Nothing, counter=[0])
@@ -213,6 +282,22 @@ function draw_edge_distances!(plot, distances)
                          xlabel = "Distance")
 end
 
+function election_summary(votes::Vector{Vote}, can_count::Int64)
+	result = zeros(Float64, can_count, can_count)
+	
+	for vote in votes
+        position = 1
+        for bucket in vote
+			for c in bucket
+            	result[c, position] += 1.0 / length(bucket)
+                position += 1
+			end
+        end
+    end
+	
+	return result
+end
+
 #___________________________________________________________________
 # ENSEMBLE
 
@@ -249,58 +334,14 @@ end
 """
 Loads all logs from one experiment and returns dictionary of visualizations
 """
-function gather_vis(exp_dir, sampled_voter_ids, dim_reduction_config, clustering_config, parties, candidates)
-    last = last_log_idx(exp_dir)
-    visualizations = Dict("heatmaps"=>[], "voters"=>[], "distances"=>[])
-    title = reduce_dim_config.method * "_" * clustering_config.method * "_" * string(length(sampled_voter_ids))
-    prev_sampled_opinions = nothing
-    x_projections, y_projections, max_x, min_x, max_y, min_y = nothing,nothing,nothing,nothing,nothing,nothing
-    for step in 0:last
-        model_log = load_log(exp_dir, step)
-        sampled_voters = get_voters(model_log)[sampled_voter_ids]
-        sampled_opinions = reduce(hcat, get_opinion(sampled_voters))
-
-        projections = reduce_dims(sampled_opinions, dim_reduction_config)
-        
-        labels, clusters = clustering(sampled_voters, clustering_config)
-
-        #heatmap
-        if step > 0
-            unify_projections!(projections, x_projections, y_projections, (max_x-min_x)/2, (max_y-min_y)/2)
-
-            difference = sampled_opinions - prev_sampled_opinions
-            changes = vec(sum(abs.(difference), dims=1))
-            println(sum(changes))
-            push!(visualizations["heatmaps"], draw_heat_vis(projections, changes, "Heat map"))
-        end
-        prev_projections = projections
-        x_projections = prev_projections[1, 1:length(candidates)]
-    	y_projections = prev_projections[2, 1:length(candidates)]
-        min_x, max_x = minimum(x_projections), maximum(x_projections) 
-	    min_y, max_y = minimum(y_projections), maximum(y_projections)
-        
-        prev_sampled_opinions = sampled_opinions
-
-        push!(visualizations["voters"], draw_voter_vis(projections, clusters, title))
-        push!(visualizations["distances"], draw_edge_distances(get_edge_distances(model_log.social_network, model_log.voters)))
-    end
-
-    return visualizations
-end
-
-
-"""
-Loads all logs from one experiment and returns dictionary of visualizations
-"""
-function gather_vis2(exp_dir, sampled_voter_ids, dim_reduction_config, clustering_config)
+function gather_vis(exp_dir, sampled_voter_ids, dim_reduction_config, clustering_config, )
     timestamps = sort([parse(Int64, split(splitext(file)[1], "_")[end]) for file in readdir(exp_dir) if split(file, "_")[1] == "model"])
     visualizations = []
-    projections = nothing
-    clusters = nothing
+    interm_calc = Dict()
 
     for t in timestamps
         model_log = load_log(exp_dir, t)
-        visualization, projections, clusters = model_vis2(model_log, sampled_voter_ids, dim_reduction_config, clustering_config, projections, clusters)
+        visualization, interm_calc = model_vis(model_log, sampled_voter_ids, dim_reduction_config, clustering_config, interm_calc)
         push!(visualizations, visualization)
         #push!(visualizations, stack_visualizations(model_vis2(model_log, sampled_voter_ids, dim_reduction_config, clustering_config)))
     end

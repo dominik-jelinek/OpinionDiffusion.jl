@@ -114,7 +114,7 @@ if clustering_method == "Party"
 elseif clustering_method == "Kmeans"
 	clustering_config = Kmeans_clustering_config(length(candidates))
 elseif clustering_method == "GM"
-	clustering_config = GM_clustering_config(length(candidates)-3)
+	clustering_config = GM_clustering_config(length(candidates))
 elseif clustering_method == "DBSCAN"
 	clustering_config = DBSCAN_clustering_config(0.02, 10)
 else
@@ -132,6 +132,9 @@ diff_step
 
 # ╔═╡ c2ba23c6-d23b-4754-a5b8-371500420b43
 model_log = load_log(exp_dir_path, diff_step)
+
+# ╔═╡ f1fe9b13-9a84-40e7-84e5-0477219e8815
+transpose()
 
 # ╔═╡ 581f20a7-6393-41ea-8fe7-510b6c8a1e89
 begin
@@ -199,7 +202,7 @@ end
 
 # ╔═╡ ad8f309f-b3f1-4ed0-914f-675ffe23821f
 begin
-	visualizations = OpinionDiffusion.gather_vis2(exp_dir_path, sampled_voter_ids, dim_reduction_config, clustering_config)
+	visualizations = OpinionDiffusion.gather_vis(exp_dir_path, sampled_voter_ids, dim_reduction_config, clustering_config)
 	println("Done")
 end
 
@@ -207,7 +210,7 @@ end
 md"### Compounded metrics"
 
 # ╔═╡ f35712d1-3c91-4202-8e90-55b1922dbd8e
-OpinionDiffusion.model_vis2(model_log, sampled_voter_ids, dim_reduction_config, clustering_config)
+OpinionDiffusion.model_vis(model_log, sampled_voter_ids, dim_reduction_config, clustering_config)
 
 # ╔═╡ 59cd2b6a-2f14-419f-be29-ef60b0f1c681
 md"#### Communities"
@@ -253,6 +256,28 @@ visualizations[t][3]
 
 # ╔═╡ 9e2c288a-47bb-4b43-9668-fdd5ac22f43e
 visualizations[t][5]
+
+# ╔═╡ 52f8f2b0-4a21-4a05-8f25-62175ba6de07
+visualizations[t][6]
+
+# ╔═╡ 0c25866b-2652-4f57-9ab5-c5d278117a67
+function get_counts(votes, can_count)
+	result = zeros(Float64, can_count, can_count)
+	
+	for vote in votes
+        for (i, bucket) in enumerate(vote)
+			#iterate buckets in vote
+			for c in bucket
+            	result[c, i] += 1 / length(bucket)
+			end
+        end
+    end
+	
+	return result
+end
+
+# ╔═╡ 2b37a5ae-acad-47cf-8567-7fdf0a7c2047
+heatmap(transpose(get_counts(get_votes(sampled_voters), length(candidates))))
 
 # ╔═╡ af31098c-bba9-42f2-8a72-e03f51f26ff3
 function ego(social_network, node_id, depth)
@@ -302,6 +327,9 @@ countss = [get_counts(get_votes(sampled_voters[collect(cluster)]), length(candid
 # ╔═╡ fc58665b-955b-4091-bd50-17ee0f8539ae
 plots = Plots.plot([Plots.heatmap(count, yticks=1:length(src_candidates), xticks=1:length(src_candidates), ylabel="Candidate", xlabel="Position") for count in countss]..., layout = (length(candidates), 1), size = (669,900))
 
+# ╔═╡ 816b8848-6198-498f-bacf-790693babfbc
+
+
 # ╔═╡ Cell order:
 # ╠═b6b67170-8dcf-11ed-22a8-c935c756f9b0
 # ╠═521fad35-0852-48a1-93b0-7b8794544706
@@ -336,6 +364,8 @@ plots = Plots.plot([Plots.heatmap(count, yticks=1:length(src_candidates), xticks
 # ╟─a0449758-593e-403b-a3ab-352a2bc3717b
 # ╠═c3ba833f-9eee-46c6-b7ae-ea8cb831b6dc
 # ╠═c2ba23c6-d23b-4754-a5b8-371500420b43
+# ╠═f1fe9b13-9a84-40e7-84e5-0477219e8815
+# ╠═2b37a5ae-acad-47cf-8567-7fdf0a7c2047
 # ╠═581f20a7-6393-41ea-8fe7-510b6c8a1e89
 # ╠═31b2fe2a-a778-4893-9188-c38d6e4b21e2
 # ╠═9bf7d31b-7a4e-4ec9-99b9-d189c9b2297e
@@ -373,6 +403,9 @@ plots = Plots.plot([Plots.heatmap(count, yticks=1:length(src_candidates), xticks
 # ╠═6831b137-faec-42fc-aea7-fbc70b663dbc
 # ╠═7d2c5850-0ae9-44ea-ac31-130bc248e2ce
 # ╠═9e2c288a-47bb-4b43-9668-fdd5ac22f43e
+# ╠═52f8f2b0-4a21-4a05-8f25-62175ba6de07
+# ╠═0c25866b-2652-4f57-9ab5-c5d278117a67
 # ╠═af31098c-bba9-42f2-8a72-e03f51f26ff3
 # ╠═fc865475-463f-40b1-9481-35123adcbffa
 # ╠═2750e431-7c7f-4323-b74b-399ab7346603
+# ╠═816b8848-6198-498f-bacf-790693babfbc

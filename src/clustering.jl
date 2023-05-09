@@ -7,7 +7,8 @@ name(config::Kmeans_clustering_config) = "K-means"
 function clustering(voters, clustering_config::Kmeans_clustering_config, projections=nothing)
     opinions = projections === nothing ? reduce(hcat, get_opinion(voters)) : projections
 
-    kmeans_res = Clustering.kmeans(opinions, clustering_config.cluster_count)
+    best_k = best_k_silhouettes(opinions, clustering_config.cluster_count)
+    kmeans_res = Clustering.kmeans(opinions, best_k)
     labels = kmeans_res.assignments
     
     clusters = clusterize(labels)
@@ -24,7 +25,9 @@ function clustering(voters, clustering_config::GM_clustering_config, projections
     opinions = projections === nothing ? reduce(hcat, get_opinion(voters)) : projections
 
     data_T = permutedims(opinions)
-    gmm = GaussianMixtures.GMM(clustering_config.cluster_count, data_T)
+    best_k = best_k_silhouettes(opinions, clustering_config.cluster_count)
+
+    gmm = GaussianMixtures.GMM(best_k, data_T)
     #GaussianMixtures.em!(gmm::GMM, opinions)
     llpg_X = permutedims(GaussianMixtures.llpg(gmm, data_T))
     labels = [ m[1] for m in vec(permutedims(argmax(llpg_X, dims=1)))]
@@ -247,8 +250,8 @@ end
 function create_similarity_matrix(template_clusters, clusters)
     matrix = Array{Float64}(undef, length(clusters), length(template_clusters))
 
-    for i in 1:length(clusters)
-        for j in 1:length(template_clusters)
+    for i in eachindex(clusters)
+        for j in eachindex(template_clusters)
             matrix[i, j] = jaccard_similarity(clusters[i][2], template_clusters[j][2])
         end
     end
@@ -326,4 +329,46 @@ function find_local_maxima(a)
     end
 
     return max_indices
+end
+
+function best_k_elbow(opinions, max_clusters::Int)
+    # Calculate the sum of squared errors (SSE) for different numbers of clusters
+    sse = zeros(max_clusters)
+    for k in 1:max_clusters
+        result = Clustering.kmeans(opinions, k)
+        sse[k] = result.totalcost
+    end
+
+    # Calculate the elbow point
+    best_k = 1
+    max_slope = 0
+    for k in 2:max_clusters-1
+        slope = (sse[k-1] - sse[k+1]) / 2
+        if slope > max_slope
+            max_slope = slope
+            best_k = k
+        end
+    end
+
+    return best_k
+end
+
+function best_k_silhouettes(opinions, max_k::Int)
+    best_k = 2
+    best_silhouette_avg = -1.0
+    distances = Distances.pairwise(Distances.Cityblock(), opinions, dims=2)
+
+    for k in 2:max_k
+        kmeans_result = Clustering.kmeans(opinions, k)
+        assignments = Clustering.assignments(kmeans_result)
+        silhouette_vals = Clustering.silhouettes(assignments, distances)
+        silhouette_avg = Statistics.mean(silhouette_vals)
+
+        if silhouette_avg > best_silhouette_avg
+            best_silhouette_avg = silhouette_avg
+            best_k = k
+        end
+    end
+
+    return best_k
 end
