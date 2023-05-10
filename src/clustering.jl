@@ -222,6 +222,50 @@ function init_labels(queue, shape)
     return labels
 end
 
+
+find_local_minima(a) = find_local_maxima(-a)
+"""
+Finds all local maxima in a vector of real values and returns their indices
+"""
+function find_local_maxima(a)
+    max_indices = Vector{Int64}()
+
+    start = 1
+    peak = a[1] == a[2]
+    if a[1] > a[2]
+        push!(max_indices, 1)
+    end
+
+    for i in 2:length(a) - 1
+        # test inflection point
+        if peak && a[i] < a[i + 1]
+            peak = false
+        end
+
+        # test start of the peak
+        if a[i - 1] < a[i] && a[i] >= a[i + 1]
+            start = i
+            peak = true
+        end
+
+        # test end of the peak
+        if peak && a[i] > a[i + 1]
+            append!(max_indices, collect(start:i))
+            peak = false
+        end
+    end
+
+    if peak && a[end - 1] == a[end] && start != 1
+        append!(max_indices, collect(start:length(a)))
+    end
+
+    if a[end - 1] < a[end]
+        push!(max_indices, length(a))
+    end
+
+    return max_indices
+end
+
 """
     clusterize(labels::Vector{Int64})
 
@@ -286,49 +330,6 @@ function unify_clusters!(template_clusters::Vector{Tuple{Int64, Set{Int64}}}, cl
             counter += 1
         end
     end
-end
-
-find_local_minima(a) = find_local_maxima(-a)
-"""
-Finds all local maxima in a vector of real values and returns their indices
-"""
-function find_local_maxima(a)
-    max_indices = Vector{Int64}()
-
-    start = 1
-    peak = a[1] == a[2]
-    if a[1] > a[2]
-        push!(max_indices, 1)
-    end
-
-    for i in 2:length(a) - 1
-        # test inflection point
-        if peak && a[i] < a[i + 1]
-            peak = false
-        end
-
-        # test start of the peak
-        if a[i - 1] < a[i] && a[i] >= a[i + 1]
-            start = i
-            peak = true
-        end
-
-        # test end of the peak
-        if peak && a[i] > a[i + 1]
-            append!(max_indices, collect(start:i))
-            peak = false
-        end
-    end
-
-    if peak && a[end - 1] == a[end] && start != 1
-        append!(max_indices, collect(start:length(a)))
-    end
-
-    if a[end - 1] < a[end]
-        push!(max_indices, length(a))
-    end
-
-    return max_indices
 end
 
 function best_k_elbow(opinions, max_clusters::Int)

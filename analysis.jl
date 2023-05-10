@@ -75,6 +75,9 @@ begin
 	sampled_voter_ids = sort(OpinionDiffusion.StatsBase.sample(1:length(init_model.voters), sample_size, replace=false))
 end
 
+# ╔═╡ bfb16d83-d0ca-4201-9c47-3584d23532f5
+#init_projections = reduce_dims(get_voters(init_model), dim_reduction_config)
+
 # ╔═╡ e12063e2-9afc-472a-b0d0-eb4eee4d9fb8
 md"## Configure visualizations"
 
@@ -92,21 +95,18 @@ if dim_reduction_method == "PCA"
 	dim_reduction_config = PCA_dim_reduction_config(out_dim)
 elseif dim_reduction_method == "Tsne"
 	dim_reduction_config = Tsne_dim_reduction_config(out_dim = out_dim,
-        											reduce_dims = 0,
-        											max_iter = 3000,
-        											perplexity = 100.0)
+        											reduce_dims = 5,
+        											max_iter = 2000,
+        											perplexity = 50.0)
 else dim_reduction_method == "MDS"
 	dim_reduction_config = MDS_dim_reduction_config(out_dim)
 end
-
-# ╔═╡ bfb16d83-d0ca-4201-9c47-3584d23532f5
-init_projections = reduce_dims(get_voters(init_model), dim_reduction_config)
 
 # ╔═╡ 6e9b9800-3ea8-432c-905f-de2049a6021a
 md"### Clustering"
 
 # ╔═╡ de79e133-798a-490b-a4c9-9f38d5f31a98
-md"""Clustering method: $(@bind clustering_method Select(["Kmeans", "GM", "Party", "DBSCAN", "Density"], default="Density"))"""
+md"""Clustering method: $(@bind clustering_method Select(["Kmeans", "GM", "Party", "DBSCAN", "Density"], default="Party"))"""
 
 # ╔═╡ 60d1816d-5dd3-4166-bb11-8cd2307bc9ee
 if clustering_method == "Party"
@@ -121,8 +121,39 @@ else
 	clustering_config = Density_clustering_config(3)
 end
 
+# ╔═╡ 00bf833f-22d5-47c3-ba59-6d7841bd93f0
+md"## Evolving visualizations"
+
+# ╔═╡ c2bf6676-5922-4e8c-ba3e-2331cdb07725
+md"""
+---
+**Execution barrier** $(@bind gather_vis_eb CheckBox())
+
+---
+"""
+
+# ╔═╡ ad8f309f-b3f1-4ed0-914f-675ffe23821f
+if gather_vis_eb
+	visualizations = gather_vis(exp_dir_path, sampled_voter_ids, dim_reduction_config, clustering_config)	
+end
+
+# ╔═╡ 7959b6c6-e501-4bd1-943d-fd8fd0efe4be
+@bind clk Clock()
+
+# ╔═╡ 6831b137-faec-42fc-aea7-fbc70b663dbc
+t = clk % length(visualizations)
+
+# ╔═╡ 7d2c5850-0ae9-44ea-ac31-130bc248e2ce
+visualizations[t][3]
+
+# ╔═╡ 9e2c288a-47bb-4b43-9668-fdd5ac22f43e
+visualizations[t][5]
+
+# ╔═╡ 52f8f2b0-4a21-4a05-8f25-62175ba6de07
+visualizations[t][1]
+
 # ╔═╡ 4d57266e-0800-4f95-ac49-3a2ba791bcb4
-md"## Diffusion visualization"
+md"## Specific Diffusion Step"
 
 # ╔═╡ a0449758-593e-403b-a3ab-352a2bc3717b
 md"""Select diffusion step: $(@bind diff_step PlutoUI.Slider(sort([parse(Int64, split(file, "_")[2][1:end-5]) for file in readdir(exp_dir_path)])))"""
@@ -133,8 +164,11 @@ diff_step
 # ╔═╡ c2ba23c6-d23b-4754-a5b8-371500420b43
 model_log = load_log(exp_dir_path, diff_step)
 
-# ╔═╡ f1fe9b13-9a84-40e7-84e5-0477219e8815
-transpose()
+# ╔═╡ f35712d1-3c91-4202-8e90-55b1922dbd8e
+vis, _ = timestamp_vis(model_log, sampled_voter_ids, dim_reduction_config, clustering_config)
+
+# ╔═╡ 996e9336-8175-4ddb-aa37-9ef7626a4f74
+vis[3]
 
 # ╔═╡ 581f20a7-6393-41ea-8fe7-510b6c8a1e89
 begin
@@ -150,7 +184,7 @@ title = dim_reduction_method * "_" * clustering_method * "_" * string(length(sam
 
 # ╔═╡ 9bf7d31b-7a4e-4ec9-99b9-d189c9b2297e
 begin
-	projections = reduce_dims(sampled_voters, dim_reduction_config)
+	#projections = reduce_dims(sampled_voters, dim_reduction_config)
 	unify_projections!(init_projections, projections)
 	projections
 end
@@ -191,29 +225,11 @@ OpinionDiffusion.Statistics.median(sils)
 # ╔═╡ c245c7c0-fbe0-4e6a-8e6e-91fc997bd9df
  #md"Diff: $(@bind diff PlutoUI.Slider(1:100))"
 
-# ╔═╡ d62e9041-1b7a-4abe-8097-20d98fd3659a
-if step > 0
-	prev_sampled_opinions = reduce(hcat, get_opinion(load_log(logger.exp_dir, step-1).voters[sampled_voter_ids]))
-	difference = sampled_opinions - prev_sampled_opinions
-	changes = vec(sum(abs.(difference), dims=1))
-	println(sum(changes))
-	draw_heat_vis(projections, changes, "Heat map")
-end
-
-# ╔═╡ ad8f309f-b3f1-4ed0-914f-675ffe23821f
-begin
-	visualizations = OpinionDiffusion.gather_vis(exp_dir_path, sampled_voter_ids, dim_reduction_config, clustering_config)
-	println("Done")
-end
-
 # ╔═╡ 218a9121-2633-493c-b126-5ddc5dcd8767
 md"### Compounded metrics"
 
-# ╔═╡ f35712d1-3c91-4202-8e90-55b1922dbd8e
-OpinionDiffusion.model_vis(model_log, sampled_voter_ids, dim_reduction_config, clustering_config)
-
 # ╔═╡ 59cd2b6a-2f14-419f-be29-ef60b0f1c681
-md"#### Communities"
+md"## Specific Community"
 
 # ╔═╡ e02a5e33-75a6-4bb3-9a45-8ac0dedb3f5c
 @bind cluster_id PlutoUI.Slider(1:length(clusters))
@@ -231,7 +247,7 @@ cluster_id
 cluster = clusters[cluster_id]
 
 # ╔═╡ eacbf9e0-8191-46fc-ab5f-186a244a7aae
-md"### Specific node visualizations"
+md"## Specific Node"
 
 # ╔═╡ 846390ef-0817-48c6-889a-18fedf2a8df3
 @bind node_id PlutoUI.Slider(1:length(voters))
@@ -242,23 +258,8 @@ node_id
 # ╔═╡ 867261f8-89b6-42cb-a616-a4f3c553d522
 depth = 1
 
-# ╔═╡ 00bf833f-22d5-47c3-ba59-6d7841bd93f0
-md"### Specific timestep visualizations"
-
-# ╔═╡ 7959b6c6-e501-4bd1-943d-fd8fd0efe4be
-@bind clk Clock()
-
-# ╔═╡ 6831b137-faec-42fc-aea7-fbc70b663dbc
-t = clk % length(visualizations)
-
-# ╔═╡ 7d2c5850-0ae9-44ea-ac31-130bc248e2ce
-visualizations[t][3]
-
-# ╔═╡ 9e2c288a-47bb-4b43-9668-fdd5ac22f43e
-visualizations[t][5]
-
-# ╔═╡ 52f8f2b0-4a21-4a05-8f25-62175ba6de07
-visualizations[t][6]
+# ╔═╡ a737af01-3210-4340-b7c9-99a9060b295b
+md"## Helper functions"
 
 # ╔═╡ 0c25866b-2652-4f57-9ab5-c5d278117a67
 function get_counts(votes, can_count)
@@ -310,7 +311,7 @@ x, y = ego_project[1, :], ego_project[2, :]
 # ╔═╡ 0c59f190-d1b3-4bf9-8577-7fad3e53143a
 begin
 	f = Figure()
-	colors = OpinionDiffusion.Colors.distinguishable_colors(length(clusters))
+	colors = OpinionDiffusion.Colors.distinguishable_colors(maximum([cluster[1] for cluster in clusters]))
 	node_colors = colors[labels[ego_ids]]
 	nodesizes=[Graphs.degree(get_social_network(model_log), node) for node in ego_ids]
 	nodelabels = [string(id) for id in ego_ids]
@@ -360,18 +361,27 @@ plots = Plots.plot([Plots.heatmap(count, yticks=1:length(src_candidates), xticks
 # ╠═60d1816d-5dd3-4166-bb11-8cd2307bc9ee
 # ╟─de79e133-798a-490b-a4c9-9f38d5f31a98
 # ╠═5d368a4f-d7ff-4ee7-a7b0-5c14fbe0fb48
+# ╟─00bf833f-22d5-47c3-ba59-6d7841bd93f0
+# ╟─c2bf6676-5922-4e8c-ba3e-2331cdb07725
+# ╠═ad8f309f-b3f1-4ed0-914f-675ffe23821f
+# ╠═7959b6c6-e501-4bd1-943d-fd8fd0efe4be
+# ╠═6831b137-faec-42fc-aea7-fbc70b663dbc
+# ╠═7d2c5850-0ae9-44ea-ac31-130bc248e2ce
+# ╠═9e2c288a-47bb-4b43-9668-fdd5ac22f43e
+# ╠═52f8f2b0-4a21-4a05-8f25-62175ba6de07
 # ╟─4d57266e-0800-4f95-ac49-3a2ba791bcb4
 # ╟─a0449758-593e-403b-a3ab-352a2bc3717b
-# ╠═c3ba833f-9eee-46c6-b7ae-ea8cb831b6dc
-# ╠═c2ba23c6-d23b-4754-a5b8-371500420b43
-# ╠═f1fe9b13-9a84-40e7-84e5-0477219e8815
-# ╠═2b37a5ae-acad-47cf-8567-7fdf0a7c2047
+# ╟─c3ba833f-9eee-46c6-b7ae-ea8cb831b6dc
+# ╟─c2ba23c6-d23b-4754-a5b8-371500420b43
+# ╠═f35712d1-3c91-4202-8e90-55b1922dbd8e
+# ╠═996e9336-8175-4ddb-aa37-9ef7626a4f74
 # ╠═581f20a7-6393-41ea-8fe7-510b6c8a1e89
 # ╠═31b2fe2a-a778-4893-9188-c38d6e4b21e2
 # ╠═9bf7d31b-7a4e-4ec9-99b9-d189c9b2297e
 # ╠═1e6ea6b0-6fb6-4097-aa76-a29edafe5b2a
 # ╠═23c54f4b-6f03-4661-b9c2-5ace1028e577
 # ╠═df5bec5f-fbb2-4f81-9398-c1b1ba317d1b
+# ╠═2b37a5ae-acad-47cf-8567-7fdf0a7c2047
 # ╠═a1fc11c2-b0a9-422e-a2f0-cc28ff063c50
 # ╠═2ef976be-ea40-446e-bbc0-3fb4e1c29dc7
 # ╠═03c6c2bf-364f-448e-969f-009fedaeb989
@@ -379,11 +389,8 @@ plots = Plots.plot([Plots.heatmap(count, yticks=1:length(src_candidates), xticks
 # ╠═b425603d-e34d-4f95-a3d9-1bfce2982cfd
 # ╠═05c64c67-e51a-49cc-8908-9d035fe18664
 # ╟─c245c7c0-fbe0-4e6a-8e6e-91fc997bd9df
-# ╠═d62e9041-1b7a-4abe-8097-20d98fd3659a
 # ╠═fc58665b-955b-4091-bd50-17ee0f8539ae
-# ╠═ad8f309f-b3f1-4ed0-914f-675ffe23821f
 # ╟─218a9121-2633-493c-b126-5ddc5dcd8767
-# ╠═f35712d1-3c91-4202-8e90-55b1922dbd8e
 # ╟─59cd2b6a-2f14-419f-be29-ef60b0f1c681
 # ╠═e02a5e33-75a6-4bb3-9a45-8ac0dedb3f5c
 # ╠═5d0a8c5f-fc2a-48c1-92d6-7e0aaf52ad9e
@@ -391,19 +398,14 @@ plots = Plots.plot([Plots.heatmap(count, yticks=1:length(src_candidates), xticks
 # ╠═de27090f-d315-479a-ba17-9d4bc67342ca
 # ╠═059b1554-b27f-4c59-a99f-2ad6b93b9366
 # ╟─eacbf9e0-8191-46fc-ab5f-186a244a7aae
-# ╟─846390ef-0817-48c6-889a-18fedf2a8df3
+# ╠═846390ef-0817-48c6-889a-18fedf2a8df3
 # ╠═4c07d708-4da2-449c-b3e7-115e35fb6d58
 # ╠═867261f8-89b6-42cb-a616-a4f3c553d522
 # ╠═1d09cd30-6119-4718-a4cc-385f57862fcc
 # ╠═64945f43-c9e7-4209-ad8a-4c81f0ac9b5a
 # ╠═fbc0593b-917a-44e2-8e1f-691839851e5c
 # ╠═0c59f190-d1b3-4bf9-8577-7fad3e53143a
-# ╟─00bf833f-22d5-47c3-ba59-6d7841bd93f0
-# ╠═7959b6c6-e501-4bd1-943d-fd8fd0efe4be
-# ╠═6831b137-faec-42fc-aea7-fbc70b663dbc
-# ╠═7d2c5850-0ae9-44ea-ac31-130bc248e2ce
-# ╠═9e2c288a-47bb-4b43-9668-fdd5ac22f43e
-# ╠═52f8f2b0-4a21-4a05-8f25-62175ba6de07
+# ╟─a737af01-3210-4340-b7c9-99a9060b295b
 # ╠═0c25866b-2652-4f57-9ab5-c5d278117a67
 # ╠═af31098c-bba9-42f2-8a72-e03f51f26ff3
 # ╠═fc865475-463f-40b1-9481-35123adcbffa

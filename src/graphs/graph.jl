@@ -117,36 +117,7 @@ function cluster_graph_metrics(cluster_graph::AbstractMetaGraph, g, voters, can_
    return vertex_metrics, edge_metrics
 end
 
-function draw_cluster_graph(g, cluster_metrics)
-   colors = Colors.distinguishable_colors(get_prop(g, nv(g), :label))
-   nodesize = [length(get_prop(g, v, :indices)) for v in vertices(g)]
-   xs = [get_prop(g, v, :pos)[1, 1] for v in vertices(g)]
-   ys = [-get_prop(g, v, :pos)[2, 1] for v in vertices(g)]
-   #edgesizes = [get_prop(G, e, :weight) / (get_prop(G, src(e), :size) * get_prop(G, dst(e), :size)) for e in edges(G)]
-   edgesizes = [ src(e) != dst(e) ? round(digits=2, get_prop(g, e, :weight)) : 0 for e in edges(g)]
-   distances = [ src(e) != dst(e) ? round(digits=2, get_prop(g, e, :dist) / get_prop(g, e, :weight)) : "" for e in edges(g)]
-
-   c = [colors[get_prop(g, v, :label)] for v in vertices(g)]
-   #=edgesizes = []
-   for e in edges(G)
-      src_self = has_prop(G, src(e), :self_edges) ? get_prop(G, src(e), :self_edges) : 0
-      dst_self = has_prop(G, dst(e), :self_edges) ? get_prop(G, dst(e), :self_edges) : 0
-      expected_edges = (get_prop(G, src(e), dst(e), :weight) + src_self + dst_self) * (2*get_prop(G, src(e), :size) * get_prop(G, dst(e), :size)) / (get_prop(G, src(e), :size) + get_prop(G, dst(e), :size))
-      ratio = get_prop(G, src(e), dst(e), :weight) / expected_edges
-      push!(edgesizes, round(ratio, digits=2))
-   end=#
-   edgelabels = distances
-   #[round(get_prop(G, :nv) * get_prop(G, e, :weight) / (2*get_prop(G, src(e), :size) * get_prop(G, dst(e), :size)), digits=2) for e in edges(G)]
-
-   return GraphPlot.gplot(g, xs, ys,
-                           nodesize=nodesize,
-                           #nodelabel=1:Graphs.nv(G), 
-                           edgelinewidth=edgesizes,
-                           nodefillc=c,
-                           edgelabel=edgelabels)
-end
-
-function draw_cluster_graph2(ax, g)
+function draw_cluster_graph!(ax, g)
    cluster_labels = [get_prop(g, v, :label) for v in vertices(g)]
    colors = Colors.distinguishable_colors(maximum(cluster_labels))
 
@@ -164,7 +135,7 @@ function draw_cluster_graph2(ax, g)
    edgelabels = [string(val) for val in distances]
    #[round(get_prop(G, :nv) * get_prop(G, e, :weight) / (2*get_prop(G, src(e), :size) * get_prop(G, dst(e), :size)), digits=2) for e in edges(G)]
    
-   graphplot!(ax, g, layout=g -> Point.(zip(xs, ys)), node_color=c, node_size=nodesizes, edge_width=edgesizes, elabels=edgelabels)
+   graphplot!(ax, g, layout=g -> Point.(zip(xs, ys)), node_color=c, node_size=nodesizes, edge_width=edgesizes)#, elabels=edgelabels)
    #hidedecorations!(ax); hidespines!(ax)
    #ax.aspect = DataAspect()
    #return f

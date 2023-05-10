@@ -3,7 +3,7 @@
     homophily::Real
 end
 
-function init_graph(voters, graph_init_config::BA_graph_config)
+function init_graph(voters, graph_init_config::BA_graph_config; rng=Random.GLOBAL_RNG)
     return barabasi_albert_graph(voters, graph_init_config.m; homophily=graph_init_config.homophily, rng=rng)
 end
 

@@ -108,7 +108,7 @@ end
 
 #___________________________________________________________________
 # model
-function model_vis(model, sampled_voter_ids, reduce_dim_config, clustering_config, interm_calcs=Dict())
+function timestamp_vis(model, sampled_voter_ids, reduce_dim_config, clustering_config, interm_calcs=Dict())
     visualizations = []
     social_network = get_social_network(model)
     voters = get_voters(model)
@@ -131,7 +131,6 @@ function model_vis(model, sampled_voter_ids, reduce_dim_config, clustering_confi
         end
     end
     
-
     title = name(reduce_dim_config) * "_" * name(clustering_config) * "_" * string(length(sampled_voters))
     push!(visualizations, draw_voter_vis(projections, clusters, title))
 
@@ -143,23 +142,14 @@ function model_vis(model, sampled_voter_ids, reduce_dim_config, clustering_confi
     
     f = Figure()
     draw_voter_KDE!(f[1, 1], projections)
-    draw_cluster_graph2(f[1, 1], g)
+    draw_cluster_graph!(f[1, 1], g)
     push!(visualizations, f)
 
     push!(visualizations, draw_degree_distr(Graphs.degree_histogram(social_network)))
-
     push!(visualizations, draw_edge_distances(get_edge_distances(social_network, voters)))
-    
-    counts = get_counts(get_votes(sampled_voters), length(get_candidates(model)))
-    if haskey(interm_calcs, "prev_counts")
-        difference = counts - interm_calcs["prev_counts"]
-        sum_difference = sum(abs.(difference), dims=1)
-        push!(visualizations, heatmap(difference))
-    end
 
     interm_calcs["prev_projections"] = projections
     interm_calcs["prev_clusters"] = clusters
-    interm_calcs["prev_counts"] = counts
     return visualizations, interm_calcs
 end
 
@@ -186,7 +176,7 @@ end
 
 function draw_voter_KDE!(ax, projections)
     dens = KernelDensity.kde((projections[1, :], projections[2, :]))
-    heatmap(ax, dens, colormap=[:blue, :white,:red, :yellow])
+    heatmap(ax, dens, colormap=[:blue, :white,:red, :yellow], axis = (; title = "Voter density map", xlabel = "x mapping", ylabel="y mapping"))
 end
 
 function draw_degree_distr(degree_distribution, exp_dir=Nothing, diff_counter=[0])
@@ -341,7 +331,7 @@ function gather_vis(exp_dir, sampled_voter_ids, dim_reduction_config, clustering
 
     for t in timestamps
         model_log = load_log(exp_dir, t)
-        visualization, interm_calc = model_vis(model_log, sampled_voter_ids, dim_reduction_config, clustering_config, interm_calc)
+        visualization, interm_calc = timestamp_vis(model_log, sampled_voter_ids, dim_reduction_config, clustering_config, interm_calc)
         push!(visualizations, visualization)
         #push!(visualizations, stack_visualizations(model_vis2(model_log, sampled_voter_ids, dim_reduction_config, clustering_config)))
     end

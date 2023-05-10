@@ -35,7 +35,7 @@ export init_model
 export Logger
 export run!
 export save_log, load_log, load_logs
-export get_opinion, get_vote, get_votes, get_distance
+export get_opinion, get_vote, get_votes, get_distance, get_ID
 export get_voters, get_social_network, get_candidates
 export election_summary
 
@@ -50,6 +50,7 @@ export clustering, Kmeans_clustering_config, GM_clustering_config, Party_cluster
 
 export plurality_voting, borda_voting, copeland_voting, get_positions
 export clustering, draw_voter_vis, draw_heat_vis, unify_projections!, gather_metrics
+export gather_vis, timestamp_vis
 export get_edge_distances, draw_degree_distr, draw_edge_distances
 export draw_range!, draw_voting_res
 export voters, social_network
