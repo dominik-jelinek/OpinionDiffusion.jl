@@ -11,8 +11,8 @@ using MetaGraphs
 using Graphs
 
 import Plots
-import StatsPlots
-import GraphPlot
+#import StatsPlots
+#import GraphPlot
 import KernelDensity
 using Makie, GraphMakie, CairoMakie
 
@@ -27,7 +27,7 @@ import Distributions
 import GaussianMixtures
 
 using JLD2
-import YAML
+#import YAML
 
 
 export parse_data

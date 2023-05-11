@@ -131,3 +131,27 @@ function get_frequent_votes(votes, n)
 	
 	return [(to_string(vote), freq) for (vote, freq) in frequencies]
 end
+
+function aggregate_mean(xs, ys)
+	sums = Dict{Int, Float64}()
+	counts = Dict{Int, Int}()
+	
+	for (x, y) in zip(xs, ys)
+		# Update sums and counts dictionaries
+	    if haskey(sums, x)
+	        sums[x] += y
+	        counts[x] += 1
+	    else
+	        sums[x] = y
+	        counts[x] = 1
+	    end
+	end
+	
+	# Calculate averages
+	averages = Dict{Int, Float64}()
+	for (x, sum) in sums
+	    averages[x] = sum / counts[x]
+	end
+	pairs = sort(collect(averages), by=x->x[1])
+	return [x for (x, _) in pairs], [x for (_, x) in pairs]
+end

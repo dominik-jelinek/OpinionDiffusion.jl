@@ -133,16 +133,15 @@ function timestamp_vis(model, sampled_voter_ids, reduce_dim_config, clustering_c
     
     title = name(reduce_dim_config) * "_" * name(clustering_config) * "_" * string(length(sampled_voters))
     push!(visualizations, draw_voter_vis(projections, clusters, title))
-
-    dens = KernelDensity.kde((projections[1, :], projections[2, :]))
-    push!(visualizations, Plots.heatmap(dens, title="Voter map", c=Plots.cgrad([:blue, :white,:red, :yellow])))
-    g = get_cluster_graph(model, clusters, labels, projections)
-    cluster_metrics = nothing#cluster_graph_metrics(g, social_network, voters, 4)
-    #println(modularity(g, labels))
     
     f = Figure()
-    draw_voter_KDE!(f[1, 1], projections)
-    draw_cluster_graph!(f[1, 1], g)
+    draw_voter_KDE!(f[1, 1], projections, title)
+    cluster_graph = get_cluster_graph(model, clusters, labels, projections)
+    cluster_metrics = nothing#cluster_graph_metrics(cluster_graph, social_network, voters, 4)
+    #println(modularity(cluster_graph, labels))
+
+    draw_cluster_graph!(f[1, 1], cluster_graph)
+
     push!(visualizations, f)
 
     push!(visualizations, draw_degree_distr(Graphs.degree_histogram(social_network)))
@@ -151,6 +150,14 @@ function timestamp_vis(model, sampled_voter_ids, reduce_dim_config, clustering_c
     interm_calcs["prev_projections"] = projections
     interm_calcs["prev_clusters"] = clusters
     return visualizations, interm_calcs
+end
+
+function save_pdf(plot_function, filename)
+    size_inches = (5, 4)
+    size_pt = 72 .* size_inches
+    f = Figure(resolution = size_pt, fontsize = 12)
+    plot_function(f[1, 1])
+    save("img/" * filename, f, pt_per_unit = 1)
 end
 
 function draw_voter_vis(projections, clusters, title, exp_dir=Nothing, counter=[0])
@@ -174,9 +181,9 @@ function draw_voter_vis!(plot, projections, clusters, title, exp_dir=Nothing, co
     return plot
 end
 
-function draw_voter_KDE!(ax, projections)
+function draw_voter_KDE!(ax, projections, title="Voter Density Map")
     dens = KernelDensity.kde((projections[1, :], projections[2, :]))
-    heatmap(ax, dens, colormap=[:blue, :white,:red, :yellow], axis = (; title = "Voter density map", xlabel = "x mapping", ylabel="y mapping"))
+    heatmap(ax, dens, colormap=[:blue, :white,:red, :yellow], axis = (; title = title, xlabel = "PC1", ylabel="PC2"))
 end
 
 function draw_degree_distr(degree_distribution, exp_dir=Nothing, diff_counter=[0])
@@ -285,7 +292,8 @@ function election_summary(votes::Vector{Vote}, can_count::Int64)
         end
     end
 	
-	return result
+
+	return result ./ length(votes)
 end
 
 #___________________________________________________________________
@@ -342,4 +350,16 @@ end
 function stack_visualizations(visualizations)
     n = length(visualizations)
     return Plots.plot(visualizations... ,size = Plots.default(:size) .* (1, n), layout = (n, 1), bottom_margin = 10Plots.mm, left_margin = 5Plots.mm, legend=true)
+end
+
+function draw_degree_cc!(ax, g)
+	degrees = Graphs.degree(g)
+    ccs = Graphs.local_clustering_coefficient(g)
+
+    unique_degrees, mean_ccs = aggregate_mean(degrees, ccs)
+
+    Axis(ax, xscale=log10, xlabel="Degree (log10)", ylabel="Clustering coefficient", title="Local Clustering Coefficient")
+	Makie.scatter!(ax, degrees, ccs, alpha=0.5)
+	Makie.lines!(ax, unique_degrees, mean_ccs, linewidth=4, color = 2, colormap = :tab10, colorrange = (1, 10), label = "Average clustering coefficient")
+	Makie.axislegend()
 end

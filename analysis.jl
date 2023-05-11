@@ -342,11 +342,11 @@ plots = Plots.plot([Plots.heatmap(count, yticks=1:length(src_candidates), xticks
 # ╠═3d2caf1f-c781-40be-944f-f85b3f56a42a
 # ╟─2dad0bf5-6d17-4bf5-92ca-c77421d0dba3
 # ╟─5d80608d-74e3-4d0a-a65d-4231447f4ba3
-# ╟─8aaf35b2-3c2c-45f9-afc0-2fe472f7cbbc
-# ╟─02d8b06f-0add-4b9d-95da-25683e4ded82
-# ╟─8d05a1b3-2501-47f2-abed-6362e1a6c946
-# ╟─62535f41-dccc-46b9-9393-a833d6d1831b
-# ╟─531136e8-2b27-4b76-aa4b-c84a9bcbe567
+# ╠═8aaf35b2-3c2c-45f9-afc0-2fe472f7cbbc
+# ╠═02d8b06f-0add-4b9d-95da-25683e4ded82
+# ╠═8d05a1b3-2501-47f2-abed-6362e1a6c946
+# ╠═62535f41-dccc-46b9-9393-a833d6d1831b
+# ╠═531136e8-2b27-4b76-aa4b-c84a9bcbe567
 # ╠═e50263d1-1800-4065-bc47-e2559949b5c7
 # ╠═5a82bfad-6d86-469b-8229-ffb7872e63db
 # ╟─67d59347-2491-44f8-ad07-91f55e314d0e
@@ -370,7 +370,7 @@ plots = Plots.plot([Plots.heatmap(count, yticks=1:length(src_candidates), xticks
 # ╠═9e2c288a-47bb-4b43-9668-fdd5ac22f43e
 # ╠═52f8f2b0-4a21-4a05-8f25-62175ba6de07
 # ╟─4d57266e-0800-4f95-ac49-3a2ba791bcb4
-# ╟─a0449758-593e-403b-a3ab-352a2bc3717b
+# ╠═a0449758-593e-403b-a3ab-352a2bc3717b
 # ╟─c3ba833f-9eee-46c6-b7ae-ea8cb831b6dc
 # ╟─c2ba23c6-d23b-4754-a5b8-371500420b43
 # ╠═f35712d1-3c91-4202-8e90-55b1922dbd8e
