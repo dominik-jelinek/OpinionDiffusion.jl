@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.22
+# v0.19.25
 
 using Markdown
 using InteractiveUtils
@@ -109,6 +109,16 @@ end
 
 # ╔═╡ 20078431-5a7c-4a6f-b181-984ed54cf506
 Plots.bar(sum(summary, dims = 2), legend=false, xticks=1:length(src_candidates), ylabel="# votes", xlabel="Candidate ID", title="Candidate frequency")
+
+# ╔═╡ d7a06d52-1e61-4a5c-9193-d0df90dd5c54
+begin
+	x = 1:length(src_candidates)
+	y = vec(sum(summary, dims = 2))
+	fig = Figure()
+	ax1 = Axis(fig[1, 1], xlabel="Candidate ID", ylabel="% votes", title="Candidate frequency", xticks=1:length(src_candidates))
+	barplot!(ax1, x, y)
+	fig
+end
 
 # ╔═╡ 8c709e84-66f8-4128-a85c-66a4c5ffc9b7
 Plots.bar(transpose(sum(summary, dims = 1)), legend=false, xticks=1:length(src_candidates), ylabel="# votes", xlabel="Vote position", title="Position frequency")
@@ -940,6 +950,7 @@ compare_metrics_vis(ensemble_logs, ["unique_votes", "avg_vote_length", "avg_edge
 # ╠═786a7d7b-47af-4151-aad9-cd9df9b0404c
 # ╠═d5d394c0-9b7c-4255-95fd-dc8cc32ca018
 # ╠═20078431-5a7c-4a6f-b181-984ed54cf506
+# ╠═d7a06d52-1e61-4a5c-9193-d0df90dd5c54
 # ╟─8c709e84-66f8-4128-a85c-66a4c5ffc9b7
 # ╟─977d39e2-7f82-49e8-a93f-889204bd19cb
 # ╠═8ea22c93-1fe3-44b2-88c1-fb6ccd195866
