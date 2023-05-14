@@ -279,7 +279,7 @@ function draw_edge_distances!(plot, distances)
                          xlabel = "Distance")
 end
 
-function election_summary(votes::Vector{Vote}, can_count::Int64)
+function get_election_summary(votes::Vector{Vote}, can_count::Int64)
 	result = zeros(Float64, can_count, can_count)
 	
 	for vote in votes
@@ -294,6 +294,41 @@ function election_summary(votes::Vector{Vote}, can_count::Int64)
 	
 
 	return result ./ length(votes)
+end
+
+function draw_election_summary(election_summary)
+	can_count = size(election_summary, 1)
+	f = Figure(figure_padding = 2)
+	axmain = Axis(f[2,1], ylabel="Candidate ID", xlabel="Rank", yticks=1:can_count, xticks=(1:can_count))
+	
+	hm = Makie.heatmap!(axmain, transpose(election_summary), label="Summary heatmap")#[parties[can.party] for can in candidates])
+	#Makie.Colorbar(f[1,2], hm)
+	
+	ax2 = Axis(f[2, 2], xlabel="% Votes", ylabel="Candidate ID", yticks=1:can_count, xticks=0.0:0.2:1.0)
+	ax2.tellwidth = true
+	colsize!(f.layout, 2, Relative(2/7))
+	rowsize!(f.layout, 1, Relative(1/3))
+	
+	#rowsize!(f.layout, 2, Aspect(2, 1))
+	
+	linkyaxes!(ax2, axmain)
+	barplot!(ax2, 1:can_count, vec(sum(election_summary, dims = 2)), direction = :x)
+	hideydecorations!(ax2)
+
+	
+	ax3, bars = barplot(f[1,1], 1:can_count, vec(transpose(sum(election_summary, dims = 1))), direction = :y, axis=(;ylabel="% Votes", xlabel="Candidate ID", xticks=1:can_count, yticks=0.0:0.2:1.0))
+	linkxaxes!(ax3, axmain)
+	
+	hidexdecorations!(ax3)
+	bar_width = 0.57
+	ylims!(ax3, low = 0)
+	xlims!(ax3, low = bar_width, high=can_count + bar_width - 0.13)
+	ylims!(ax2; low = bar_width, high=can_count + bar_width - 0.13)
+	xlims!(ax2; low = 0)
+
+	#legend = Legend(f[1, 2], [bars, bars], ["1","2"]) 
+	#legend.tellwidth = false
+	return f
 end
 
 #___________________________________________________________________
