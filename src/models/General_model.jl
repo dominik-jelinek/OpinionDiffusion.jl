@@ -15,7 +15,7 @@ end
 
 function init_model(election, candidates, model_config::General_model_config; rng=Random.GLOBAL_RNG)
     #println("Initializing voters:")
-    voters = init_voters(election, length(candidates), model_config.voter_init_config; rng=rng)
+    voters = init_voters(election, model_config.voter_init_config; rng=rng)
 
     #println("Initializing graph:")
     social_network = init_graph(voters, model_config.graph_init_config; rng=rng)

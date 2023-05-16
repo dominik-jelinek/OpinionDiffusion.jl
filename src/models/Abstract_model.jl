@@ -22,7 +22,7 @@ get_social_network(model::T) where T <: Abstract_model = model.social_network
 get_candidates(model::T) where T <: Abstract_model = model.candidates
 
 function init_model(election, candidates, model_config; rng=Random.GLOBAL_RNG)
-    throw(NotImplementedError("graph_diffusion!"))
+    throw(NotImplementedError("init_model"))
 end
 
 init_model(election, candidates, model_config, seed) = init_model(election, candidates, model_config; rng=Random.MersenneTwister(seed))
@@ -31,12 +31,12 @@ function graph_diffusion!(model::T, graph_diff_config::U) where {T <: Abstract_m
     throw(NotImplementedError("graph_diffusion!"))
 end
 
-function run(election, candidates, model_config, model_seed, diffusion_config, diffusions, diffusion_seed)
+function run(election, candidates, model_config, model_seed, diffusion_config, diffusions)
     model_rng = MersenneTwister(model_seed)
     model = init_model(election, candidates, model_config; rng=model_rng)
     logger = Logger(model)
     
-    rng = MersenneTwister(diffusion_seed)
+    rng = MersenneTwister(diffusion_config.diffusion_seed)
     actions = run!(model, diffusion_config, diffusions; logger=logger, rng=rng)
 
     return logger, actions
@@ -81,13 +81,10 @@ function run_ensemble(model::Abstract_model, ensemble_size, diffusions, init_met
 
         actions = run!(model_cp, diffusion_config, diffusions; metrics=metrics, update_metrics! =update_metrics!, rng=rng)
 
+        frequent_votes = get_frequent_votes(get_votes(get_voters(model_cp)), 10)
         ens_metrics[i] = Dict(  "diffusion_seed" => diffusion_seed, 
                                 "metrics" => metrics,
-                                "actions" => actions)
-        display(get_frequent_votes(get_votes(get_voters(model_cp)), 5))
-        println()
-        println(diffusion_seed)
-        println("_____________________________________________________")
+                                "frequent_votes" => frequent_votes)
     end
 
 	if logger !== nothing
@@ -110,15 +107,11 @@ function run_ensemble_model(ensemble_size, diffusions, election, candidates, ini
         rng = MersenneTwister(diffusion_seed)
         actions = run!(model, diffusion_config, diffusions; metrics=metrics, update_metrics! =update_metrics!, rng=rng)
 
+        frequent_votes = get_frequent_votes(get_votes(get_voters(model_cp)), 10)
         ens_metrics[i] = Dict(  "model_seed" => model_seed, 
                                 "diffusion_seed" => diffusion_seed, 
                                 "metrics" => metrics,
-                                "actions" => actions)
-
-        display(get_frequent_votes(get_votes(get_voters(model)), 5))
-        println()
-        println(model_seed)
-        println("_____________________________________________________")
+                                "frequent_votes" => frequent_votes)
     end
 
 	if log

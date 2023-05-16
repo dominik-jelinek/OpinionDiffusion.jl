@@ -2,15 +2,16 @@ struct Spearman_voter <: Abstract_voter
     ID::Int64
 
     opinion::Vector{Float64} # cPBO
+    eps::Float64 # cPBO
 
-    openmindedness::Float64 # graph
-    stubbornness::Float64 # step
+    properties::Dict{String, Any}
 end
 
 @kwdef struct Spearman_voter_init_config <: Abstract_voter_init_config
     weights::Vector{Float64}
-    openmindedness_distr::Distributions.Distribution{Distributions.Univariate, Distributions.Continuous}
-    stubbornness_distr::Distributions.Distribution{Distributions.Univariate, Distributions.Continuous}
+    eps::Float64
+    openmindedness_distr
+	stubbornness_distr
 end
 
 @kwdef struct Spearman_voter_diff_config <: Abstract_voter_diff_config
@@ -30,7 +31,7 @@ function get_max_distance(can_count, weights)
     return get_distance(spearman_encoding(a, weights), spearman_encoding(b, weights))
 end
 
-function init_voters(election, can_count, voter_config::Spearman_voter_init_config; rng=Random.GLOBAL_RNG)
+function init_voters(election, voter_config::Spearman_voter_init_config; rng=Random.GLOBAL_RNG)
     openmindedness_distr = Distributions.Truncated(voter_config.openmindedness_distr, 0.0, 1.0)
     stubbornness_distr = Distributions.Truncated(voter_config.stubbornness_distr, 0.0, 1.0)
     
@@ -38,8 +39,12 @@ function init_voters(election, can_count, voter_config::Spearman_voter_init_conf
     for (i, vote) in enumerate(election)
         opinion = spearman_encoding(vote, voter_config.weights)
         openmindedness = rand(rng, openmindedness_distr)
-        stubbornness = 0.5#rand(rng, stubbornness_distr)
-        voters[i] = Spearman_voter(i, opinion, openmindedness, stubbornness)
+        stubbornness = rand(rng, stubbornness_distr)
+        properties = Dict(
+            "openmindedness" => openmindedness,
+            "stubbornness" => stubbornness
+        )
+        voters[i] = Spearman_voter(i, opinion, voter_config.eps, properties)
     end
 
     return voters
@@ -71,10 +76,11 @@ function spearman_encoding(vote::Vote, weights)
     return opinion
 end
 
-function get_vote(voter::Spearman_voter; eps=0.005) :: Vote
+function get_vote(voter::Spearman_voter) :: Vote
     # sort indexes based on opinions
-    can_ranking = sortperm(voter.opinion)
-    sorted_scores = voter.opinion[can_ranking]
+    opinion = get_opinion(voter)
+    can_ranking = sortperm(opinion)
+    sorted_scores = opinion[can_ranking]
 
     vote = Vote()
     # pre fill first bucket
@@ -83,7 +89,7 @@ function get_vote(voter::Spearman_voter; eps=0.005) :: Vote
 
     for i in 2:length(sorted_scores)
         # if the opinion about the next candidate is at most eps from the last it is added into the same bucket 
-        if (sorted_scores[i] - sorted_scores[i-1]) < eps
+        if (sorted_scores[i] - sorted_scores[i-1]) < voter.eps
             push!(vote[counter], can_ranking[i])
         else
             push!(vote, Bucket([can_ranking[i]]))
@@ -101,7 +107,7 @@ end
 function step!(self::Spearman_voter, model, voter_diff_config::Spearman_voter_diff_config; rng=Random.GLOBAL_RNG)
     voters = get_voters(model)
     social_network = get_social_network(model)
-    neighbors_ = neighbors(social_network, self.ID)
+    neighbors_ = neighbors(social_network, get_ID(self))
     
     if length(neighbors_) == 0
         return []
@@ -114,7 +120,10 @@ function step!(self::Spearman_voter, model, voter_diff_config::Spearman_voter_di
 end
 
 function average_all!(voter_1::Spearman_voter, voter_2::Spearman_voter, attract_proba, change_rate, normalize=nothing; rng=Random.GLOBAL_RNG)
-    shifts_1 = (voter_2.opinion - voter_1.opinion) / 2
+    opinion_1 = get_opinion(voter_1)
+    opinion_2 = get_opinion(voter_2)
+    
+    shifts_1 = (opinion_2 - opinion_1) / 2
     shifts_2 = shifts_1 .* (-1.0)
     
     method = "attract"
@@ -125,15 +134,15 @@ function average_all!(voter_1::Spearman_voter, voter_2::Spearman_voter, attract_
     end
 
     if normalize !== nothing && normalize[1]
-        shifts_1 = normalize_shifts(shifts_1, voter_1.opinion, normalize[2], normalize[3])
-        shifts_2 = normalize_shifts(shifts_2, voter_2.opinion, normalize[2], normalize[3])
+        shifts_1 = normalize_shifts(shifts_1, opinion_1, normalize[2], normalize[3])
+        shifts_2 = normalize_shifts(shifts_2, opinion_2, normalize[2], normalize[3])
     end
 
     cp_1 = deepcopy(voter_1)
     cp_2 = deepcopy(voter_2)
-    voter_1.opinion .+= shifts_1 * (1.0 - voter_1.stubbornness) * change_rate
-    voter_2.opinion .+= shifts_2 * (1.0 - voter_2.stubbornness) * change_rate
-    return [Action(method, (voter_2.ID, voter_1.ID), cp_1, deepcopy(voter_1)), Action(method, (voter_1.ID, voter_2.ID), cp_2, deepcopy(voter_2))]
+    opinion_1 .+= shifts_1 * (1.0 - get_property(voter_1, "stubbornness")) * change_rate
+    opinion_2 .+= shifts_2 * (1.0 - get_property(voter_2, "stubbornness")) * change_rate
+    return [Action(method, (get_ID(voter_2), get_ID(voter_1)), cp_1, deepcopy(voter_1)), Action(method, (get_ID(voter_1), get_ID(voter_2)), cp_2, deepcopy(voter_2))]
 end
 
 function normalize_shifts(shifts::Vector{Float64}, opinion::Vector{Float64}, min_opin, max_opin)

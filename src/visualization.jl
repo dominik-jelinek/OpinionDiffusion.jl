@@ -223,7 +223,7 @@ function draw_voting_res!(plot, candidates, parties, result, title::String; line
 
     for (i, col) in enumerate(eachcol(result))
         draw_range!(plot, [x[2] for x in col], [x[3] for x in col], [x[4] for x in col], c=c[i], linestyle=linestyle, label=names[i])
-        Plots.plot!(plot, title=title, xlabel="Timestamp", ylabel="Percentage", yformatter = :plain)
+        Plots.plot!(plot, title=title, xlabel="Timestamp", ylabel="Percentage", yformatter = :plain, legnd=false)
     end
 end
 

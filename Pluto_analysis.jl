@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.22
+# v0.19.25
 
 using Markdown
 using InteractiveUtils
@@ -75,9 +75,6 @@ begin
 	sampled_voter_ids = sort(OpinionDiffusion.StatsBase.sample(1:length(init_model.voters), sample_size, replace=false))
 end
 
-# ╔═╡ bfb16d83-d0ca-4201-9c47-3584d23532f5
-#init_projections = reduce_dims(get_voters(init_model), dim_reduction_config)
-
 # ╔═╡ e12063e2-9afc-472a-b0d0-eb4eee4d9fb8
 md"## Configure visualizations"
 
@@ -101,6 +98,9 @@ elseif dim_reduction_method == "Tsne"
 else dim_reduction_method == "MDS"
 	dim_reduction_config = MDS_dim_reduction_config(out_dim)
 end
+
+# ╔═╡ bfb16d83-d0ca-4201-9c47-3584d23532f5
+init_projections = reduce_dims(get_voters(init_model), dim_reduction_config)
 
 # ╔═╡ 6e9b9800-3ea8-432c-905f-de2049a6021a
 md"### Clustering"
@@ -143,14 +143,17 @@ end
 # ╔═╡ 6831b137-faec-42fc-aea7-fbc70b663dbc
 t = clk % length(visualizations)
 
-# ╔═╡ 7d2c5850-0ae9-44ea-ac31-130bc248e2ce
-visualizations[t][3]
-
-# ╔═╡ 9e2c288a-47bb-4b43-9668-fdd5ac22f43e
-visualizations[t][5]
-
 # ╔═╡ 52f8f2b0-4a21-4a05-8f25-62175ba6de07
 visualizations[t][1]
+
+# ╔═╡ fc6982c4-c79d-4d1d-ad1a-3888943629bc
+visualizations[t][2]
+
+# ╔═╡ 9e2c288a-47bb-4b43-9668-fdd5ac22f43e
+visualizations[t][4]
+
+# ╔═╡ 7d2c5850-0ae9-44ea-ac31-130bc248e2ce
+#visualizations[t][3]
 
 # ╔═╡ 4d57266e-0800-4f95-ac49-3a2ba791bcb4
 md"## Specific Diffusion Step"
@@ -176,6 +179,9 @@ begin
 	social_network = get_social_network(model_log)
 end
 
+# ╔═╡ c77675f2-85af-4280-87ea-a5f6aec70d50
+draw_election_summary(get_election_summary(get_votes(voters), length(candidates)))
+
 # ╔═╡ 31b2fe2a-a778-4893-9188-c38d6e4b21e2
 sampled_voters = voters[sampled_voter_ids]
 
@@ -184,7 +190,7 @@ title = dim_reduction_method * "_" * clustering_method * "_" * string(length(sam
 
 # ╔═╡ 9bf7d31b-7a4e-4ec9-99b9-d189c9b2297e
 begin
-	#projections = reduce_dims(sampled_voters, dim_reduction_config)
+	projections = reduce_dims(sampled_voters, dim_reduction_config)
 	unify_projections!(init_projections, projections)
 	projections
 end
@@ -277,9 +283,6 @@ function get_counts(votes, can_count)
 	return result
 end
 
-# ╔═╡ 2b37a5ae-acad-47cf-8567-7fdf0a7c2047
-heatmap(transpose(get_counts(get_votes(sampled_voters), length(candidates))))
-
 # ╔═╡ af31098c-bba9-42f2-8a72-e03f51f26ff3
 function ego(social_network, node_id, depth)
     neighs = Graphs.neighbors(social_network, node_id)
@@ -342,11 +345,11 @@ plots = Plots.plot([Plots.heatmap(count, yticks=1:length(src_candidates), xticks
 # ╠═3d2caf1f-c781-40be-944f-f85b3f56a42a
 # ╟─2dad0bf5-6d17-4bf5-92ca-c77421d0dba3
 # ╟─5d80608d-74e3-4d0a-a65d-4231447f4ba3
-# ╠═8aaf35b2-3c2c-45f9-afc0-2fe472f7cbbc
+# ╟─8aaf35b2-3c2c-45f9-afc0-2fe472f7cbbc
 # ╠═02d8b06f-0add-4b9d-95da-25683e4ded82
-# ╠═8d05a1b3-2501-47f2-abed-6362e1a6c946
-# ╠═62535f41-dccc-46b9-9393-a833d6d1831b
-# ╠═531136e8-2b27-4b76-aa4b-c84a9bcbe567
+# ╟─8d05a1b3-2501-47f2-abed-6362e1a6c946
+# ╟─62535f41-dccc-46b9-9393-a833d6d1831b
+# ╟─531136e8-2b27-4b76-aa4b-c84a9bcbe567
 # ╠═e50263d1-1800-4065-bc47-e2559949b5c7
 # ╠═5a82bfad-6d86-469b-8229-ffb7872e63db
 # ╟─67d59347-2491-44f8-ad07-91f55e314d0e
@@ -366,13 +369,15 @@ plots = Plots.plot([Plots.heatmap(count, yticks=1:length(src_candidates), xticks
 # ╠═ad8f309f-b3f1-4ed0-914f-675ffe23821f
 # ╠═7959b6c6-e501-4bd1-943d-fd8fd0efe4be
 # ╠═6831b137-faec-42fc-aea7-fbc70b663dbc
-# ╠═7d2c5850-0ae9-44ea-ac31-130bc248e2ce
-# ╠═9e2c288a-47bb-4b43-9668-fdd5ac22f43e
 # ╠═52f8f2b0-4a21-4a05-8f25-62175ba6de07
+# ╠═fc6982c4-c79d-4d1d-ad1a-3888943629bc
+# ╠═9e2c288a-47bb-4b43-9668-fdd5ac22f43e
+# ╠═7d2c5850-0ae9-44ea-ac31-130bc248e2ce
 # ╟─4d57266e-0800-4f95-ac49-3a2ba791bcb4
-# ╠═a0449758-593e-403b-a3ab-352a2bc3717b
+# ╟─a0449758-593e-403b-a3ab-352a2bc3717b
 # ╟─c3ba833f-9eee-46c6-b7ae-ea8cb831b6dc
 # ╟─c2ba23c6-d23b-4754-a5b8-371500420b43
+# ╠═c77675f2-85af-4280-87ea-a5f6aec70d50
 # ╠═f35712d1-3c91-4202-8e90-55b1922dbd8e
 # ╠═996e9336-8175-4ddb-aa37-9ef7626a4f74
 # ╠═581f20a7-6393-41ea-8fe7-510b6c8a1e89
@@ -381,7 +386,6 @@ plots = Plots.plot([Plots.heatmap(count, yticks=1:length(src_candidates), xticks
 # ╠═1e6ea6b0-6fb6-4097-aa76-a29edafe5b2a
 # ╠═23c54f4b-6f03-4661-b9c2-5ace1028e577
 # ╠═df5bec5f-fbb2-4f81-9398-c1b1ba317d1b
-# ╠═2b37a5ae-acad-47cf-8567-7fdf0a7c2047
 # ╠═a1fc11c2-b0a9-422e-a2f0-cc28ff063c50
 # ╠═2ef976be-ea40-446e-bbc0-3fb4e1c29dc7
 # ╠═03c6c2bf-364f-448e-969f-009fedaeb989

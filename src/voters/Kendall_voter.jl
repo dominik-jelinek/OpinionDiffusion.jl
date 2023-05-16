@@ -5,29 +5,33 @@ struct Kendall_voter <: Abstract_voter
    opinion::Vector{Float64} #BO
    vote::Vote # BO
 
-   openmindedness::Float64 # graph
-   stubborness::Float64 # step
+   properties::Dict{String, Any}
 end
 
 @kwdef struct Kendall_voter_init_config <: Abstract_voter_init_config
-   openmindedness_distr::Distributions.Distribution{Distributions.Univariate, Distributions.Continuous}
-   stubbornness_distr::Distributions.Distribution{Distributions.Univariate, Distributions.Continuous}
+   can_count::Int64
+   openmindedness_distr
+   stubbornness_distr
 end
 
 @kwdef struct Kendall_voter_diff_config <: Abstract_voter_diff_config
 	attract_proba::Float64
 end
 
-function init_voters(election, can_count, voter_config::Kendall_voter_init_config; rng=Random.GLOBAL_RNG)
+function init_voters(election, voter_config::Kendall_voter_init_config; rng=Random.GLOBAL_RNG)
    openmindedness_distr = Distributions.Truncated(voter_config.openmindedness_distr, 0.0, 1.0)
    stubbornness_distr = Distributions.Truncated(voter_config.stubbornness_distr, 0.0, 1.0)
 
    voters = Vector{Kendall_voter}(undef, length(election))
    for (i, vote) in enumerate(election)
-      opinion = kendall_encoding(vote, can_count)
+      opinion = kendall_encoding(vote, voter_config.can_count)
       openmindedness = rand(rng, openmindedness_distr)
-      stubbornness = 0.5#rand(rng, stubbornness_distr)
-      voters[i] = Kendall_voter(i, opinion, vote, openmindedness, stubbornness)
+      stubbornness = rand(rng, stubbornness_distr)
+      properties = Dict(
+         "openmindedness" => openmindedness,
+         "stubbornness" => stubbornness
+      )
+      voters[i] = Kendall_voter(i, opinion, vote, properties)
    end
 
    return voters
@@ -72,6 +76,7 @@ end
 function step!(self::Kendall_voter, model, voter_diff_config::Kendall_voter_diff_config; rng=Random.GLOBAL_RNG)
    voters = get_voters(model)
    social_network = get_social_network(model)
+
    neighbors_ = neighbors(social_network, self.ID)
    can_count = length(model.candidates) 
    if length(neighbors_) == 0
@@ -114,7 +119,7 @@ function attract(self, neighbor, can_count; rng=Random.GLOBAL_RNG, log_lvl=0)
       return self
    end
 
-   if rand(rng) > self.stubborness
+   if rand(rng) > get_property(self, "stubbornness")
       #actions = get_feasible_actions(self, neighbor, can_count)
       actions = get_distance_preserving_actions_dec(self, neighbor, can_count)
 
@@ -161,7 +166,7 @@ function repel(self, neighbor, can_count; log_lvl=0, rng=Random.GLOBAL_RNG)
       return self
    end
 
-   if rand(rng) > self.stubborness
+   if rand(rng) > get_property(self, "stubbornness")
       #actions = get_feasible_actions(self, neighbor, can_count)
       actions = get_distance_preserving_actions_inc(self, neighbor, can_count)
 
@@ -244,7 +249,7 @@ function apply_action(action, voter, can_count)
       end
    end
 
-   return Kendall_voter(voter.ID, new_vote, new_opinion, voter.openmindedness, voter.stubborness)
+   return Kendall_voter(voter.ID, new_vote, new_opinion, voter.properties)
 end
 
 function get_feasible_actions(u::Kendall_voter, v::Kendall_voter, can_count)
@@ -311,7 +316,7 @@ function apply_action2(action, voter, can_count)
 
    new_opinion = kendall_encoding(new_vote, can_count)
 
-   return Kendall_voter(voter.ID, new_opinion, new_vote, voter.openmindedness, voter.stubborness)
+   return Kendall_voter(voter.ID, new_opinion, new_vote, voter.properties)
 end
 
 function get_extremes(bucket_set, inverted_vote)

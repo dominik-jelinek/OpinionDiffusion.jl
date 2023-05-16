@@ -4,6 +4,7 @@
     max_degree::Int64
     target_cc::Float64
     homophily::Float64
+    #openmindedness_distr::Distributions.Distribution{Distributions.Univariate, Distributions.Continuous}
 end
 
 function init_graph(voters, graph_init_config::DEG_graph_config; rng=Random.GLOBAL_RNG)
