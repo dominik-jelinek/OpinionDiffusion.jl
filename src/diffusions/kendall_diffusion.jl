@@ -1,92 +1,38 @@
-
-struct Kendall_voter <: Abstract_voter
-   ID::Int64
-
-   opinion::Vector{Float64} #BO
-   vote::Vote # BO
-
-   properties::Dict{String, Any}
+@kwdef struct KT_init_diff_config <: Abstract_init_diff_config
+    stubbornnesses::Vector{Float64}
 end
 
-@kwdef struct Kendall_voter_init_config <: Abstract_voter_init_config
-   can_count::Int64
-   openmindedness_distr
-   stubbornness_distr
-end
-
-@kwdef struct Kendall_voter_diff_config <: Abstract_voter_diff_config
+@kwdef struct KT_diff_config <: Abstract_diff_config
 	attract_proba::Float64
+    evolve_vertices::Float64
 end
 
-function init_voters(election, voter_config::Kendall_voter_init_config; rng=Random.GLOBAL_RNG)
-   openmindedness_distr = Distributions.Truncated(voter_config.openmindedness_distr, 0.0, 1.0)
-   stubbornness_distr = Distributions.Truncated(voter_config.stubbornness_distr, 0.0, 1.0)
-
-   voters = Vector{Kendall_voter}(undef, length(election))
-   for (i, vote) in enumerate(election)
-      opinion = kendall_encoding(vote, voter_config.can_count)
-      openmindedness = rand(rng, openmindedness_distr)
-      stubbornness = rand(rng, stubbornness_distr)
-      properties = Dict(
-         "openmindedness" => openmindedness,
-         "stubbornness" => stubbornness
-      )
-      voters[i] = Kendall_voter(i, opinion, vote, properties)
-   end
-
-   return voters
+function init_diffusion!(model::T, init_diff_config::KT_init_diff_config; rng=Random.GLOBAL_RNG) where T <: Abstract_model
+    set_property!(get_voters(model), "stubbornnesses", init_diff_config.stubbornnesses)
 end
 
-function get_vote(voter::Kendall_voter) :: Vote
-   return voter.vote
+function diffusion!(model::T, diffusion_config::KT_diff_config; rng=Random.GLOBAL_RNG) where T <: Abstract_model
+    voters = get_voters(model)
+    actions = Vector{Action}()
+    evolve_vertices = diffusion_config.evolve_vertices
+
+    sample_size = ceil(Int, evolve_vertices * length(voters))
+    vertex_ids = StatsBase.sample(rng, 1:length(voters), sample_size, replace=true)
+    
+    for id in vertex_ids
+        neighbor = select_neighbor(voters[id], model; rng=rng)
+        if neighbor === nothing
+            continue
+        end
+        
+        append!(actions, step!(voters[id], neighbor, voter_diff_config.attract_proba, length(get_candidates(model)); rng=Random.GLOBAL_RNG))
+    end
+
+    return actions
 end
 
-function get_pos(voter::Kendall_voter, can)
-   pos = 0
-   for bucket in get_vote(voter)
-      if can in bucket 
-         return pos + (length(bucket) + 1)/ 2
-      end
-
-      pos += length(bucket)
-   end
-
-   return pos
-end
-
-"""
-Encodes vote into space of dimension can_ount choose 2 
-"""
-function kendall_encoding(vote::Vote, can_count)
-   inv_vote = invert_vote(vote, can_count)
-   n = choose2(can_count)
-
-   opinion = Vector{Float64}(undef, n)
-   counter = 1
-   for can_1 in 1:can_count-1
-      for can_2 in can_1+1:can_count
-         opinion[counter] = get_penalty(inv_vote[can_1], inv_vote[can_2], n)
-         counter += 1
-      end
-   end
-
-   return opinion
-end
-
-function step!(self::Kendall_voter, model, voter_diff_config::Kendall_voter_diff_config; rng=Random.GLOBAL_RNG)
-   voters = get_voters(model)
-   social_network = get_social_network(model)
-
-   neighbors_ = neighbors(social_network, get_ID(self))
-   can_count = length(get_candidates(model)) 
-   if length(neighbors_) == 0
-      return []
-   end
-
-   neighbor_id = neighbors_[rand(rng, 1:length(neighbors_))]
-   neighbor = voters[neighbor_id]
-
-   if rand(rng) <= voter_diff_config.attract_proba
+function step!(self::Kendall_voter, neighbor::Kendall_voter, attract_proba, can_count; rng=Random.GLOBAL_RNG)
+   if rand(rng) <= attract_proba
       method = "attract"
       voters[get_ID(self)] = attract(self, neighbor, can_count)
       voters[get_ID(neighbor)] = attract(neighbor, self, can_count)

@@ -170,8 +170,11 @@ model_log = load_log(exp_dir_path, diff_step)
 # ╔═╡ f35712d1-3c91-4202-8e90-55b1922dbd8e
 vis, _ = timestamp_vis(model_log, sampled_voter_ids, dim_reduction_config, clustering_config)
 
+# ╔═╡ e332e426-eb63-4a69-a330-7b0127ad1a2c
+vis[2]
+
 # ╔═╡ 996e9336-8175-4ddb-aa37-9ef7626a4f74
-vis[3]
+vis[4]
 
 # ╔═╡ 581f20a7-6393-41ea-8fe7-510b6c8a1e89
 begin
@@ -377,14 +380,15 @@ plots = Plots.plot([Plots.heatmap(count, yticks=1:length(src_candidates), xticks
 # ╟─a0449758-593e-403b-a3ab-352a2bc3717b
 # ╟─c3ba833f-9eee-46c6-b7ae-ea8cb831b6dc
 # ╟─c2ba23c6-d23b-4754-a5b8-371500420b43
-# ╠═c77675f2-85af-4280-87ea-a5f6aec70d50
 # ╠═f35712d1-3c91-4202-8e90-55b1922dbd8e
+# ╠═c77675f2-85af-4280-87ea-a5f6aec70d50
+# ╠═e332e426-eb63-4a69-a330-7b0127ad1a2c
 # ╠═996e9336-8175-4ddb-aa37-9ef7626a4f74
-# ╠═581f20a7-6393-41ea-8fe7-510b6c8a1e89
-# ╠═31b2fe2a-a778-4893-9188-c38d6e4b21e2
-# ╠═9bf7d31b-7a4e-4ec9-99b9-d189c9b2297e
+# ╟─581f20a7-6393-41ea-8fe7-510b6c8a1e89
+# ╟─31b2fe2a-a778-4893-9188-c38d6e4b21e2
+# ╟─9bf7d31b-7a4e-4ec9-99b9-d189c9b2297e
 # ╠═1e6ea6b0-6fb6-4097-aa76-a29edafe5b2a
-# ╠═23c54f4b-6f03-4661-b9c2-5ace1028e577
+# ╟─23c54f4b-6f03-4661-b9c2-5ace1028e577
 # ╠═df5bec5f-fbb2-4f81-9398-c1b1ba317d1b
 # ╠═a1fc11c2-b0a9-422e-a2f0-cc28ff063c50
 # ╠═2ef976be-ea40-446e-bbc0-3fb4e1c29dc7

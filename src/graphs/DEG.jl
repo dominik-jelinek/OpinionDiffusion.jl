@@ -1,15 +1,12 @@
 @kwdef struct DEG_graph_config <: Abstract_graph_init_config
-    exp::Float64
-	scale::Float64
-    max_degree::Int64
+    target_degree_distr::Vector{Int64}
     target_cc::Float64
     homophily::Float64
-    #openmindedness_distr::Distributions.Distribution{Distributions.Univariate, Distributions.Continuous}
+    openmindedness::Vector{Float64}
 end
 
 function init_graph(voters, graph_init_config::DEG_graph_config; rng=Random.GLOBAL_RNG)
-	pareto = Distributions.truncated(Distributions.Pareto(graph_init_config.exp, graph_init_config.scale); upper=graph_init_config.max_degree)
-	target_deg_distr = Int.(round.(rand(rng, pareto, length(voters))))
+    set_property!(voters, "openmindedness", graph_init_config.openmindedness)
 
     return get_DEG(
         voters,

@@ -10,14 +10,6 @@ end
 @kwdef struct Spearman_voter_init_config <: Abstract_voter_init_config
     weights::Vector{Float64}
     eps::Float64
-    openmindedness_distr
-	stubbornness_distr
-end
-
-@kwdef struct Spearman_voter_diff_config <: Abstract_voter_diff_config
-	attract_proba::Float64
-	change_rate::Float64
-    normalize_shifts::Union{Nothing, Tuple{Bool, Float64, Float64}}
 end
 
 function get_max_distance(can_count, weights)
@@ -32,8 +24,6 @@ function get_max_distance(can_count, weights)
 end
 
 function init_voters(election, voter_config::Spearman_voter_init_config; rng=Random.GLOBAL_RNG)
-    openmindedness_distr = Distributions.Truncated(voter_config.openmindedness_distr, 0.0, 1.0)
-    stubbornness_distr = Distributions.Truncated(voter_config.stubbornness_distr, 0.0, 1.0)
     
     voters = Vector{Spearman_voter}(undef, length(election))
     for (i, vote) in enumerate(election)
@@ -102,6 +92,11 @@ end
 
 function get_pos(voter::Spearman_voter, can)
     return get_opinion(voter)[can]
+end
+
+function init_diffusion(model, voter_diff_config::Spearman_voter_diff_config; rng=Random.GLOBAL_RNG)
+    set_property!(get_voters(model), "stubbornness", diffusion_config.stubbornness_distr)
+    return diffusion_config
 end
 
 function step!(self::Spearman_voter, model, voter_diff_config::Spearman_voter_diff_config; rng=Random.GLOBAL_RNG)

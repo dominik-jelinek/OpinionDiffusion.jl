@@ -31,11 +31,12 @@ function set_property!(voter::T, property, value) where T <: Abstract_voter
     voter.properties[property] = value
 end
 
-function set_property!(voters::Vector{T}, property, values) where T <: Abstract_voter
+function set_property!(voters::Vector{T}, property, values::Vector{Any}) where T <: Abstract_voter
     for (voter, value) in zip(voters, values)
         set_property!(voter, property, value)
     end
 end
+
 
 function get_vote(voter::Abstract_voter; kwargs...) :: Vote
     throw(NotImplementedError("get_vote"))
