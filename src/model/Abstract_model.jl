@@ -1,10 +1,3 @@
-@kwdef struct Action
-    operation::String
-    ID::Union{Int64, Tuple{Int64, Int64}}
-    old
-    new
-end
-
 get_voters(model::T) where T <: Abstract_model = model.voters 
 get_social_network(model::T) where T <: Abstract_model = model.social_network
 get_candidates(model::T) where T <: Abstract_model = model.candidates
@@ -44,7 +37,7 @@ function run_ensemble_model(ensemble_size, diffusions, election, candidates, ini
     
         actions = run!(model, diff_configs, diffusions; metrics=metrics, update_metrics! =update_metrics!, rng=rng)
 
-        frequent_votes = get_frequent_votes(get_votes(get_voters(model_cp)), 10)
+        frequent_votes = get_frequent_votes(get_votes(get_voters(model)), 10)
         ens_metrics[i] = Dict(  "model_seed" => model_seed, 
                                 "diffusion_seed" => diffusion_seed, 
                                 "metrics" => metrics,

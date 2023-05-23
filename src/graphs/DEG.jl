@@ -1,16 +1,16 @@
 @kwdef struct DEG_graph_config <: Abstract_graph_init_config
-    target_degree_distr::Vector{Int64}
+    target_degrees::Vector{Int64}
     target_cc::Float64
     homophily::Float64
-    openmindedness::Vector{Float64}
+    openmindednesses::Vector{Float64}
 end
 
 function init_graph(voters, graph_init_config::DEG_graph_config; rng=Random.GLOBAL_RNG)
-    set_property!(voters, "openmindedness", graph_init_config.openmindedness)
+    set_property!(voters, "openmindedness", graph_init_config.openmindednesses)
 
     return get_DEG(
         voters,
-        target_deg_distr,
+        graph_init_config.target_degrees,
         graph_init_config.target_cc,
         homophily=graph_init_config.homophily,
         rng=rng

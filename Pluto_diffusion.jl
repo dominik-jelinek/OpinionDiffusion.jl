@@ -183,15 +183,11 @@ md"""Select voter type: $(@bind voter_type Select(["Kendall-tau voter", "Spearma
 if voter_type == "Spearman voter"
 	voter_init_config = Spearman_voter_init_config(
 		weights = weights,
-		eps=(weights[end] - weights[end - 1])/4,
-		openmindedness_distr = Distributions.Normal(0.5, 0.1),
-		stubbornness_distr = Distributions.Normal(0.5, 0.1)
+		eps=(weights[end] - weights[end - 1])/4
 	)
 else# voter_type == "Kendall-tau voter"
 	voter_init_config = Kendall_voter_init_config(
-		can_count = length(candidates),
-		openmindedness_distr = Distributions.Normal(0.5, 0.1),
-		stubbornness_distr = Distributions.Normal(0.5, 0.1)
+		can_count = length(candidates)
 	)
 end
 
@@ -218,7 +214,7 @@ Plots.histogram(target_degrees, bins=100)
 sum(target_degrees) / init_sample_size
 
 # ╔═╡ 44dace14-5ec3-439f-9f74-60db63ee5399
-openmindedness = rand(Distributions.Normal(0.5, 0.1), init_sample_size)
+openmindednesses = rand(Distributions.Normal(0.5, 0.1), init_sample_size)
 
 # ╔═╡ c4dfe306-aad8-4248-bc9e-c2de841a7354
 md"#### Select a method for graph generation"
@@ -235,7 +231,7 @@ if graph_type == "DEG"
 		target_degrees=target_degrees,
         target_cc=0.3,
         homophily=homophily,
-        openmindedness=openmindedness
+        openmindednesses=openmindednesses
 		)
 else# graph_type == "BA"
 	graph_init_config = BA_graph_config(
@@ -313,18 +309,12 @@ if cb_model && logging
 		model = init_model(election, candidates, model_config, model_seed)
 		logger = Logger(model)
 		
-	elseif model_source == "load_model" # load specific state and start new experiment
-		model, logger = load_model(model_dir_path, exp_dir_path, idx, true)
-		
 	else # restart and create new experiment
 		model, logger = load_model(model_dir_path)
 	end
 elseif cb_model && !logging
 	if model_source == "new_model"
 		model = init_model(election, candidates, model_config, model_seed)
-		
-	elseif model_source == "load_model"
-		model = load_log(exp_dir_path, idx)
 		
 	else # restart
 		model = load_log(model_dir_path)
@@ -394,7 +384,7 @@ init_diff_configs = [init_voter_diffusion]
 diff_configs = [voter_diffusion, graph_diffusion]
 
 # ╔═╡ d877c5d0-89af-48b9-bcd0-c1602d58339f
-diffusions = 100
+diffusions = 10
 
 # ╔═╡ 27a60724-5d19-419f-b208-ffa0c78e2505
 ensemble_size = 3
@@ -408,7 +398,7 @@ Restart: $(@bind restart CheckBox())
 """
 
 # ╔═╡ 87c573c1-69a4-4a61-bbb8-acb716f8ec6d
-ensemble_model = false
+ensemble_model = true
 
 # ╔═╡ de772425-25de-4228-b12e-d567b8ceb20f
 md"## Run diffusion"
@@ -838,6 +828,36 @@ end
 # ╔═╡ f96c982d-b5db-47f7-91e0-9c9b3b36332f
 compare_metrics_vis(ensemble_logs, ["unique_votes", "avg_vote_length", "avg_edge_dist"])
 
+# ╔═╡ de7a5c20-d5d6-4fe5-b7c3-561b17a90143
+function ensemble_init_model(ensemble_size, election, can_count, init_metrics, update_metrics, model_configs, diffusion_config)
+	size_metrics = []
+	
+	sizes = collect(100:100:length(election))
+	for size in sizes
+		metrics = []
+
+		for model_config in model_configs
+			gathered_metrics = OpinionDiffusion.run_ensemble_model(ensemble_size, 0, election[1:size], init_metrics, can_count, update_metrics!, model_config, diffusion_config, false)
+			
+			gathered_metrics["size"] = [size]
+			push!(metrics, gathered_metrics)
+		end
+
+		push!(size_metrics, metrics)
+	end
+
+	metrics = [deepcopy(size_metrics[1][1]), deepcopy(size_metrics[1][2]), deepcopy(size_metrics[1][3])]
+	for i in 2:length(sizes)
+		for j in 1:length(pops)
+			for (metric, val) in size_metrics[i][j]
+				push!(metrics[j][metric], val[1])
+			end
+		end
+	end
+	
+	return metrics
+end
+
 # ╔═╡ eccddfc6-2e57-4f9e-88f3-88166fc5da11
 function ensemble_init_model(BA, ensemble_size, election, can_count, init_metrics, update_metrics, diffusion_config)
 	size_metrics = []
@@ -870,36 +890,6 @@ function ensemble_init_model(BA, ensemble_size, election, can_count, init_metric
 		end
 
 		push!(size_metrics, homophily_metrics)
-	end
-
-	metrics = [deepcopy(size_metrics[1][1]), deepcopy(size_metrics[1][2]), deepcopy(size_metrics[1][3])]
-	for i in 2:length(sizes)
-		for j in 1:length(pops)
-			for (metric, val) in size_metrics[i][j]
-				push!(metrics[j][metric], val[1])
-			end
-		end
-	end
-	
-	return metrics
-end
-
-# ╔═╡ de7a5c20-d5d6-4fe5-b7c3-561b17a90143
-function ensemble_init_model(ensemble_size, election, can_count, init_metrics, update_metrics, model_configs, diffusion_config)
-	size_metrics = []
-	
-	sizes = collect(100:100:length(election))
-	for size in sizes
-		metrics = []
-
-		for model_config in model_configs
-			gathered_metrics = OpinionDiffusion.run_ensemble_model(ensemble_size, 0, election[1:size], init_metrics, can_count, update_metrics!, model_config, diffusion_config, false)
-			
-			gathered_metrics["size"] = [size]
-			push!(metrics, gathered_metrics)
-		end
-
-		push!(size_metrics, metrics)
 	end
 
 	metrics = [deepcopy(size_metrics[1][1]), deepcopy(size_metrics[1][2]), deepcopy(size_metrics[1][3])]

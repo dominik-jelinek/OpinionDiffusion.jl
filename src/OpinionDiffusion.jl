@@ -1,5 +1,9 @@
 module OpinionDiffusion
 
+# ______________________________________________________________________________
+# IMPORTS
+# ______________________________________________________________________________
+
 # Base
 using Base.Threads
 using Base: Float64
@@ -35,10 +39,17 @@ import KernelDensity
 # Serialization
 using JLD2
 
-# Utils
-export parse_data
-export to_string
-export test_KT
+# ______________________________________________________________________________
+# EXPORTS
+# ______________________________________________________________________________
+
+# Voters
+export get_opinion, get_vote, get_votes, get_distance, get_ID
+export Spearman_voter_init_config, Spearman_voter_diff_config
+export Kendall_voter_init_config, Kendall_voter_diff_config
+
+# Graphs
+export BA_graph_config, DEG_graph_config
 
 # Model
 export get_voters, get_social_network, get_candidates
@@ -49,13 +60,11 @@ export Logger
 export save_log, load_log, load_logs
 export load_model, restart_model, save_ensemble
 
-# Graphs
-export BA_graph_config, DEG_graph_config
-
-# Voters
-export get_opinion, get_vote, get_votes, get_distance, get_ID
-export Spearman_voter_init_config, Spearman_voter_diff_config
-export Kendall_voter_init_config, Kendall_voter_diff_config
+# Diffusion
+export SP_init_diff_config, SP_diff_config
+export KT_init_diff_config, KT_diff_config
+export Graph_init_diff_config, Graph_diff_config
+export init_diffusion!
 
 # Visualizations
 export get_election_summary, draw_election_summary
@@ -68,8 +77,14 @@ export gather_vis, timestamp_vis
 export get_edge_distances, draw_degree_distr, draw_edge_distances
 export draw_range!, draw_voting_res
 
-Bucket = Set{Int64}
-Vote = Vector{Bucket}
+# Utils
+export parse_data
+export to_string
+export test_KT
+
+# ______________________________________________________________________________
+# Custom Types
+# ______________________________________________________________________________
 
 abstract type Config end
 abstract type Abstract_voter_init_config <: Config end
@@ -84,6 +99,14 @@ abstract type Abstract_dim_reduction_config <: Config end
 abstract type Abstract_voter end
 abstract type Abstract_model end
 
+Bucket = Set{Int64}
+Vote = Vector{Bucket}
+@kwdef struct Action
+    operation::String
+    ID::Union{Int64, Tuple{Int64, Int64}}
+    old::Abstract_voter
+    new::Abstract_voter
+end
 
 include("parsing.jl")
 include("utils.jl")

@@ -1,7 +1,6 @@
 @kwdef struct BA_graph_config <: Abstract_graph_init_config
     m::Integer
     homophily::Real
-    #openmindedness_distr::Distributions.Distribution{Distributions.Univariate, Distributions.Continuous}
 end
 
 function init_graph(voters, graph_init_config::BA_graph_config; rng=Random.GLOBAL_RNG)

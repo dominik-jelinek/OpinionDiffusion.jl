@@ -27,7 +27,7 @@ function diffusion!(model::T, diffusion_config::SP_diff_config; rng=Random.GLOBA
             continue
         end
         
-        append!(actions, average_all!(voters[id], neighbor, attract_proba, change_rate, normalize_shifts; rng=rng))
+        append!(actions, average_all!(voters[id], neighbor, diffusion_config.attract_proba, diffusion_config.change_rate, diffusion_config.normalize_shifts; rng=rng))
     end
 
     return actions

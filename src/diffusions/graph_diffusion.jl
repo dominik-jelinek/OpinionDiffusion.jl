@@ -14,7 +14,7 @@ end
 function diffusion!(model::T, diffusion_config::Graph_diff_config; rng=Random.GLOBAL_RNG) where T <: Abstract_model
     voters = get_voters(model)
     actions = Vector{Action}()
-    evolve_vertices = diffusion_config.evolve_vertices
+    evolve_vertices = diffusion_config.evolve_edges
 
     sample_size = ceil(Int, evolve_vertices * length(voters))
     vertex_ids = StatsBase.sample(rng, 1:length(voters), sample_size, replace=true)
