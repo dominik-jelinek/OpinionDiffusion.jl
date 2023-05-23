@@ -838,36 +838,6 @@ end
 # ╔═╡ f96c982d-b5db-47f7-91e0-9c9b3b36332f
 compare_metrics_vis(ensemble_logs, ["unique_votes", "avg_vote_length", "avg_edge_dist"])
 
-# ╔═╡ de7a5c20-d5d6-4fe5-b7c3-561b17a90143
-function ensemble_init_model(ensemble_size, election, can_count, init_metrics, update_metrics, model_configs, diffusion_config)
-	size_metrics = []
-	
-	sizes = collect(100:100:length(election))
-	for size in sizes
-		metrics = []
-
-		for model_config in model_configs
-			gathered_metrics = OpinionDiffusion.run_ensemble_model(ensemble_size, 0, election[1:size], init_metrics, can_count, update_metrics!, model_config, diffusion_config, false)
-			
-			gathered_metrics["size"] = [size]
-			push!(metrics, gathered_metrics)
-		end
-
-		push!(size_metrics, metrics)
-	end
-
-	metrics = [deepcopy(size_metrics[1][1]), deepcopy(size_metrics[1][2]), deepcopy(size_metrics[1][3])]
-	for i in 2:length(sizes)
-		for j in 1:length(pops)
-			for (metric, val) in size_metrics[i][j]
-				push!(metrics[j][metric], val[1])
-			end
-		end
-	end
-	
-	return metrics
-end
-
 # ╔═╡ eccddfc6-2e57-4f9e-88f3-88166fc5da11
 function ensemble_init_model(BA, ensemble_size, election, can_count, init_metrics, update_metrics, diffusion_config)
 	size_metrics = []
@@ -900,6 +870,36 @@ function ensemble_init_model(BA, ensemble_size, election, can_count, init_metric
 		end
 
 		push!(size_metrics, homophily_metrics)
+	end
+
+	metrics = [deepcopy(size_metrics[1][1]), deepcopy(size_metrics[1][2]), deepcopy(size_metrics[1][3])]
+	for i in 2:length(sizes)
+		for j in 1:length(pops)
+			for (metric, val) in size_metrics[i][j]
+				push!(metrics[j][metric], val[1])
+			end
+		end
+	end
+	
+	return metrics
+end
+
+# ╔═╡ de7a5c20-d5d6-4fe5-b7c3-561b17a90143
+function ensemble_init_model(ensemble_size, election, can_count, init_metrics, update_metrics, model_configs, diffusion_config)
+	size_metrics = []
+	
+	sizes = collect(100:100:length(election))
+	for size in sizes
+		metrics = []
+
+		for model_config in model_configs
+			gathered_metrics = OpinionDiffusion.run_ensemble_model(ensemble_size, 0, election[1:size], init_metrics, can_count, update_metrics!, model_config, diffusion_config, false)
+			
+			gathered_metrics["size"] = [size]
+			push!(metrics, gathered_metrics)
+		end
+
+		push!(size_metrics, metrics)
 	end
 
 	metrics = [deepcopy(size_metrics[1][1]), deepcopy(size_metrics[1][2]), deepcopy(size_metrics[1][3])]

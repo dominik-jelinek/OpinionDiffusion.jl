@@ -1,4 +1,3 @@
-abstract type Abstract_clustering_config <: Config end
 @kwdef struct Kmeans_clustering_config <: Abstract_clustering_config
     cluster_count::Int64
 end

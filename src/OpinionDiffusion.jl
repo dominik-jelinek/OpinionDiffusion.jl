@@ -70,7 +70,20 @@ export draw_range!, draw_voting_res
 
 Bucket = Set{Int64}
 Vote = Vector{Bucket}
+
 abstract type Config end
+abstract type Abstract_voter_init_config <: Config end
+abstract type Abstract_graph_init_config <: Config end
+
+abstract type Abstract_diff_config <: Config end
+abstract type Abstract_init_diff_config <: Config end
+
+abstract type Abstract_clustering_config <: Config end
+abstract type Abstract_dim_reduction_config <: Config end
+
+abstract type Abstract_voter end
+abstract type Abstract_model end
+
 
 include("parsing.jl")
 include("utils.jl")
@@ -78,6 +91,11 @@ include("utils.jl")
 include("voters/Abstract_voter.jl")
 include("voters/Kendall_voter.jl")
 include("voters/Spearman_voter.jl")
+
+include("graphs/graph.jl")
+include("graphs/barabasi_albert.jl")
+include("graphs/DEG.jl")
+include("graphs/random_graph.jl")
 
 include("diffusions/diffusion.jl")
 include("diffusions/graph_diffusion.jl")
@@ -93,8 +111,4 @@ include("visualizations/voting_rules.jl")
 include("visualizations/dim_reduction.jl")
 include("visualizations/clustering.jl")
 
-include("graphs/graph.jl")
-include("graphs/barabasi_albert.jl")
-include("graphs/DEG.jl")
-include("graphs/random_graph.jl")
 end

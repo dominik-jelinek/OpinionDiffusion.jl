@@ -1,14 +1,5 @@
-abstract type Abstract_voter end
-abstract type Abstract_voter_init_config end
-abstract type Abstract_voter_diff_config end
-
 function init_voters(election, voter_config::T) where T <: Abstract_voter_init_config
     throw(NotImplementedError("init_voters"))
-end
-
-function step!(self::T, model, voter_diff_config::U) where 
-    {T <: Abstract_voter, U <: Abstract_voter_diff_config}
-    throw(NotImplementedError("step!(self::T, model, voter_diff_config::U) where {T <: Abstract_voter, U <: Abstract_voter_diff_config}"))
 end
 
 function get_ID(voter::T) where T <: Abstract_voter
@@ -36,7 +27,6 @@ function set_property!(voters::Vector{T}, property, values::Vector{Any}) where T
         set_property!(voter, property, value)
     end
 end
-
 
 function get_vote(voter::Abstract_voter; kwargs...) :: Vote
     throw(NotImplementedError("get_vote"))

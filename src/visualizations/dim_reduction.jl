@@ -1,5 +1,3 @@
-abstract type Abstract_dim_reduction_config <: Config end
-
 function reduce_dims(voters::Vector{Abstract_voter}, dim_reduction_config::T) where T<:Abstract_dim_reduction_config
     opinions = reduce(hcat, get_opinion(voters))
 

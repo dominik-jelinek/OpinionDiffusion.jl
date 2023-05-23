@@ -1,6 +1,3 @@
-abstract type Abstract_diff_config <: Config end
-abstract type Abstract_init_diff_config <: Config end
-
 @kwdef struct Diffusion_config <: Config
     checkpoint::Int64
     diff_configs::Vector{Abstract_diff_config}

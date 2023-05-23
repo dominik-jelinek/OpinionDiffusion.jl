@@ -1,5 +1,3 @@
-abstract type Abstract_model end
-
 @kwdef struct Action
     operation::String
     ID::Union{Int64, Tuple{Int64, Int64}}
