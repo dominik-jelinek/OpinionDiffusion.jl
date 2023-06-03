@@ -73,6 +73,7 @@ function save_ensemble(model_dir::String, diffusion_config, gathered_metrics)
 	jldsave("$(model_dir)/ensemble_$(Dates.format(now(), "yyyy-mm-dd_HH-MM-SS")).jld2"; diffusion_config, gathered_metrics)
 end
 
-function save_ensemble(model_config, diffusion_config, gathered_metrics)
-	jldsave("logs/ensemble_model_$(Dates.format(now(), "yyyy-mm-dd_HH-MM-SS")).jld2"; model_config, diffusion_config, gathered_metrics)
+function save_ensemble(model_seed, model_config, init_diff_configs, diff_seed, diffusion_config, gathered_metrics)
+	jldsave("logs/ensemble_model_$(Dates.format(now(), "yyyy-mm-dd_HH-MM-SS")).jld2"; model_seed,  model_config, init_diff_configs, diff_seed, diffusion_config, gathered_metrics)
 end
+

@@ -9,9 +9,9 @@ function clustering(voters, clustering_config::Kmeans_clustering_config, project
     best_k = best_k_silhouettes(opinions, clustering_config.cluster_count)
     kmeans_res = Clustering.kmeans(opinions, best_k)
     labels = kmeans_res.assignments
-    
+
     clusters = clusterize(labels)
-    
+
     return labels, clusters
 end
 
@@ -29,9 +29,9 @@ function clustering(voters, clustering_config::GM_clustering_config, projections
     gmm = GaussianMixtures.GMM(best_k, data_T)
     #GaussianMixtures.em!(gmm::GMM, opinions)
     llpg_X = permutedims(GaussianMixtures.llpg(gmm, data_T))
-    labels = [ m[1] for m in vec(permutedims(argmax(llpg_X, dims=1)))]
+    labels = [m[1] for m in vec(permutedims(argmax(llpg_X, dims=1)))]
     clusters = clusterize(labels)
-    
+
     return labels, clusters
 end
 
@@ -46,10 +46,10 @@ Cluster voters based on highest ranked candidate
 function clustering(voters, clustering_config::Party_clustering_config, projections=nothing)
     candidates = clustering_config.candidates
 
-    labels = [candidates[iterate(get_vote(voter)[1])[1]].party for voter in voters] 
-    
+    labels = [candidates[iterate(get_vote(voter)[1])[1]].party for voter in voters]
+
     clusters = clusterize(labels)
-    
+
     return labels, clusters
 end
 
@@ -68,9 +68,9 @@ function clustering(voters, clustering_config::DBSCAN_clustering_config, project
         labels[dbscanCluster.core_indices] .= i
         labels[dbscanCluster.boundary_indices] .= i
     end
-    
+
     clusters = clusterize(labels)
-    
+
     return labels, clusters
 end
 
@@ -90,7 +90,7 @@ function clustering(voters, clustering_config::Density_clustering_config, projec
 
     density_map = round.(result.density; digits=clustering_config.round_digits)
     step_size = maximum(density_map) / (10 * clustering_config.round_digits)
-    
+
     density_map = -density_map
     label_map, merges = watershed(density_map, step_size)
     #push!(ploty, Makie.heatmap(label_map, transparency=true, colormap=:viridis, colorrange=(0, maximum(label_map))))
@@ -104,7 +104,7 @@ function clustering(voters, clustering_config::Density_clustering_config, projec
     end
 
     clusters = clusterize(labels)
-    
+
     return labels, clusters
 end
 
@@ -113,10 +113,14 @@ Finds all basins and then uses watershed algorithm adaptation to expand them in 
 """
 function watershed(density_map, step_size)
     peaks_mask_y = zeros(Bool, size(density_map, 1), size(density_map, 2))
-    for (i, col) in enumerate(eachcol(density_map)) peaks_mask_y[find_local_minima(col), i] .= true end 
+    for (i, col) in enumerate(eachcol(density_map))
+        peaks_mask_y[find_local_minima(col), i] .= true
+    end
 
     peaks_mask_x = zeros(Bool, size(density_map, 1), size(density_map, 2))
-    for (i, row) in enumerate(eachrow(density_map)) peaks_mask_x[i, find_local_minima(row)] .= true end 
+    for (i, row) in enumerate(eachrow(density_map))
+        peaks_mask_x[i, find_local_minima(row)] .= true
+    end
 
     peaks_mask = peaks_mask_y .& peaks_mask_x
     steps = abs(minimum(density_map)) / step_size |> ceil |> Int64
@@ -128,11 +132,11 @@ function watershed(density_map, step_size)
 
     queue = [Vector{CartesianIndex}() for _ in 1:steps+1]
     for peak in peaks
-        push!(queue[((density_map[peak] - depth) / step_size |> ceil |> Int64) + 1], peak)
+        push!(queue[((density_map[peak]-depth)/step_size|>ceil|>Int64)+1], peak)
     end
-    
+
     label_map = init_labels(peaks, (size(density_map, 1), size(density_map, 2)))
-    
+
     water_level = step_size
     merges = Dict()
     ploty = Vector{Any}()
@@ -140,10 +144,10 @@ function watershed(density_map, step_size)
         push!(ploty, Makie.heatmap(label_map, transparency=true, colormap=:viridis, colorrange=(0, maximum(label_map))))
         expand_basins!(density_map, queue, step, step_size, depth, water_level, label_map, label_depths, merges)
         water_level += step_size
-    end 
+    end
     for label in keys(merges)
         step, indices = merges[label]
-        label_map[indices] .= label 
+        label_map[indices] .= label
     end
     #push!(ploty, Makie.heatmap(label_map, transparency=true, colormap=:viridis, colorrange=(0, maximum(label_map))))
 
@@ -162,18 +166,18 @@ function expand_basins!(density_map, queue, step, step_size, depth, water_level,
             if !inbounds(density_map, nei_idx) || density_map[idx] > density_map[nei_idx] #|| density_map[nei_idx] == 0
                 continue
             end
-            
+
             # do not go to already visited points
             if label_map[nei_idx] != 0
                 # relabel if other label is encountered
                 if label_map[nei_idx] != label_map[idx]
-                    merged_label, indices = relabel!(label_map, label_map[idx], label_map[nei_idx], label_depths, depth+water_level)
+                    merged_label, indices = relabel!(label_map, label_map[idx], label_map[nei_idx], label_depths, depth + water_level)
                     merges[merged_label] = (step, indices)
                 end
 
                 continue
             end
-            
+
             # Do not go to points that are not reachable with current water level
             # Instead label them with current label and add to queue for later
             if depth + water_level < density_map[nei_idx]
@@ -186,7 +190,7 @@ function expand_basins!(density_map, queue, step, step_size, depth, water_level,
 
             label_map[nei_idx] = label_map[idx]
             push!(queue[step], nei_idx)
-        end  
+        end
     end
 
     return merges
@@ -198,7 +202,7 @@ function relabel!(label_map, label_1, label_2, label_depths, point_depth)
     end
     # label_1 is deeper than label_2
 
-    merged_pos = [] 
+    merged_pos = []
     for (idx, label) in enumerate(label_map)
         if label == label_2
             push!(merged_pos, idx)
@@ -235,30 +239,30 @@ function find_local_maxima(a)
         push!(max_indices, 1)
     end
 
-    for i in 2:length(a) - 1
+    for i in 2:length(a)-1
         # test inflection point
-        if peak && a[i] < a[i + 1]
+        if peak && a[i] < a[i+1]
             peak = false
         end
 
         # test start of the peak
-        if a[i - 1] < a[i] && a[i] >= a[i + 1]
+        if a[i-1] < a[i] && a[i] >= a[i+1]
             start = i
             peak = true
         end
 
         # test end of the peak
-        if peak && a[i] > a[i + 1]
+        if peak && a[i] > a[i+1]
             append!(max_indices, collect(start:i))
             peak = false
         end
     end
 
-    if peak && a[end - 1] == a[end] && start != 1
+    if peak && a[end-1] == a[end] && start != 1
         append!(max_indices, collect(start:length(a)))
     end
 
-    if a[end - 1] < a[end]
+    if a[end-1] < a[end]
         push!(max_indices, length(a))
     end
 
@@ -278,9 +282,9 @@ For each unique label creates a set of indices of voters with that label.
 """
 function clusterize(labels::Vector{Int64})
     unique_labels = sort(unique(labels))
-    
-    clusters = [(label, Set(findall(x->x==label, labels))) for label in unique_labels]
-   
+
+    clusters = [(label, Set(findall(x -> x == label, labels))) for label in unique_labels]
+
     return clusters
 end
 
@@ -302,7 +306,7 @@ function create_similarity_matrix(template_clusters, clusters)
     return matrix
 end
 
-function unify_clusters!(template_clusters::Vector{Tuple{Int64, Set{Int64}}}, clusters::Vector{Tuple{Int64, Set{Int64}}})
+function unify_clusters!(template_clusters::Vector{Tuple{Int64,Set{Int64}}}, clusters::Vector{Tuple{Int64,Set{Int64}}})
     similarity_matrix = create_similarity_matrix(template_clusters, clusters)
     changed = Vector{Bool}(undef, length(clusters))
 

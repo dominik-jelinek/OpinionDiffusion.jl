@@ -1,34 +1,35 @@
 @kwdef struct KT_init_diff_config <: Abstract_init_diff_config
-    stubbornnesses::Vector{Float64}
+   stubbornnesses::Vector{Float64}
 end
+KT_init_diff_config(n::Int64, openmindedness_distr::Distributions.UnivariateDistribution) = KT_init_diff_config(rand(openmindedness_distr, n))
 
 @kwdef struct KT_diff_config <: Abstract_diff_config
-	attract_proba::Float64
-    evolve_vertices::Float64
+   attract_proba::Float64
+   evolve_vertices::Float64
 end
 
-function init_diffusion!(model::T, init_diff_config::KT_init_diff_config; rng=Random.GLOBAL_RNG) where T <: Abstract_model
-    set_property!(get_voters(model), "stubbornnesses", init_diff_config.stubbornnesses)
+function init_diffusion!(model::T, init_diff_config::KT_init_diff_config; rng=Random.GLOBAL_RNG) where {T<:Abstract_model}
+   set_property!(get_voters(model), "stubbornnesses", init_diff_config.stubbornnesses)
 end
 
-function diffusion!(model::T, diffusion_config::KT_diff_config; rng=Random.GLOBAL_RNG) where T <: Abstract_model
-    voters = get_voters(model)
-    actions = Vector{Action}()
-    evolve_vertices = diffusion_config.evolve_vertices
+function diffusion!(model::T, diffusion_config::KT_diff_config; rng=Random.GLOBAL_RNG) where {T<:Abstract_model}
+   voters = get_voters(model)
+   actions = Vector{Action}()
+   evolve_vertices = diffusion_config.evolve_vertices
 
-    sample_size = ceil(Int, evolve_vertices * length(voters))
-    vertex_ids = StatsBase.sample(rng, 1:length(voters), sample_size, replace=true)
-    
-    for id in vertex_ids
-        neighbor = select_neighbor(voters[id], model; rng=rng)
-        if neighbor === nothing
-            continue
-        end
-        
-        append!(actions, step!(voters[id], neighbor, voter_diff_config.attract_proba, length(get_candidates(model)); rng=Random.GLOBAL_RNG))
-    end
+   sample_size = ceil(Int, evolve_vertices * length(voters))
+   vertex_ids = StatsBase.sample(rng, 1:length(voters), sample_size, replace=true)
 
-    return actions
+   for id in vertex_ids
+      neighbor = select_neighbor(voters[id], model; rng=rng)
+      if neighbor === nothing
+         continue
+      end
+
+      append!(actions, step!(voters[id], neighbor, voter_diff_config.attract_proba, length(get_candidates(model)); rng=Random.GLOBAL_RNG))
+   end
+
+   return actions
 end
 
 function step!(self::Kendall_voter, neighbor::Kendall_voter, attract_proba, can_count; rng=Random.GLOBAL_RNG)
@@ -53,12 +54,12 @@ If it is bigger than the stubborness of respective voter, it is executed.
 
    [[1], [2, 3]],   [[1], [2], [3]] == [[1], [2], [3]] (d:1->0)
    [[1], [2], [3]], [[1], [2, 3]]   == [[1], [2, 3]] (d:1->0)
-   
+
    [[1], [2], [3]], [[1], [3], [2]] == [[1], [3], [2]] (d:2->0) | [[1], [2, 3]] (d:2->1)
-   
+
    [[1], [2], [3]], [[2], [3], [1]] == [[2], [1], [3]] (d:4->2) | [[1, 2], [3]] (d:4->3)
-   
-   
+
+
 =#
 function attract(self, neighbor, can_count; rng=Random.GLOBAL_RNG, log_lvl=0)
    if get_distance(self, neighbor) == 0.0
@@ -79,7 +80,7 @@ function attract(self, neighbor, can_count; rng=Random.GLOBAL_RNG, log_lvl=0)
          error("No feasible actions found, but non-zero distance")
          return
       end
-      
+
       # filter restack operation whenever unstack is available, resulting in smaller steps
       min_change = maximum([x[3] for x in actions])
       actions = [action for action in actions if action[3] == min_change]
@@ -124,11 +125,11 @@ function repel(self, neighbor, can_count; log_lvl=0, rng=Random.GLOBAL_RNG)
          println(to_string(self.vote))
          println(to_string(neighbor.vote))
          println("d_uv: ", get_distance(self, neighbor))
-         println("max:  ", max_possible/max_distance)
+         println("max:  ", max_possible / max_distance)
          error("No DP actions found, but not maximal distance")
          return
       end
-      
+
       # pick the action with the smallest change in KT distance
       min_change = minimum([x[3] for x in actions])
       actions = [action for action in actions if action[3] == min_change]
@@ -150,7 +151,7 @@ end
 
 function delete_can!(vote, bucket_idx, can)
    for i in eachindex(vote[bucket_idx])
-      if vote[bucket_idx][i] == can 
+      if vote[bucket_idx][i] == can
          deleteat!(vote[bucket_idx], i)
          break
       end
@@ -161,32 +162,32 @@ function apply_action(action, voter, can_count)
    can, bucket_idx, _, type = action
    bucket = voter.vote[bucket_idx]
    new_vote = deepcopy(voter.vote)
-   
+
    if type == :unbucket_left
       new_opinion = unbucket_left(can, voter.opinion, bucket, can_count)
-      
+
       delete_can!(new_vote, bucket_idx, can)
       insert!(new_vote, bucket_idx, [can])
 
    elseif type == :unbucket_right
       new_opinion = unbucket_right(can, voter.opinion, bucket, can_count)
-      
+
       delete_can!(new_vote, bucket_idx, can)
       insert!(new_vote, bucket_idx + 1, [can])
 
    elseif type == :rebucket_left
-      new_opinion = rebucket_left(can, voter.opinion, voter.vote[bucket_idx - 1], bucket, can_count)
-      push!(new_vote[bucket_idx - 1], can)
-      
+      new_opinion = rebucket_left(can, voter.opinion, voter.vote[bucket_idx-1], bucket, can_count)
+      push!(new_vote[bucket_idx-1], can)
+
       if length(new_vote[bucket_idx]) == 1
          deleteat!(new_vote, bucket_idx)
       else
          delete_can!(new_vote, bucket_idx, can)
       end
-      
+
    else
-      new_opinion = rebucket_right(can, voter.opinion, bucket, voter.vote[bucket_idx + 1], can_count)
-      push!(new_vote[bucket_idx + 1], can)
+      new_opinion = rebucket_right(can, voter.opinion, bucket, voter.vote[bucket_idx+1], can_count)
+      push!(new_vote[bucket_idx+1], can)
 
       if length(new_vote[bucket_idx]) == 1
          deleteat!(new_vote, bucket_idx)
@@ -200,8 +201,8 @@ end
 
 function get_greedy_actions(u::Kendall_voter, v::Kendall_voter, can_count)
    # vector of new votes and opinions for voter u if we choose specific action 
-   feasible_actions = Vector{Tuple{Int64, Int64, Float64, Symbol}}()
-   
+   feasible_actions = Vector{Tuple{Int64,Int64,Float64,Symbol}}()
+
    # check first bucket possible unbuckets
    if length(u.vote[1]) > 1
       append!(feasible_actions, unbucket(u.opinion, v.opinion, u.vote, 1, can_count))
@@ -238,20 +239,20 @@ function apply_action2(action, voter, can_count)
       delete_cans!(new_vote, bucket_idx, cans)
       insert!(new_vote, bucket_idx, Bucket(cans))
 
-   elseif type == :unstack_right      
+   elseif type == :unstack_right
       delete_cans!(new_vote, bucket_idx, cans)
       insert!(new_vote, bucket_idx + 1, Bucket(cans))
 
    elseif type == :restack_left
-      push!(new_vote[bucket_idx - 1], cans...)
-      
+      push!(new_vote[bucket_idx-1], cans...)
+
       if length(new_vote[bucket_idx]) == length(cans)
          deleteat!(new_vote, bucket_idx)
       else
          delete_cans!(new_vote, bucket_idx, cans)
       end
    else
-      push!(new_vote[bucket_idx + 1], cans...)
+      push!(new_vote[bucket_idx+1], cans...)
 
       if length(new_vote[bucket_idx]) == length(cans)
          deleteat!(new_vote, bucket_idx)
@@ -276,7 +277,7 @@ end
 function get_distance_preserving_actions_dec(u::Kendall_voter, v::Kendall_voter, can_count)
    # vector of new votes and opinions for voter u if we choose specific action 
    # (cans, bucket_idx, distance_change, action)
-   DP_actions = Vector{Tuple{Vector{Int64}, Int64, Float64, Symbol}}()
+   DP_actions = Vector{Tuple{Vector{Int64},Int64,Float64,Symbol}}()
    inverted = invert_vote(get_vote(v), can_count)
 
    # check first bucket possible unstack
@@ -297,15 +298,15 @@ function get_distance_preserving_actions_dec(u::Kendall_voter, v::Kendall_voter,
       # check for possible restack from the left bucket to the right bucket
       # if there are candidates from the right bucket that have position less than right most candidates from left bucket 
       # then at least those pairs of candidates will increase Kendall-tau distance
-      if l_pos_max >= r_pos_max 
-         l_change = -length(l_maxs) * (length(u.vote[i - 1]) - length(l_maxs)) * 0.5
+      if l_pos_max >= r_pos_max
+         l_change = -length(l_maxs) * (length(u.vote[i-1]) - length(l_maxs)) * 0.5
          r_change = -length(l_maxs) * length(u.vote[i]) * 0.5
          push!(DP_actions, (l_maxs, i - 1, l_change + r_change, :restack_right))
       end
 
       # check for possible restack from the right bucket to the left bucket
       if r_pos_min <= l_pos_min
-         l_change = -length(r_mins) * length(u.vote[i - 1]) * 0.5
+         l_change = -length(r_mins) * length(u.vote[i-1]) * 0.5
          r_change = -length(r_mins) * (length(u.vote[i]) - length(r_mins)) * 0.5
          push!(DP_actions, (r_mins, i, l_change + r_change, :restack_left))
       end
@@ -318,7 +319,7 @@ end
 
 function get_distance_preserving_actions_inc(u::Kendall_voter, v::Kendall_voter, can_count)
    # vector of new votes and opinions for voter u if we choose specific action 
-   DP_actions = Vector{Tuple{Vector{Int64}, Int64, Float64, Symbol}}()
+   DP_actions = Vector{Tuple{Vector{Int64},Int64,Float64,Symbol}}()
    inverted = invert_vote(get_vote(v), can_count)
 
    # check first bucket possible unstack
@@ -349,14 +350,14 @@ function get_distance_preserving_actions_inc(u::Kendall_voter, v::Kendall_voter,
       # check for possible restack from the left bucket to the right bucket
       if l_pos_min < r_pos_min
          for can in l_mins
-            push!(DP_actions, ([can] , i - 1, (length(u.vote[i - 1]) - 1) + (length(u.vote[i])), :restack_right))
+            push!(DP_actions, ([can], i - 1, (length(u.vote[i-1]) - 1) + (length(u.vote[i])), :restack_right))
          end
       end
 
       # check for possible restack from the right bucket to the left bucket
       if r_pos_max > r_pos_max
          for can in r_maxs
-            push!(DP_actions, ([can], i, (length(u.vote[i - 1])) + (length(u.vote[i]) - 1), :restack_left))
+            push!(DP_actions, ([can], i, (length(u.vote[i-1])) + (length(u.vote[i]) - 1), :restack_left))
          end
       end
 
@@ -367,7 +368,7 @@ function get_distance_preserving_actions_inc(u::Kendall_voter, v::Kendall_voter,
 end
 
 function unbucket(u_opinion, v_opinion, u_vote, bucket_idx, can_count)
-   feasible_actions = Vector{Tuple{Int64, Int64, Float64, Symbol}}()
+   feasible_actions = Vector{Tuple{Int64,Int64,Float64,Symbol}}()
    bucket = u_vote[bucket_idx]
    d_uv = get_distance(u_opinion, v_opinion)
 
@@ -417,11 +418,11 @@ function unbucket_left(can, opinion, bucket, can_count)
 end
 
 function rebucket(u_opinion, v_opinion, u_vote, r_bucket_idx, can_count)
-   feasible_actions = Vector{Tuple{Int64, Int64, Float64, Symbol}}()
-   l_bucket = u_vote[r_bucket_idx - 1]
+   feasible_actions = Vector{Tuple{Int64,Int64,Float64,Symbol}}()
+   l_bucket = u_vote[r_bucket_idx-1]
    r_bucket = u_vote[r_bucket_idx]
    d_uv = get_distance(u_opinion, v_opinion)
-   
+
    for can in l_bucket
       new_u_opinion = rebucket_right(can, u_opinion, l_bucket, r_bucket, can_count)
       change = get_distance(new_u_opinion, v_opinion) - d_uv
@@ -434,7 +435,7 @@ function rebucket(u_opinion, v_opinion, u_vote, r_bucket_idx, can_count)
    for can in r_bucket
       new_u_opinion = rebucket_left(can, u_opinion, l_bucket, r_bucket, can_count)
       change = get_distance(new_u_opinion, v_opinion) - d_uv
-      
+
       if change < 0.0 #&& abs(change) == get_distance(u_opinion, new_u_opinion)
          push!(feasible_actions, (can, r_bucket_idx, change, :rebucket_left))
       end
@@ -520,7 +521,7 @@ function get_index(can_1, can_2, can_count)
       can_1, can_2 = can_2, can_1
    end
 
-   return sum(can_count-can_1+1 : can_count-1) + can_2 - can_1 
+   return sum(can_count-can_1+1:can_count-1) + can_2 - can_1
 end
 
 """
@@ -551,10 +552,10 @@ function get_candidates(index, can_count)
    end
 end
 
-function get_penalty(pos_1, pos_2, max_distance = nothing)
+function get_penalty(pos_1, pos_2, max_distance=nothing)
    # candidates are indistinguishable
    penalty = 0.5
-   
+
    if pos_1 < pos_2
       # candidates are in order with numerical candidate ordering
       penalty = 0.0
@@ -562,21 +563,21 @@ function get_penalty(pos_1, pos_2, max_distance = nothing)
       # candidates are out of order with numerical candidate ordering
       penalty = 1.0
    end
-   
+
    return max_distance === nothing ? penalty : penalty / max_distance
 end
 
 function test_pair_KT(fst, snd, can_count; log_lvl=0)
    fst = deepcopy(fst)
    snd = deepcopy(snd)
-   
+
    dist = get_distance(fst, snd)
    init_dist = dist
    if log_lvl > 0
       println("init d_uv:", dist)
    end
    k = 0
-   while dist != 0.0 
+   while dist != 0.0
       if log_lvl > 1
          println(to_string(fst.vote))
          println(to_string(snd.vote))
@@ -584,7 +585,7 @@ function test_pair_KT(fst, snd, can_count; log_lvl=0)
 
       new_fst = attract(fst, snd, can_count; log_lvl=log_lvl)
 
-      if k == choose2(can_count)*10
+      if k == choose2(can_count) * 10
          println(to_string(fst.vote))
          println(to_string(snd.vote))
          error("Failed to converge in time:", k)
@@ -604,14 +605,14 @@ function test_pair_KT(fst, snd, can_count; log_lvl=0)
          break
       end
       =#
-      
+
       fst = new_fst
       dist = new_dist
    end
    if log_lvl > 0
       println("converged after:", k)
    end
-   ratio = k/init_dist
+   ratio = k / init_dist
    #println("ratio: ", ratio)
    return ratio
 end
@@ -628,7 +629,7 @@ function test_random_KT(n, can_count; log_lvl=0)
    ratios = []
    for i in 1:n
       for j in 1:n
-         if i == j 
+         if i == j
             break
          end
          dist = get_distance(voters[i], voters[j])

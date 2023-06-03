@@ -103,7 +103,7 @@ Bucket = Set{Int64}
 Vote = Vector{Bucket}
 @kwdef struct Action
     operation::String
-    ID::Union{Int64, Tuple{Int64, Int64}}
+    ID::Union{Int64,Tuple{Int64,Int64}}
     old::Abstract_voter
     new::Abstract_voter
 end
@@ -125,9 +125,9 @@ include("diffusions/graph_diffusion.jl")
 include("diffusions/kendall_diffusion.jl")
 include("diffusions/spearman_diffusion.jl")
 
-include("model/Abstract_model.jl")
-include("model/General_model.jl")
-include("model/Logger.jl")
+include("models/Abstract_model.jl")
+include("models/General_model.jl")
+include("models/Logger.jl")
 
 include("visualizations/visualization.jl")
 include("visualizations/voting_rules.jl")

@@ -7,7 +7,7 @@ function init_graph(voters, graph_init_config::BA_graph_config; rng=Random.GLOBA
     return barabasi_albert_graph(voters, graph_init_config.m; homophily=graph_init_config.homophily, rng=rng)
 end
 
-function barabasi_albert_graph(voters::Vector{T}, m::Integer; homophily=0.0, rng=Random.GLOBAL_RNG) where T <: Abstract_voter
+function barabasi_albert_graph(voters::Vector{T}, m::Integer; homophily=0.0, rng=Random.GLOBAL_RNG) where {T<:Abstract_voter}
     if m > length(voters)
         throw(ArgumentError("Argument m for Barabasi-Albert graph creation is higher than number of voters."))
     end

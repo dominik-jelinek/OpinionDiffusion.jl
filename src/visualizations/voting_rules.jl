@@ -1,14 +1,14 @@
 function drawElectionResult(candidates, parties, result)
     groupedbar(
         result,
-        title = "Election results",
+        title="Election results",
         ylabel="Num. of votes",
         xlabel="Position in the preference",
-        bar_position = :stack,
-        bar_width = 0.7,
-        xticks =(1:length(candidates)),
-        label = [candidate.name * "-" * parties[candidate.party] for candidate in candidates],
-        yformatter = :plain
+        bar_position=:stack,
+        bar_width=0.7,
+        xticks=(1:length(candidates)),
+        label=[candidate.name * "-" * parties[candidate.party] for candidate in candidates],
+        yformatter=:plain
     )
 end
 
@@ -25,7 +25,7 @@ Returns the plurality scores for each candidate participating in the election. I
 # Returns
 - `Vector{Float64}`: The plurality scores for each candidate.
 """
-function plurality_voting(votes::Vector{Vote}, can_count::Int,  normalize::Bool=false)
+function plurality_voting(votes::Vector{Vote}, can_count::Int, normalize::Bool=false)
     result = zeros(Float64, can_count)
 
     for vote in votes
@@ -34,7 +34,7 @@ function plurality_voting(votes::Vector{Vote}, can_count::Int,  normalize::Bool=
         end
     end
 
-    return normalize ? (result/sum(result)) * 100 : result
+    return normalize ? (result / sum(result)) * 100 : result
 end
 
 """
@@ -52,20 +52,20 @@ Returns the Borda scores for each candidate participating in the election. If `n
 """
 function borda_voting(votes::Vector{Vote}, can_count::Int, normalize::Bool=false)
     result = zeros(Float64, can_count)
-    
+
     for vote in votes
         points = can_count
         for bucket in vote
-            score = StatsBase.mean((points - length(bucket)):points-1)
+            score = StatsBase.mean((points-length(bucket)):points-1)
             points -= length(bucket)
-            
+
             for can in bucket
                 result[can] += score
             end
         end
     end
 
-    return normalize ? (result/sum(result))*100 : result
+    return normalize ? (result / sum(result)) * 100 : result
 end
 
 """

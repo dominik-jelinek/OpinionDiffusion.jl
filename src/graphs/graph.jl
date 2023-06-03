@@ -1,8 +1,8 @@
 function init_graph(n::Int, edges::Vector{Graphs.SimpleGraphs.SimpleEdge{Int64}})
    g = Graphs.SimpleGraphFromIterator(edges)
-   
+
    Graphs.add_vertices!(g, n - Graphs.nv(g))
-   
+
    return g
 end
 
@@ -24,8 +24,8 @@ function get_cluster_graph(model, clusters, labels, projections)
    #for each edge in graph add one to grouped graph and if there is one already
    #increase the size of it
    for e in edges(g)
-      src_ = findfirst(x-> x[1] == labels[src(e)], clusters)
-      dst_ = findfirst(x-> x[1] == labels[dst(e)], clusters)
+      src_ = findfirst(x -> x[1] == labels[src(e)], clusters)
+      dst_ = findfirst(x -> x[1] == labels[dst(e)], clusters)
       edge = Edge(src_, dst_)
       if add_edge!(cluster_graph, edge)
          set_prop!(cluster_graph, edge, :weight, 1)
@@ -45,7 +45,7 @@ end
 function weighted_in_degree(g, v, self_loops=false)
    in_edges = inneighbors(g, v)
    degree = 0
-   
+
    for in_edge in in_edges
       if self_loops || in_edge != v
          degree += get_prop(g, v, in_edge, :weight)
@@ -56,9 +56,9 @@ function weighted_in_degree(g, v, self_loops=false)
 end
 
 function cluster_graph_metrics(cluster_graph::AbstractMetaGraph, g, voters, can_count)
-   vertex_metrics = Dict{Any, Dict}()
-   edge_metrics = Dict{Any, Dict}()
-   
+   vertex_metrics = Dict{Any,Dict}()
+   edge_metrics = Dict{Any,Dict}()
+
    for v in vertices(cluster_graph)
       indices = collect(get_prop(cluster_graph, v, :indices))
       subgraph = induced_subgraph(g, indices)[1]
@@ -122,19 +122,19 @@ function draw_cluster_graph!(ax, g)
    colors = Colors.distinguishable_colors(maximum(cluster_labels))
 
    nodesizes = [length(get_prop(g, v, :indices)) for v in vertices(g)]
-   nodesizes = [ nodesize/sum(nodesizes) * 100 for nodesize in nodesizes]
+   nodesizes = [nodesize / sum(nodesizes) * 100 for nodesize in nodesizes]
    xs = [get_prop(g, v, :pos)[1, 1] for v in vertices(g)]
    ys = [get_prop(g, v, :pos)[2, 1] for v in vertices(g)]
    edgesizes = [src(e) != dst(e) ? get_prop(g, e, :weight) / (length(get_prop(g, src(e), :indices)) * length(get_prop(g, dst(e), :indices))) * 100 : 0.0 for e in edges(g)]
    #edgesizes = [ src(e) != dst(e) ? round(digits=2, get_prop(g, e, :weight)) : 0 for e in edges(g)]
    #edgesizes = [ edgesize/sum(edgesizes) * 100 for edgesize in edgesizes]
-   distances = [ src(e) != dst(e) ? round(digits=2, get_prop(g, e, :dist) / get_prop(g, e, :weight)) : "" for e in edges(g)]
+   distances = [src(e) != dst(e) ? round(digits=2, get_prop(g, e, :dist) / get_prop(g, e, :weight)) : "" for e in edges(g)]
 
    c = colors[cluster_labels]
-   
+
    edgelabels = [string(val) for val in distances]
    #[round(get_prop(G, :nv) * get_prop(G, e, :weight) / (2*get_prop(G, src(e), :size) * get_prop(G, dst(e), :size)), digits=2) for e in edges(G)]
-   
+
    graphplot!(ax, g, layout=g -> Point.(zip(xs, ys)), node_color=c, node_size=nodesizes, edge_width=edgesizes)#, elabels=edgelabels)
    #hidedecorations!(ax); hidespines!(ax)
    #ax.aspect = DataAspect()
@@ -145,22 +145,22 @@ function ego(social_network, node_id, depth)
    neighs = Graphs.neighbors(social_network, node_id)
    ego_nodes = Set(neighs)
    push!(ego_nodes, node_id)
-   
+
    front = Set(neighs)
-   for i in 1:depth - 1
-       new_front = Set()
-       for voter in front
-           union!(new_front, Graphs.neighbors(social_network, voter))
-       end
-       front = setdiff(new_front, ego_nodes)
-       union!(ego_nodes, front)
+   for i in 1:depth-1
+      new_front = Set()
+      for voter in front
+         union!(new_front, Graphs.neighbors(social_network, voter))
+      end
+      front = setdiff(new_front, ego_nodes)
+      union!(ego_nodes, front)
    end
 
    return induced_subgraph(social_network, ego_nodes)
 end
 
 function drawGraph(g, clustering, K)
-   ClusterColor  = distinguishable_colors(K)
+   ClusterColor = distinguishable_colors(K)
    nodefillc = ClusterColor[clustering]
    nodesize = [log(Graphs.degree(g, v)) for v in Graphs.vertices(g)]
    GraphPlot.gplot(g,

@@ -1,10 +1,10 @@
 struct Spearman_voter <: Abstract_voter
     ID::Int64
 
-    opinion::Vector{Float64} # cPBO
+    opinion::Vector{Float64} # pSP
     eps::Float64 # cPBO
 
-    properties::Dict{String, Any}
+    properties::Dict{String,Any}
 end
 
 @kwdef struct Spearman_voter_init_config <: Abstract_voter_init_config
@@ -24,7 +24,7 @@ function get_max_distance(can_count, weights)
 end
 
 function init_voters(election, voter_config::Spearman_voter_init_config)
-    
+
     voters = Vector{Spearman_voter}(undef, length(election))
     for (i, vote) in enumerate(election)
         opinion = spearman_encoding(vote, voter_config.weights)
@@ -43,13 +43,13 @@ Encodes bucket ordered vote to spearman encoded space
 """
 function spearman_encoding(vote::Vote, weights)
     opinion = Vector{Float64}(undef, length(weights))
-    
+
     i = 1
     for bucket in vote
         if length(bucket) == 1
             opinion[iterate(bucket)[1]] = weights[i]
         else
-            mean = sum(weights[i:i + length(bucket) - 1]) / length(bucket)
+            mean = sum(weights[i:i+length(bucket)-1]) / length(bucket)
 
             for can in bucket
                 opinion[can] = mean
@@ -58,11 +58,11 @@ function spearman_encoding(vote::Vote, weights)
 
         i += length(bucket)
     end
-    
+
     return opinion
 end
 
-function get_vote(voter::Spearman_voter) :: Vote
+function get_vote(voter::Spearman_voter)::Vote
     # sort indexes based on opinions
     opinion = get_opinion(voter)
     can_ranking = sortperm(opinion)
@@ -83,7 +83,7 @@ function get_vote(voter::Spearman_voter) :: Vote
         end
     end
 
-    return vote 
+    return vote
 end
 
 function get_pos(voter::Spearman_voter, can)

@@ -141,19 +141,22 @@ end
 @bind clk Clock()
 
 # ╔═╡ 6831b137-faec-42fc-aea7-fbc70b663dbc
-t = clk % length(visualizations)
+t = clk % length(visualizations) + 1
 
 # ╔═╡ 52f8f2b0-4a21-4a05-8f25-62175ba6de07
 visualizations[t][1]
 
 # ╔═╡ fc6982c4-c79d-4d1d-ad1a-3888943629bc
-visualizations[t][2]
+#visualizations[t][2]
+
+# ╔═╡ 7f136b0d-2d39-48a4-89e6-96fc7b574bc1
+visualizations[t][3]
 
 # ╔═╡ 9e2c288a-47bb-4b43-9668-fdd5ac22f43e
-visualizations[t][4]
+#visualizations[t][4]
 
 # ╔═╡ 7d2c5850-0ae9-44ea-ac31-130bc248e2ce
-#visualizations[t][3]
+#visualizations[t][5]
 
 # ╔═╡ 4d57266e-0800-4f95-ac49-3a2ba791bcb4
 md"## Specific Diffusion Step"
@@ -374,6 +377,7 @@ plots = Plots.plot([Plots.heatmap(count, yticks=1:length(src_candidates), xticks
 # ╠═6831b137-faec-42fc-aea7-fbc70b663dbc
 # ╠═52f8f2b0-4a21-4a05-8f25-62175ba6de07
 # ╠═fc6982c4-c79d-4d1d-ad1a-3888943629bc
+# ╠═7f136b0d-2d39-48a4-89e6-96fc7b574bc1
 # ╠═9e2c288a-47bb-4b43-9668-fdd5ac22f43e
 # ╠═7d2c5850-0ae9-44ea-ac31-130bc248e2ce
 # ╟─4d57266e-0800-4f95-ac49-3a2ba791bcb4

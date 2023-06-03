@@ -1,30 +1,31 @@
 @kwdef struct Graph_init_diff_config <: Abstract_init_diff_config
     openmindednesses::Vector{Float64}
 end
+Graph_init_diff_config(n::Int64, openmindedness_distr::Distributions.UnivariateDistribution) = Graph_init_diff_config(rand(openmindedness_distr, n))
+
+function init_diffusion!(model::T, init_diff_config::Graph_init_diff_config; rng=Random.GLOBAL_RNG) where {T<:Abstract_model}
+    set_property!(get_voters(model), "openmindedness", init_diff_config.openmindednesses)
+end
 
 @kwdef struct Graph_diff_config <: Abstract_diff_config
     evolve_edges::Float64
     homophily::Float64
 end
 
-function init_diffusion!(model::T, init_diff_config::Graph_init_diff_config; rng=Random.GLOBAL_RNG) where T <: Abstract_model
-    set_property!(get_voters(model), "openmindedness", init_diff_config.openmindednesses)
-end
-
-function diffusion!(model::T, diffusion_config::Graph_diff_config; rng=Random.GLOBAL_RNG) where T <: Abstract_model
+function diffusion!(model::T, diffusion_config::Graph_diff_config; rng=Random.GLOBAL_RNG) where {T<:Abstract_model}
     voters = get_voters(model)
     actions = Vector{Action}()
     evolve_vertices = diffusion_config.evolve_edges
 
     sample_size = ceil(Int, evolve_vertices * length(voters))
     vertex_ids = StatsBase.sample(rng, 1:length(voters), sample_size, replace=true)
-    
+
     for id in vertex_ids
         neighbor = select_neighbor(voters[id], model; rng=rng)
         if neighbor === nothing
             continue
         end
-        
+
         append!(actions, step!(voters[id], neighbor, voter_diff_config.attract_proba, length(get_candidates(model)); rng=Random.GLOBAL_RNG))
     end
 

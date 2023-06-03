@@ -1,32 +1,33 @@
 @kwdef struct SP_init_diff_config <: Abstract_init_diff_config
     stubbornnesses::Vector{Float64}
 end
+SP_init_diff_config(n::Int64, stubbornness_distr::Distributions.UnivariateDistribution) = SP_init_diff_config(rand(stubbornness_distr, n))
 
 @kwdef struct SP_diff_config <: Abstract_diff_config
     evolve_vertices::Float64
     attract_proba::Float64
-	change_rate::Float64
-    normalize_shifts::Union{Nothing, Tuple{Bool, Float64, Float64}}
+    change_rate::Float64
+    normalize_shifts::Union{Nothing,Tuple{Bool,Float64,Float64}}
 end
 
-function init_diffusion!(model::T, init_diff_config::SP_init_diff_config; rng=Random.GLOBAL_RNG) where T <: Abstract_model
+function init_diffusion!(model::T, init_diff_config::SP_init_diff_config; rng=Random.GLOBAL_RNG) where {T<:Abstract_model}
     set_property!(get_voters(model), "stubbornness", init_diff_config.stubbornnesses)
 end
 
-function diffusion!(model::T, diffusion_config::SP_diff_config; rng=Random.GLOBAL_RNG) where T <: Abstract_model
+function diffusion!(model::T, diffusion_config::SP_diff_config; rng=Random.GLOBAL_RNG) where {T<:Abstract_model}
     voters = get_voters(model)
     actions = Vector{Action}()
     evolve_vertices = diffusion_config.evolve_vertices
 
     sample_size = ceil(Int, evolve_vertices * length(voters))
     vertex_ids = StatsBase.sample(rng, 1:length(voters), sample_size, replace=true)
-    
+
     for id in vertex_ids
         neighbor = select_neighbor(voters[id], model; rng=rng)
         if neighbor === nothing
             continue
         end
-        
+
         append!(actions, average_all!(voters[id], neighbor, diffusion_config.attract_proba, diffusion_config.change_rate, diffusion_config.normalize_shifts; rng=rng))
     end
 
@@ -36,10 +37,10 @@ end
 function average_all!(voter_1::Spearman_voter, voter_2::Spearman_voter, attract_proba, change_rate, normalize=nothing; rng=Random.GLOBAL_RNG)
     opinion_1 = get_opinion(voter_1)
     opinion_2 = get_opinion(voter_2)
-    
+
     shifts_1 = (opinion_2 - opinion_1) / 2
     shifts_2 = shifts_1 .* (-1.0)
-    
+
     method = "attract"
     if rand(rng) > attract_proba
         #repel
@@ -77,7 +78,7 @@ end
 function normalize_shift(shift::Float64, can_opinion::Float64, min_opin, max_opin)
     if shift == 0.0 || min_opin <= can_opinion || can_opinion <= max_opin
         return shift
-    end  
+    end
 
     return shift * (sign(shift) == 1.0 ? 2^(-can_opinion + max_opin) : 2^(can_opinion - min_opin))
 end

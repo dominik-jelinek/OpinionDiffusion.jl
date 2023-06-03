@@ -1,4 +1,4 @@
-function reduce_dims(voters::Vector{Abstract_voter}, dim_reduction_config::T) where T<:Abstract_dim_reduction_config
+function reduce_dims(voters::Vector{Abstract_voter}, dim_reduction_config::T) where {T<:Abstract_dim_reduction_config}
     opinions = reduce(hcat, get_opinion(voters))
 
     return reduce_dims(opinions, dim_reduction_config)
@@ -26,15 +26,15 @@ name(config::Tsne_dim_reduction_config) = "Tsne"
 
 function reduce_dims(sampled_opinions::Matrix{Float64}, dim_reduction_config::Tsne_dim_reduction_config)
     opinions = permutedims(sampled_opinions)
-    
+
     projection = TSne.tsne(
-                        opinions, 
-                        dim_reduction_config.out_dim, 
-                        dim_reduction_config.reduce_dims, 
-                        dim_reduction_config.max_iter, 
-                        dim_reduction_config.perplexity
-                    )
-    
+        opinions,
+        dim_reduction_config.out_dim,
+        dim_reduction_config.reduce_dims,
+        dim_reduction_config.max_iter,
+        dim_reduction_config.perplexity
+    )
+
     return permutedims(projection)
 end
 
@@ -53,7 +53,7 @@ end
 function unify_projections!(old_projections, new_projections, treshold=0.5)
     for i in axes(old_projections, 1)
         if count(x -> x == 0, sign.(new_projections[i, :]) + sign.(old_projections[i, :])) > treshold * size(old_projections, 2)
-            @views row = new_projections[i, :] 
+            @views row = new_projections[i, :]
             row .*= -1.0
         end
     end

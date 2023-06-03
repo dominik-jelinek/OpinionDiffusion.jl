@@ -2,10 +2,10 @@
 struct Kendall_voter <: Abstract_voter
    ID::Int64
 
-   opinion::Vector{Float64} #BO
+   opinion::Vector{Float64} #pKT
    vote::Vote # BO
 
-   properties::Dict{String, Any}
+   properties::Dict{String,Any}
 end
 
 @kwdef struct Kendall_voter_init_config <: Abstract_voter_init_config
@@ -25,15 +25,15 @@ function init_voters(election, voter_config::Kendall_voter_init_config)
    return voters
 end
 
-function get_vote(voter::Kendall_voter) :: Vote
+function get_vote(voter::Kendall_voter)::Vote
    return voter.vote
 end
 
 function get_pos(voter::Kendall_voter, can)
    pos = 0
    for bucket in get_vote(voter)
-      if can in bucket 
-         return pos + (length(bucket) + 1)/ 2
+      if can in bucket
+         return pos + (length(bucket) + 1) / 2
       end
 
       pos += length(bucket)
