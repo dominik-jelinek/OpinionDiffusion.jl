@@ -2,10 +2,9 @@ get_voters(model::T) where {T<:Abstract_model} = model.voters
 get_social_network(model::T) where {T<:Abstract_model} = model.social_network
 get_candidates(model::T) where {T<:Abstract_model} = model.candidates
 
-function init_model(election, candidates, model_config; rng=Random.GLOBAL_RNG)
+function init_model(election, candidates, model_config)
     throw(NotImplementedError("init_model"))
 end
-init_model(election, candidates, model_config, seed) = init_model(election, candidates, model_config; rng=Random.MersenneTwister(seed))
 
 function run_ensemble(
     ensemble_size,
@@ -17,7 +16,8 @@ function run_ensemble(
     model_configs::Vector{Abstract_model_config},
     init_diff_configs::Vector{Abstract_init_diff_config},
     diff_configs::Vector{Abstract_diff_config},
-    log=false)
+    log=false
+    )
 
     if length(model_configs) == ensemble_size
         mode = "model"
@@ -42,14 +42,10 @@ function run_ensemble(
     models = Vector{Any}(undef, ensemble_size)
     metrics = Vector{Any}(undef, ensemble_size)
     if length(model_configs) == 1
-        model_seed = rand(UInt32)
-        model_rng = MersenneTwister(model_seed)
-        models[1] = init_model(election, candidates, model_config; rng=model_rng)
+        models[1] = init_model(election, candidates, model_config)
     else
         @threads for (i, model_config) in enumerate(model_configs)
-            model_seed = rand(UInt32)
-            model_rng = MersenneTwister(model_seed)
-            models[i] = init_model(election, candidates, model_config; rng=model_rng)
+            models[i] = init_model(election, candidates, model_config)
             metrics[i] = init_metrics(model)
         end
     end
@@ -74,37 +70,45 @@ function run_ensemble(
 
 
     if length(diff_configs) == 1
-        diffusion_seed = rand(UInt32)
-        rng = MersenneTwister(diffusion_seed)
-        actions = run!(models[1], diff_configs[1], diffusions; metrics=metrics[1], (update_metrics!)=update_metrics!, rng=rng)
+        # deepcopy diffusion config for the same rng
+        actions = run!(models[1], deepcopy(diff_configs[1]), diffusions; metrics=metrics[1], (update_metrics!)=update_metrics!)
 
         if mode == "model" || mode == "init_diffusion"
             @threads for i in 2:ensemble_size
-                diffusion_seed = rand(UInt32)
-                rng = MersenneTwister(diffusion_seed)
-                actions = run!(models[i], diff_configs[1], diffusions; metrics=metrics[i], (update_metrics!)=update_metrics!, rng=rng)
+                actions = run!(models[i], deepcopy(diff_configs[1]), diffusions; metrics=metrics[i], (update_metrics!)=update_metrics!)
             end
         end
     else
+        for i in 2:ensemble_size
+            models[i] = deepcopy(models[1])
+            metrics[i] = deepcopy(metrics[1])
+        end
+
         @threads for (i, diff_config) in enumerate(diff_configs)
-            if i != 1
-                models[i] = deepcopy(models[1])
-                metrics[i] = deepcopy(metrics[1])
-            end
-            diffusion_seed = rand(UInt32)
-            rng = MersenneTwister(diffusion_seed)
-            actions = run!(models[i], diff_config, diffusions; metrics=metrics[i], (update_metrics!)=update_metrics!, rng=rng)
+            actions = run!(models[i], diff_config, diffusions; metrics=metrics[i], (update_metrics!)=update_metrics!)
         end
     end
 
     if log
-        save_ensemble(model_configs, init_diff_configs, diff_configs, metrics)
+        save_ensemble(election, model_configs, init_diff_configs, diff_configs, metrics)
     end
 
     return metrics
 end
 
-function run_ensemble_model(ensemble_size, diffusions, election, candidates, init_metrics, update_metrics!, model_config, init_diff_configs, diff_configs, log=false)
+function run_ensemble_model(
+    ensemble_size, 
+    diffusions, 
+    election, 
+    candidates, 
+    init_metrics, 
+    update_metrics!, 
+    model_config::Abstract_model_config, 
+    init_diff_config,
+    diff_configs, 
+    log=false
+    )
+    
     ens_metrics = Vector{Any}(undef, ensemble_size)
 
     @threads for i in 1:ensemble_size
@@ -113,7 +117,7 @@ function run_ensemble_model(ensemble_size, diffusions, election, candidates, ini
         model = init_model(election, candidates, model_config; rng=model_rng)
         metrics = init_metrics(model)
 
-        init_diffusion!(model, init_diff_configs; rng=model_rng)
+        init_diffusion!(model, init_diff_config; rng=model_rng)
 
         diffusion_seed = rand(UInt32)
         rng = MersenneTwister(diffusion_seed)

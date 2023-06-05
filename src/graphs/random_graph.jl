@@ -1,8 +1,10 @@
 @kwdef struct random_graph_config <: Abstract_graph_init_config
+    rng::Random.MersenneTwister
     average_degree::Float64
 end
 
-function init_graph(voters::Vector{T}, graph_init_config::random_graph_config; rng=Random.GLOBAL_RNG) where {T<:Abstract_voter}
+function init_graph(voters::Vector{T}, graph_init_config::random_graph_config) where {T<:Abstract_voter}
+    rng = graph_init_config.rng
     return random_graph(voters, graph_init_config.average_degree; rng=rng)
 end
 

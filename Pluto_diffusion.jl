@@ -234,6 +234,7 @@ md"""Select graph generation method: $(@bind graph_type Select(["DEG", "Barabasi
 # ╔═╡ 7e0d083d-2de1-4a4c-8d19-7dea4f95152a
 if graph_type == "DEG"
 	graph_init_config = DEG_graph_config(
+		rng=Random.MersenneTwister(rand(UInt32)),
 		target_degrees=target_degrees,
         target_cc=0.3,
         homophily=homophily,
@@ -241,6 +242,7 @@ if graph_type == "DEG"
 	)
 else# graph_type == "BA"
 	graph_init_config = BA_graph_config(
+		rng=Random.MersenneTwister(rand(UInt32)),
 		m=10, 
 		homophily=homophily
 	)
@@ -291,13 +293,10 @@ md"""
 ---
 """
 
-# ╔═╡ fa47c89c-784f-4552-9e34-22e499a0231f
-model_seed = rand(UInt32)
-
 # ╔═╡ 93cb669f-6743-4b50-80de-c8594ea20497
 if cb_model && logging
 	if model_source == "new_model"
-		model = init_model(election, candidates, model_config, model_seed)
+		model = init_model(election, candidates, model_config)
 		logger = Logger(model)
 		
 	else # restart and create new experiment
@@ -305,7 +304,7 @@ if cb_model && logging
 	end
 elseif cb_model && !logging
 	if model_source == "new_model"
-		model = init_model(election, candidates, model_config, model_seed)
+		model = init_model(election, candidates, model_config)
 		
 	else # restart
 		model = load_log(model_dir_path)
@@ -343,6 +342,7 @@ attract_proba = 1.0
 
 # ╔═╡ e7f02f43-f8d5-4b7d-b097-4cbe7c7541a7
 graph_diffusion = Graph_diff_config(
+	rng=Random.MersenneTwister(rand(UInt32)),
 	evolve_edges=0.0,
 	homophily = homophily
 )
@@ -362,7 +362,7 @@ if voter_type == "Spearman voter"
 	init_voter_diffusions = [SP_init_diff_config(init_sample_size, Distributions.Normal(0.5, 0.1)) for _ in 1:ensemble_size]
 	
 	voter_diffusion = SP_diff_config(
-		seed=rand(UInt32),
+		rng=Random.MersenneTwister(rand(UInt32)),
 		evolve_vertices=1.0,
 		attract_proba = attract_proba,
 		change_rate = 0.05,
@@ -373,6 +373,7 @@ else #Kendall voter
 	init_voter_diffusions = [KT_init_diff_config(init_sample_size, Distributions.Normal(0.5, 0.1)) for _ in 1:ensemble_size]
 	
 	voter_diffusion= KT_diff_config(
+		rng=Random.MersenneTwister(rand(UInt32)),
 		evolve_vertices=1.0,
 		attract_proba = attract_proba
 	)
@@ -1015,7 +1016,6 @@ end
 # ╟─72450aaf-c6c4-458e-9555-39c31345116b
 # ╟─8e0750a9-2b83-4652-805b-dc1be2484161
 # ╟─1937642e-7f63-4ffa-b01f-22208a716dac
-# ╠═fa47c89c-784f-4552-9e34-22e499a0231f
 # ╠═93cb669f-6743-4b50-80de-c8594ea20497
 # ╟─2c837f03-3329-4ab3-ad31-b0fe79df6bb7
 # ╠═2d564bf0-2584-4da3-9890-40b56b023915

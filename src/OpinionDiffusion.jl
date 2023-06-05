@@ -96,6 +96,7 @@ abstract type Abstract_init_diff_config <: Config end
 abstract type Abstract_clustering_config <: Config end
 abstract type Abstract_dim_reduction_config <: Config end
 
+abstract type Abstract_model_config <: Config end
 abstract type Abstract_voter end
 abstract type Abstract_model end
 

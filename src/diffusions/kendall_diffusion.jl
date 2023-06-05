@@ -4,18 +4,20 @@ end
 KT_init_diff_config(n::Int64, openmindedness_distr::Distributions.UnivariateDistribution) = KT_init_diff_config(rand(openmindedness_distr, n))
 
 @kwdef struct KT_diff_config <: Abstract_diff_config
+   rng::Random.MersenneTwister
    attract_proba::Float64
    evolve_vertices::Float64
 end
 
-function init_diffusion!(model::T, init_diff_config::KT_init_diff_config; rng=Random.GLOBAL_RNG) where {T<:Abstract_model}
+function init_diffusion!(model::T, init_diff_config::KT_init_diff_config) where {T<:Abstract_model}
    set_property!(get_voters(model), "stubbornnesses", init_diff_config.stubbornnesses)
 end
 
-function diffusion!(model::T, diffusion_config::KT_diff_config; rng=Random.GLOBAL_RNG) where {T<:Abstract_model}
+function diffusion!(model::T, diffusion_config::KT_diff_config) where {T<:Abstract_model}
    voters = get_voters(model)
    actions = Vector{Action}()
    evolve_vertices = diffusion_config.evolve_vertices
+   rng = diffusion_config.rng
 
    sample_size = ceil(Int, evolve_vertices * length(voters))
    vertex_ids = StatsBase.sample(rng, 1:length(voters), sample_size, replace=true)

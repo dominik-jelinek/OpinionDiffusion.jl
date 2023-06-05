@@ -1,10 +1,16 @@
 @kwdef struct BA_graph_config <: Abstract_graph_init_config
+    rng::Random.MersenneTwister
     m::Integer
     homophily::Real
 end
 
-function init_graph(voters, graph_init_config::BA_graph_config; rng=Random.GLOBAL_RNG)
-    return barabasi_albert_graph(voters, graph_init_config.m; homophily=graph_init_config.homophily, rng=rng)
+function BA_graph_config(m::Integer, homophily::Real)
+    rng = Random.MersenneTwister(rand(UInt32))
+    return BA_graph_config(rng, m, homophily)
+end
+
+function init_graph(voters, graph_init_config::BA_graph_config;)
+    return barabasi_albert_graph(voters, graph_init_config.m; homophily=graph_init_config.homophily, rng=graph_init_config.rng)
 end
 
 function barabasi_albert_graph(voters::Vector{T}, m::Integer; homophily=0.0, rng=Random.GLOBAL_RNG) where {T<:Abstract_voter}
