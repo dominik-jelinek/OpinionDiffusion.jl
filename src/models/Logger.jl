@@ -11,7 +11,7 @@ function Logger(model::Abstract_model, model_name="model", exp_name="experiment"
     mkpath(model_dir)
     exp_dir = "$(model_dir)/$(exp_name)_" * Dates.format(now(), "yyyy-mm-dd_HH-MM-SS")
     mkpath(exp_dir)
-    
+
     println("Saving log")
     @time save_log(model, model_dir)
     save_log(model, exp_dir, 0)
@@ -23,9 +23,9 @@ end
 function load_model(model_dir::String, exp_name="experiment")
     exp_dir = "$(model_dir)/$(exp_name)_" * Dates.format(now(), "yyyy-mm-dd_HH-MM-SS")
     mkpath(exp_dir)
-    
+
     model = load_log(model_dir)
-    save_log(model, exp_dir, 0)    
+    save_log(model, exp_dir, 0)
     diff_counter = [0]
 
     return model, Logger(model_dir, exp_dir, diff_counter)
@@ -54,7 +54,7 @@ function load_model(model_dir::String, exp_dir::String, idx::Int64, overwrite::B
         exp_dir = "$(model_dir)/$(exp_name)_" * Dates.format(now(), "yyyy-mm-dd_HH-MM-SS")
         mkpath(exp_dir)
 
-        save_log(model, exp_dir, 0)    
+        save_log(model, exp_dir, 0)
         diff_counter = [0]
     end
 
@@ -70,11 +70,11 @@ function load_log(logger::Logger)
 end
 
 function save_ensemble(model_dir::String, diffusion_config, gathered_metrics)
-	jldsave("$(model_dir)/ensemble_$(Dates.format(now(), "yyyy-mm-dd_HH-MM-SS")).jld2"; diffusion_config, gathered_metrics)
+    jldsave("$(model_dir)/ensemble_$(Dates.format(now(), "yyyy-mm-dd_HH-MM-SS")).jld2"; diffusion_config, gathered_metrics)
 end
 
 function save_ensemble(model_seed, model_config, init_diff_configs, diff_seed, diffusion_config, gathered_metrics)
-	jldsave("logs/ensemble_model_$(Dates.format(now(), "yyyy-mm-dd_HH-MM-SS")).jld2"; model_seed,  model_config, init_diff_configs, diff_seed, diffusion_config, gathered_metrics)
+    jldsave("logs/ensemble_model_$(Dates.format(now(), "yyyy-mm-dd_HH-MM-SS")).jld2"; model_seed, model_config, init_diff_configs, diff_seed, diffusion_config, gathered_metrics)
 end
 
 function last_log_idx(exp_dir)

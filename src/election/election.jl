@@ -5,32 +5,32 @@ struct Candidate
 end
 
 struct Election
-    parties::Vector{String}
+    party_names::Vector{String}
     candidates::Vector{Candidate}
     votes::Vector{Vote}
 end
 
 function parse_data(path_data::String)
     ext = Symbol(lowercase(splitext(path_data)[2][2:end]))
- 
+
     return parse_data(path_data, Val(ext))
 end
- 
+
 parse_data(path_data::String, ext)::Election = throw(ArgumentError("Unsupported format of input data $ext. Supported: [toc, soi]"))
 
 @kwdef struct Selection_config <: Config
-    remove_candidates::Vector{Int64},
+    remove_candidates::Vector{Int64}
 
-    rng::Random.MersenneTwister,
-	sample_size::Int64
+    rng::Random.MersenneTwister
+    sample_size::Int64
 end
 
 function select(election::Election, selection_config::Selection_config)::Election
-    filtered_election, candidates = remove_candidates(election.votes, election.candidates, election.remove_candidates)
-    
-    election = filtered_election[StatsBase.sample(selection_config.rng, 1:length(filtered_election), selection_config.sample_size, replace=false)]
-    
-    return Election(election.party_names, candidates, election)
+    filtered_votes, candidates = remove_candidates(election.votes, election.candidates, selection_config.remove_candidates)
+
+    votes = filtered_votes[StatsBase.sample(selection_config.rng, 1:length(filtered_votes), selection_config.sample_size, replace=false)]
+
+    return Election(election.party_names, candidates, votes)
 end
 
 function remove_candidates(election, candidates, remove_candidates)

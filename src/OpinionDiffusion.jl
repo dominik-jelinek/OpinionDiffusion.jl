@@ -43,15 +43,21 @@ using JLD2
 # EXPORTS
 # ______________________________________________________________________________
 
+export parse_data
+export Selection_config 
+export select
+
 # Voters
-export get_opinion, get_vote, get_votes, get_distance, get_ID
+export init_voters, get_opinion, get_vote, get_votes, get_distance, get_ID
 export Spearman_voter_init_config, Spearman_voter_diff_config
 export Kendall_voter_init_config, Kendall_voter_diff_config
 
 # Graphs
+export init_graph
 export BA_graph_config, DEG_graph_config
 
 # Model
+export General_model
 export get_voters, get_social_network, get_candidates
 export init_model
 export General_model_config, General_graph_diff_config, Diffusion_config
@@ -78,7 +84,6 @@ export get_edge_distances, draw_degree_distr, draw_edge_distances
 export draw_range!, draw_voting_res
 
 # Utils
-export parse_data
 export to_string
 export test_KT
 
@@ -131,10 +136,12 @@ include("models/Abstract_model.jl")
 include("models/General_model.jl")
 include("models/Logger.jl")
 
-include("evaluation/analysis.jl")
+include("evaluation/visualizations.jl")
 include("evaluation/metrics.jl")
 include("evaluation/voting_rules.jl")
 include("evaluation/dim_reduction.jl")
 include("evaluation/clustering.jl")
+
+include("utils.jl")
 
 end

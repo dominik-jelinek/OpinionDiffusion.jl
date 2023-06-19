@@ -16,18 +16,18 @@ Parses input file and initializes DB from it
 1,2,4,7,9,5,3,1,{6,8}
 ```
 """
-function parse_data(path_data::String, Val(:toc))::Election
+function parse_data(path_data::String, ::Val{:toc})::Election
    f = open(path_data, "r")
    lines = readlines(f)
    close(f)
 
-   parties, candidates = parse_candidates(lines)
+   parties, candidates = parse_candidates_toc(lines)
    votes = parse_votes_toc(lines, length(candidates))
 
-   return Election(parties, candidates, election)
+   return Election(parties, candidates, votes)
 end
 
-function parse_candidates(lines)
+function parse_candidates_toc(lines)
    can_count = parse(Int, lines[1])
 
    candidates = Vector{Candidate}(undef, can_count)

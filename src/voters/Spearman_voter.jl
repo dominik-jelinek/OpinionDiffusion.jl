@@ -23,10 +23,10 @@ function get_max_distance(can_count, weights)
     return get_distance(spearman_encoding(a, weights), spearman_encoding(b, weights))
 end
 
-function init_voters(election, voter_config::Spearman_voter_init_config)
+function init_voters(votes::Vector{Vote}, voter_config::Spearman_voter_init_config)
 
-    voters = Vector{Spearman_voter}(undef, length(election))
-    for (i, vote) in enumerate(election)
+    voters = Vector{Spearman_voter}(undef, length(votes))
+    for (i, vote) in enumerate(votes)
         opinion = spearman_encoding(vote, voter_config.weights)
 
         properties = Dict()

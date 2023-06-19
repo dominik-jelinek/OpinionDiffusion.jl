@@ -3,7 +3,7 @@
     target_degrees::Vector{Int64}
     target_cc::Float64
     homophily::Float64
-    openmindednesses::Vector{Float64}
+    #openmindednesses::Vector{Float64}
 end
 
 function DEG_graph_config(n::Int64, target_deg_distr::Distributions.UnivariateDistribution, target_cc::Float64, homophily::Float64, openmindedness_distr::Distributions.UnivariateDistribution)
@@ -14,7 +14,7 @@ function DEG_graph_config(n::Int64, target_deg_distr::Distributions.UnivariateDi
 end
 
 function init_graph(voters, graph_init_config::DEG_graph_config)
-    set_property!(voters, "openmindedness", graph_init_config.openmindednesses)
+    #set_property!(voters, "openmindedness", graph_init_config.openmindednesses)
     rng = graph_init_config.rng
     
     return get_DEG(

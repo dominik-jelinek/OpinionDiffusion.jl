@@ -12,10 +12,10 @@ end
    can_count::Int64
 end
 
-function init_voters(election, voter_config::Kendall_voter_init_config)
+function init_voters(votes::Vector{Vote}, voter_config::Kendall_voter_init_config)
 
-   voters = Vector{Kendall_voter}(undef, length(election))
-   for (i, vote) in enumerate(election)
+   voters = Vector{Kendall_voter}(undef, length(votes))
+   for (i, vote) in enumerate(votes)
       opinion = kendall_encoding(vote, voter_config.can_count)
 
       properties = Dict()
