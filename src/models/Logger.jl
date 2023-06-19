@@ -77,3 +77,14 @@ function save_ensemble(model_seed, model_config, init_diff_configs, diff_seed, d
 	jldsave("logs/ensemble_model_$(Dates.format(now(), "yyyy-mm-dd_HH-MM-SS")).jld2"; model_seed,  model_config, init_diff_configs, diff_seed, diffusion_config, gathered_metrics)
 end
 
+function last_log_idx(exp_dir)
+    idx = -1
+    for filename in readdir(exp_dir)
+        val = parse(Int64, chop(split(filename, "_")[end], tail=5))
+        if val > idx
+            idx = val
+        end
+    end
+
+    return idx
+end

@@ -32,6 +32,9 @@ using OpinionDiffusion, PlutoUI
 # ╔═╡ 419d618c-1ce4-4702-b2b0-9c3d160c245e
 using GraphMakie, CairoMakie, Colors
 
+# ╔═╡ 29b4d650-9e90-451a-b553-80d721b37c13
+using JLD2
+
 # ╔═╡ 957eb9d7-12d6-4a22-8338-4e8535b54c71
 md"# Opinion diffusion"
 
@@ -334,6 +337,24 @@ end
 # ╔═╡ 09540198-bead-4df1-99bd-6e7848e7d215
 md"## Configure diffusion"
 
+# ╔═╡ 3b310c94-2125-4e60-bdec-ffa7673fd5af
+rng = Random.MersenneTwister(rand(UInt32))
+
+# ╔═╡ 4ec19946-3ac0-4fc4-8bd1-7cb50a4f42d4
+rand(rng), rand(rng) 
+
+# ╔═╡ 5e637de5-3c0d-4e99-8a56-0c3dd39d53c3
+save("test.jld2", "rng", rng)
+
+# ╔═╡ 25b71670-e966-4944-8c47-48f9a3f8ab73
+rngg = load("test.jld2", "rng")
+
+# ╔═╡ 921e3f48-c12e-4e83-8042-170fb4dee72c
+Random.seed!(rngg, rngg.seed)
+
+# ╔═╡ 70ecec9e-16c3-41fb-b093-7ad28d9e9568
+rand(rngg), rand(rngg) 
+
 # ╔═╡ 6f40b5c4-1252-472c-8932-11a2ee0935d2
 md"Setup diffusion parameters and then check execution barrier for confirmation."
 
@@ -353,13 +374,12 @@ graph_diffusion = Graph_diff_config(
 # ╔═╡ d877c5d0-89af-48b9-bcd0-c1602d58339f
 diffusions = 10
 
-# ╔═╡ 27a60724-5d19-419f-b208-ffa0c78e2505
-ensemble_size = 3
+# ╔═╡ 51d392f8-92e0-4d21-b16b-44d75f93e505
+ensemble_size = 5
 
 # ╔═╡ e3f2c391-4fc3-47b5-bad2-5abc8f89a345
 if voter_type == "Spearman voter"
-	init_voter_diffusion = SP_init_diff_config(init_sample_size, Distributions.Normal(0.5, 0.1))
-	init_voter_diffusions = [SP_init_diff_config(init_sample_size, Distributions.Normal(0.5, 0.1)) for _ in 1:ensemble_size]
+	init_voter_diffusion = [SP_init_diff_config(init_sample_size, Distributions.Normal(0.5, 0.1)) for _ in 1:ensemble_size]
 	
 	voter_diffusion = SP_diff_config(
 		rng=Random.MersenneTwister(rand(UInt32)),
@@ -367,7 +387,7 @@ if voter_type == "Spearman voter"
 		attract_proba = attract_proba,
 		change_rate = 0.05,
 		normalize_shifts = (true, weights[1], weights[end])
-	)	
+	)
 else #Kendall voter
 	init_voter_diffusion = KT_init_diff_config(init_sample_size, Distributions.Normal(0.5, 0.1))
 	init_voter_diffusions = [KT_init_diff_config(init_sample_size, Distributions.Normal(0.5, 0.1)) for _ in 1:ensemble_size]
@@ -385,6 +405,9 @@ init_diff_configs = [init_voter_diffusion]
 # ╔═╡ f43b3b4c-9075-414b-9694-83e7c841605f
 diff_configs = [voter_diffusion, graph_diffusion]
 
+# ╔═╡ 4a827a0c-b360-4b85-ac21-7e18e7e6af7d
+@bind ensemble_mode Select(["init_model", "init_diff", "diff"])
+
 # ╔═╡ 63bbb84b-50ad-4c69-affe-397faadc7ed9
 checkpoint = 1 #not checkpointing ensemble runs
 
@@ -392,9 +415,6 @@ checkpoint = 1 #not checkpointing ensemble runs
 md"""
 Restart: $(@bind restart CheckBox())
 """
-
-# ╔═╡ 87c573c1-69a4-4a61-bbb8-acb716f8ec6d
-ensemble_model = true
 
 # ╔═╡ de772425-25de-4228-b12e-d567b8ceb20f
 md"## Run diffusion"
@@ -599,6 +619,9 @@ begin
 	p
 end
 
+# ╔═╡ 545103ec-9f9b-4b24-a993-818a20f18f49
+
+
 # ╔═╡ dba61064-49ec-4ed7-b8f0-429751318282
 function variable_model(ensemble_size, election, can_count, init_metrics, update_metrics, model_configs, init_diffusion_configs, diffusion_configs)
 
@@ -680,13 +703,26 @@ end
 if cb_run
 	if ensemble_size == 1
 		init_diffusion!(model, init_diff_configs)
-		result = run!(model, diff_configs, diffusions, logger=logger, checkpoint=checkpoint, metrics=metrics, update_metrics! =update_metrics!)
-		
+		actions = run!(model, diff_configs, diffusions, logger=logger, checkpoint=checkpoint, metrics=metrics, update_metrics! =update_metrics!)
+
 	elseif !ensemble_model
 		result = run_ensemble(model, ensemble_size, diffusions, metrics, update_metrics!, diff_configs, logger)
 		gathered_metrics = gather_metrics([diffusion["metrics"] for diffusion in result])
 		
 	else
+		result = run_ensemble(
+		    ensemble_size,
+			ensemble_mode,
+		    diffusions,
+		    election,
+		    candidates,
+		    init_metrics,
+		    update_metrics!,
+		    model_configs,
+		    init_diff_configs,
+		    diff_configs,
+		    true
+		)
 		result = run_ensemble_model(ensemble_size, diffusions, election, candidates, init_metrics, update_metrics!, model_config, init_diff_configs, diff_configs, true)
 		gathered_metrics = gather_metrics([diffusion["metrics"] for diffusion in result])
 	end
@@ -701,9 +737,6 @@ result
 # ╔═╡ e518a2db-a02e-4cfb-8587-f892fd9cbc85
 gathered_metrics
 
-# ╔═╡ 74e5ed1f-bbdf-45f4-ad1f-4122d30d2c0e
-result
-
 # ╔═╡ 006bf740-9fc1-41dc-982f-dda7c05ec977
 begin
 	dict = Dict()
@@ -712,9 +745,6 @@ begin
 		push!(dict["election_matrix"], abs.(gathered_metrics["election_matrix"][i] - gathered_metrics["election_matrix"][i - 1]))
 	end
 end
-
-# ╔═╡ 150b844e-97e0-447d-9d17-1ec5da57ca1b
-result
 
 # ╔═╡ a4f875d7-685e-43bb-a806-be6ae6547ffb
 extremes = extreme_runs(result, "plurality_votings", 4)
@@ -1025,6 +1055,13 @@ end
 # ╠═988a9fcb-ad5f-4be6-b5f5-c3b05587a8d4
 # ╠═4f7384d8-4c16-4a75-93ca-755215d74643
 # ╟─09540198-bead-4df1-99bd-6e7848e7d215
+# ╠═29b4d650-9e90-451a-b553-80d721b37c13
+# ╠═3b310c94-2125-4e60-bdec-ffa7673fd5af
+# ╠═4ec19946-3ac0-4fc4-8bd1-7cb50a4f42d4
+# ╠═5e637de5-3c0d-4e99-8a56-0c3dd39d53c3
+# ╠═25b71670-e966-4944-8c47-48f9a3f8ab73
+# ╠═921e3f48-c12e-4e83-8042-170fb4dee72c
+# ╠═70ecec9e-16c3-41fb-b093-7ad28d9e9568
 # ╟─6f40b5c4-1252-472c-8932-11a2ee0935d2
 # ╠═b6cd7a31-80b9-49eb-8004-34de5e6ad910
 # ╠═e3f2c391-4fc3-47b5-bad2-5abc8f89a345
@@ -1033,10 +1070,10 @@ end
 # ╠═f43b3b4c-9075-414b-9694-83e7c841605f
 # ╠═f7d39302-5a36-4a2c-a1da-099e372c2a13
 # ╠═d877c5d0-89af-48b9-bcd0-c1602d58339f
-# ╠═27a60724-5d19-419f-b208-ffa0c78e2505
+# ╠═51d392f8-92e0-4d21-b16b-44d75f93e505
+# ╠═4a827a0c-b360-4b85-ac21-7e18e7e6af7d
 # ╠═63bbb84b-50ad-4c69-affe-397faadc7ed9
 # ╟─971693bb-1a08-4266-a93b-c3e9d60d8bcd
-# ╠═87c573c1-69a4-4a61-bbb8-acb716f8ec6d
 # ╟─de772425-25de-4228-b12e-d567b8ceb20f
 # ╟─20819900-1129-4ff1-b97e-d079ffce8ab8
 # ╠═f6b4ba47-f9d2-42f0-9c86-e9810be7b810
@@ -1055,9 +1092,7 @@ end
 # ╠═e518a2db-a02e-4cfb-8587-f892fd9cbc85
 # ╠═09d34d24-0fb0-4cc6-8ab6-c0d55b3346d0
 # ╠═840c2562-c444-4422-9cf8-e82429163627
-# ╠═74e5ed1f-bbdf-45f4-ad1f-4122d30d2c0e
 # ╠═006bf740-9fc1-41dc-982f-dda7c05ec977
-# ╠═150b844e-97e0-447d-9d17-1ec5da57ca1b
 # ╟─a210fc8f-5d85-464d-8b0b-3fba19579a56
 # ╠═a4f875d7-685e-43bb-a806-be6ae6547ffb
 # ╠═3eb2368f-5cdf-4f43-84fa-478865936371
@@ -1089,6 +1124,7 @@ end
 # ╟─f539cf71-34ae-4e22-a7ac-d259b55cb2d3
 # ╠═d9fd7b27-7bd1-4e4d-a1b5-f4f173a86c2d
 # ╠═1efa4e48-4a08-4aca-a255-8acd559c4bc8
+# ╠═545103ec-9f9b-4b24-a993-818a20f18f49
 # ╠═7f898ae7-8613-43a6-95e1-f61748cec34a
 # ╠═dba61064-49ec-4ed7-b8f0-429751318282
 # ╠═9b494231-4d23-4573-b686-e83119bafe88

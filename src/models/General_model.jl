@@ -1,20 +1,56 @@
 struct General_model <: Abstract_model
     voters::Vector{Abstract_voter}
+    
     social_network::AbstractGraph
+
+    parties::Vector{String}
     candidates::Vector{Candidate}
 end
 
-@kwdef struct General_model_config <: Abstract_model_config
-    voter_init_config::Abstract_voter_init_config
-    graph_init_config::Abstract_graph_init_config
+function eval(model)
+	g = get_social_network(model)
+    voters = get_voters(model)
+	candidates = get_candidates(model)
+	can_count = length(candidates)
+	
+	histogram = Graphs.degree_histogram(g)
+    keyss = collect(keys(histogram))
+    
+	votes = get_votes(voters)
+
+	metrics = Dict(
+		"min_degrees" => minimum(keyss),
+        "avg_degrees" => Graphs.ne(g) * 2 / Graphs.nv(g),
+        "max_degrees" => maximum(keyss),
+        "avg_edge_dist" => OpinionDiffusion.StatsBase.mean(OpinionDiffusion.get_edge_distances(g, voters)),
+        "clustering_coeff" => Graphs.global_clustering_coefficient(g),
+        #"diameter" => Graphs.diameter(g),
+        
+        "avg_vote_length" => OpinionDiffusion.StatsBase.mean([length(vote) for vote in votes]),
+        "unique_votes" => length(unique(votes)),
+        
+        "plurality_votings" => plurality_voting(votes, can_count, true),
+        "borda_votings" => borda_voting(votes, can_count, true),
+        #"copeland_votings" => copeland_voting(votes, can_count),
+        "positions" => get_positions(voters, can_count)
+	)
+	
+	return metrics
 end
 
-function init_model(election, candidates, model_config::General_model_config)
-    #println("Initializing voters:")
-    voters = init_voters(election, model_config.voter_init_config)
+function add_metrics(accumulator, metrics::Dict)
+	if accumulator === nothing
+        accumulator = Dict()
 
-    #println("Initializing graph:")
-    social_network = init_graph(voters, model_config.graph_init_config)
+        for (key, value) in metrics
+            accumulator[key] = [value]
+        end
+        return metrics
+    end
 
-    return General_model(voters, social_network, candidates)
+    for (key, value) in metrics
+        push!(accumulator[key], value)
+    end
+
+    return accumulator
 end

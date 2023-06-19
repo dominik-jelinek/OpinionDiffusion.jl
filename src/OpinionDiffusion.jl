@@ -109,8 +109,9 @@ Vote = Vector{Bucket}
     new::Abstract_voter
 end
 
-include("parsing.jl")
-include("utils.jl")
+include("election/election.jl")
+include("election/toc.jl")
+include("election/soi.jl")
 
 include("voters/Abstract_voter.jl")
 include("voters/Kendall_voter.jl")
@@ -130,9 +131,10 @@ include("models/Abstract_model.jl")
 include("models/General_model.jl")
 include("models/Logger.jl")
 
-include("visualizations/visualization.jl")
-include("visualizations/voting_rules.jl")
-include("visualizations/dim_reduction.jl")
-include("visualizations/clustering.jl")
+include("evaluation/analysis.jl")
+include("evaluation/metrics.jl")
+include("evaluation/voting_rules.jl")
+include("evaluation/dim_reduction.jl")
+include("evaluation/clustering.jl")
 
 end

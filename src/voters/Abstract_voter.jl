@@ -28,14 +28,14 @@ function set_property!(voters::Vector{T}, property, values::Vector{<:Any}) where
     end
 end
 
-function get_vote(voter::Abstract_voter; kwargs...)::Vote
+function get_vote(voter::Abstract_voter)::Vote
     throw(NotImplementedError("get_vote"))
 end
 
-function get_votes(voters::Vector{T}; kwargs...) where {T<:Abstract_voter}
+function get_votes(voters::Vector{T}) where {T<:Abstract_voter}
     votes = Vector{Vote}(undef, length(voters))
     for (i, voter) in enumerate(voters)
-        votes[i] = get_vote(voter; kwargs...)
+        votes[i] = get_vote(voter)
     end
 
     return votes

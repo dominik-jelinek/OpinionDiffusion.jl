@@ -1,9 +1,3 @@
-struct Candidate
-   ID::Int64
-   name::String
-   party::Int64
-end
-
 """
 Parses input file and initializes DB from it
 ## Input data:
@@ -13,31 +7,24 @@ Parses input file and initializes DB from it
 2,Joan Burton Lab 
 ...
 9,Sheila Terry F.G. 
-29988,29988,10335
-621,5,3,7
-555,5,3
-452,4
+29988,29988,10230
+621,5,3,7,{1,2,4,6,8,9}
+555,5,3,{1,2,4,6,7,8,9}
+452,4,{1,2,3,5,6,7,8,9}
 ...
-1,9,2,7,3,5,4,6,8,1
-1,4,9,2,1,6,3
+1,5,7,2,9,6,3,4,8,1
+1,2,4,7,9,5,3,1,{6,8}
 ```
 """
-
-function parse_data(input_filename::String)
-   f = open("data/$input_filename", "r")
+function parse_data(path_data::String, Val(:toc))::Election
+   f = open(path_data, "r")
    lines = readlines(f)
    close(f)
 
    parties, candidates = parse_candidates(lines)
-   if split(input_filename, '.')[end] == "toc"
-      election = parse_votes(lines, length(candidates))
-   elseif split(input_filename, '.')[end] == "soi"
-      election = parse_votes2(lines, length(candidates))
-   else
-      throw(ArgumentError("Unsupported format of input data. Supported: [toc, soi]"))
-   end
+   votes = parse_votes_toc(lines, length(candidates))
 
-   return parties, candidates, election
+   return Election(parties, candidates, election)
 end
 
 function parse_candidates(lines)
@@ -61,7 +48,7 @@ function parse_candidates(lines)
    return parties, candidates
 end
 
-function parse_votes(lines, can_count)::Vector{Vote}
+function parse_votes_toc(lines, can_count)::Vector{Vote}
    voters_count = parse(Int, split(lines[2+can_count], ",")[1])
    voters_uniq = parse(Int, split(lines[2+can_count], ",")[3])
 
@@ -98,32 +85,4 @@ function parse_votes(lines, can_count)::Vector{Vote}
    end
 
    return election
-end
-
-#soi format outdated
-function parse_votes2(lines, can_count)
-   voters_count = parse(Int, split(lines[2+can_count], ",")[1])
-   voters_uniq = parse(Int, split(lines[2+can_count], ",")[3])
-
-   database = zeros(Int, can_count, voters_count)
-   counter = 1
-   for i in 1:voters_uniq
-      line = lines[i+can_count+2]
-      voteStr = split(line, ",")
-      buffer = zeros(Int, can_count)
-
-      #first column contains number of matching votes
-      matchingVotes = parse(Int, voteStr[1])
-
-      for j in 2:length(voteStr)
-         buffer[j-1] = parse(Int, voteStr[j])
-      end
-
-      for j in 1:matchingVotes
-         database[1:can_count, counter] .= buffer
-         counter += 1
-      end
-   end
-
-   return database
 end

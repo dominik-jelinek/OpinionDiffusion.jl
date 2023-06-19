@@ -8,6 +8,7 @@ end
 
 function run_ensemble(
     ensemble_size,
+    ensemble_mode,
     diffusions,
     election,
     candidates,
@@ -19,41 +20,23 @@ function run_ensemble(
     log=false
     )
 
-    if length(model_configs) == ensemble_size
-        mode = "model"
-        if length(init_diff_configs) != 1 || length(diff_configs) != 1
-            throw(ArgumentError("init_diff_configs and diff_configs must be of length 1"))
-        end
-    elseif length(init_diff_configs) == ensemble_size
-        mode = "init_diffusion"
-        if length(model_configs) != 1 || length(diff_configs) != 1
-            throw(ArgumentError("model_configs and diff_configs must be of length 1"))
-        end
-    elseif length(diff_configs) == ensemble_size
-        mode = "diffusion"
-        if length(model_configs) != 1 || length(init_diff_configs) != 1
-            throw(ArgumentError("model_configs and init_diff_configs must be of length 1"))
-        end
-    else
-        throw(ArgumentError("ensemble_size must be equal to the length of one of the following: model_configs, init_diff_configs, diff_configs"))
-        return
-    end
-
+    
     models = Vector{Any}(undef, ensemble_size)
     metrics = Vector{Any}(undef, ensemble_size)
     if length(model_configs) == 1
         models[1] = init_model(election, candidates, model_config)
+        metrics[1] = init_metrics(models[1])
     else
         @threads for (i, model_config) in enumerate(model_configs)
             models[i] = init_model(election, candidates, model_config)
-            metrics[i] = init_metrics(model)
+            metrics[i] = init_metrics(models[i])
         end
     end
 
     if length(init_diff_configs) == 1
         init_diffusion!(models[1], init_diff_configs[1])
 
-        if mode == "model"
+        if ensemble_mode == "model"
             @threads for i in 2:ensemble_size
                 init_diffusion!(models[i], init_diff_configs[1])
             end
@@ -73,7 +56,79 @@ function run_ensemble(
         # deepcopy diffusion config for the same rng
         actions = run!(models[1], deepcopy(diff_configs[1]), diffusions; metrics=metrics[1], (update_metrics!)=update_metrics!)
 
-        if mode == "model" || mode == "init_diffusion"
+        if ensemble_mode == "model" || ensemble_mode == "init_diffusion"
+            @threads for i in 2:ensemble_size
+                actions = run!(models[i], deepcopy(diff_configs[1]), diffusions; metrics=metrics[i], (update_metrics!)=update_metrics!)
+            end
+        end
+    else
+        for i in 2:ensemble_size
+            models[i] = deepcopy(models[1])
+            metrics[i] = deepcopy(metrics[1])
+        end
+
+        @threads for (i, diff_config) in enumerate(diff_configs)
+            actions = run!(models[i], diff_config, diffusions; metrics=metrics[i], (update_metrics!)=update_metrics!)
+        end
+    end
+
+    if log
+        save_ensemble(election, model_configs, init_diff_configs, diff_configs, metrics)
+    end
+
+    return metrics
+end
+
+function run_ensemble(
+    model,
+    ensemble_size,
+    diffusions,
+    init_metrics,
+    update_metrics!,
+    init_diff_configs::Vector{Abstract_init_diff_config},
+    diff_configs::Vector{Abstract_diff_config},
+    log=false
+    )
+
+    if length(init_diff_configs) == ensemble_size
+        mode = "init_diffusion"
+        if length(model_configs) != 1 || length(diff_configs) != 1
+            throw(ArgumentError("model_configs and diff_configs must be of length 1"))
+        end
+    elseif length(diff_configs) == ensemble_size
+        mode = "diffusion"
+        if length(model_configs) != 1 || length(init_diff_configs) != 1
+            throw(ArgumentError("model_configs and init_diff_configs must be of length 1"))
+        end
+    else
+        throw(ArgumentError("ensemble_size must be equal to the length of one of the following: model_configs, init_diff_configs, diff_configs"))
+        return
+    end
+
+    models = Vector{Any}(undef, ensemble_size)
+    metrics = Vector{Any}(undef, ensemble_size)
+    models[1] = model
+    metrics[1] = init_metrics(model)
+
+    if length(init_diff_configs) == 1
+        init_diffusion!(models[1], init_diff_configs[1])
+    else
+        @threads for (i, init_diff_config) in enumerate(init_diff_configs)
+            if i != 1
+                models[i] = deepcopy(models[1])
+                metrics[i] = deepcopy(metrics[1])
+            end
+
+            init_diffusion!(models[i], init_diff_config)
+        end
+    end
+
+
+    if length(diff_configs) == 1
+        # deepcopy diffusion config for the same rng
+        actions = run!(models[1], deepcopy(diff_configs[1]), diffusions; metrics=metrics[1], (update_metrics!)=update_metrics!)
+
+        if mode == "init_diffusion"
             @threads for i in 2:ensemble_size
                 actions = run!(models[i], deepcopy(diff_configs[1]), diffusions; metrics=metrics[i], (update_metrics!)=update_metrics!)
             end
@@ -133,31 +188,6 @@ function run_ensemble_model(
 
     if log
         save_ensemble(model_config, init_diff_configs, diff_configs, ens_metrics)
-    end
-
-    return ens_metrics
-end
-
-function run_ensemble(model::Abstract_model, ensemble_size, diffusions, init_metrics, update_metrics!, diff_configs, logger=nothing)
-    ens_metrics = Vector{Any}(undef, ensemble_size)
-
-    @threads for i in 1:ensemble_size
-        model_cp = deepcopy(model)
-        metrics = deepcopy(init_metrics)
-
-        diffusion_seed = rand(UInt32)
-        rng = MersenneTwister(diffusion_seed)
-
-        actions = run!(model_cp, diff_configs, diffusions; metrics=metrics, (update_metrics!)=update_metrics!, rng=rng)
-
-        frequent_votes = get_frequent_votes(get_votes(get_voters(model_cp)), 10)
-        ens_metrics[i] = Dict("diffusion_seed" => diffusion_seed,
-            "metrics" => metrics,
-            "frequent_votes" => frequent_votes)
-    end
-
-    if logger !== nothing
-        save_ensemble(logger.model_dir, diff_configs, ens_metrics)
     end
 
     return ens_metrics

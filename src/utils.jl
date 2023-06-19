@@ -28,18 +28,6 @@ end
 
 Base.showerror(io::IO, ie::NotImplementedError) = print(io, "Method $(ie.m) not implemented.")
 
-function last_log_idx(exp_dir)
-    idx = -1
-    for filename in readdir(exp_dir)
-        val = parse(Int64, chop(split(filename, "_")[end], tail=5))
-        if val > idx
-            idx = val
-        end
-    end
-
-    return idx
-end
-
 function get_random_vote(can_count)::Vote
     # assign candidates to random bins
     bins = rand(1:can_count, can_count)
@@ -64,53 +52,6 @@ function get_random_vote(can_count)::Vote
     end
 
     return vote
-end
-
-function filter_candidates(election, candidates, remove_candidates, can_count)
-    if length(remove_candidates) == 0
-        return election, candidates
-    end
-    # calculate candidate index offset dependant 
-    adjust = zeros(can_count)
-    for i in 1:length(remove_candidates)-1
-        adjust[remove_candidates[i]+1:remove_candidates[i+1]-1] += fill(i, remove_candidates[i+1] - remove_candidates[i] - 1)
-    end
-    adjust[remove_candidates[end]+1:end] += fill(length(remove_candidates), can_count - remove_candidates[end])
-
-    #copy election without the filtered out candidates
-    new_election = Vector{Vote}()
-    for vote in election
-        new_vote = Vote()
-        for bucket in vote
-            new_bucket = Bucket()
-
-            for can in bucket
-                if can ∉ remove_candidates
-                    push!(new_bucket, can - adjust[can])
-                end
-            end
-
-            if length(new_bucket) != 0
-                push!(new_vote, new_bucket)
-            end
-        end
-
-        # vote with one bucket ore less buckets contains no preferences
-        if length(new_vote) > 1
-            push!(new_election, new_vote)
-        end
-    end
-
-    new_candidates = Vector{OpinionDiffusion.Candidate}()
-    for (i, can) in enumerate(candidates)
-        if i ∉ remove_candidates
-            push!(new_candidates, OpinionDiffusion.Candidate(can.ID, can.name, can.party))
-        end
-    end
-
-    #candidates = deleteat!(copy(candidates), remove_candidates)
-
-    return new_election, new_candidates
 end
 
 function to_string(vote::Vote)
