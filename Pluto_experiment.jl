@@ -86,14 +86,11 @@ else
 	remove_candidates = []
 end
 
-# ╔═╡ 45ab6665-4adf-4c7e-9714-58e8860a1cd7
-init_sample_size = min(1000, length(init_election.votes))
-
 # ╔═╡ d750d8dd-5fff-423f-b143-5de8f4282fe7
 selection_config = Selection_config(
 	remove_candidates = remove_candidates,
 	rng = Random.MersenneTwister(rand(UInt32)),
-	sample_size = init_sample_size
+	sample_size = min(1000, length(init_election.votes))
 )
 
 # ╔═╡ c57020b3-5acd-4fe7-bc74-83af6abaa727
@@ -112,16 +109,21 @@ md"#### Weighting of Spearman voter"
 weighting_rate = 0.0
 
 # ╔═╡ 342d3d34-4a3a-4f2d-811b-e9ab143504fd
-begin
-	weight_func = position -> (length(candidates) - position)^weighting_rate
-	weights = Vector{Float64}(undef, length(candidates))
+function spearman_weights(weighting_rate, can_count)
+	weight_func = position -> (can_count - position)^weighting_rate
+	
+	weights = Vector{Float64}(undef, can_count)
 	weights[1] = 0.0
 	for i in 2:length(weights)
 		weights[i] = weights[i - 1] + weight_func(i - 1) + 1
 	end
-	max_sp_distance = OpinionDiffusion.get_max_distance(length(candidates), weights)
+
+	# normalize by max distance
+	max_sp_distance = OpinionDiffusion.get_max_distance(can_count, weights)
 	weights = weights ./ max_sp_distance
-	weights
+
+	eps=(weights[end] - weights[end - 1])/4
+	return weights, eps
 end
 
 # ╔═╡ ed315e83-6d73-4f9a-afb9-f0174e08ef29
@@ -132,9 +134,10 @@ md"""Select voter type: $(@bind voter_type Select(["Kendall-tau voter", "Spearma
 
 # ╔═╡ 10cb247f-d445-4091-b863-49deeb4c35fe
 if voter_type == "Spearman voter"
+	weights, eps = spearman_weights(weighting_rate, length(candidates))
 	voter_init_config = Spearman_voter_init_config(
 		weights = weights,
-		eps=(weights[end] - weights[end - 1])/4
+		eps=eps
 	)
 else# voter_type == "Kendall-tau voter"
 	voter_init_config = Kendall_voter_init_config(
@@ -156,7 +159,7 @@ begin
 	exp = 0.7
 	scale = 2.0
 	max_degree = 500
-	target_degrees = Int.(round.(rand(Distributions.truncated(Distributions.Pareto(exp, scale); upper=max_degree), selection_config.sample_size)))
+	deg_rng = Random.MersenneTwister(rand(UInt32))
 end
 
 # ╔═╡ c4dfe306-aad8-4248-bc9e-c2de841a7354
@@ -167,8 +170,8 @@ homophily = 0.8
 
 # ╔═╡ 693d2e10-57a7-4779-9178-0c98fc6e7c2b
 deg_graph_config = DEG_graph_config(
-		rng=Random.MersenneTwister(rand(UInt32)),
-		target_degrees=target_degrees,
+		rng=deg_rng,
+		target_degrees=target_degrees = Int.(round.(rand(deg_rng, Distributions.truncated(Distributions.Pareto(exp, scale); upper=max_degree), selection_config.sample_size))),
         target_cc=0.3,
         homophily=homophily
 )
@@ -307,8 +310,7 @@ md"### 6. Run Diffusion"
 
 # ╔═╡ d1b46b8b-004e-479c-909a-269066f446fe
 Experiment_config(
-	dataset_path,
-	selection_configs,
+	selection_configs = ,
 	voter_init_configs,
 	graph_init_configs,
 	init_diff_configs,
@@ -322,6 +324,27 @@ md"""
 
 ---
 """
+
+# ╔═╡ f6b4ba47-f9d2-42f0-9c86-e9810be7b810
+if cb_run
+	result = run_ensemble(
+		    ensemble_size,
+			ensemble_mode,
+		    diffusions,
+		    init_election,
+			selection_config,
+			voter_init_config,
+			graph_init_config,
+		    init_diff_configs,
+		    diff_configs,
+			eval,
+		    true
+		)
+	gathered_metrics = gather_metrics([diffusion["metrics"] for diffusion in result])
+end
+
+# ╔═╡ 12ffda44-7cee-48a7-999b-2224c3549dea
+gathered_metrics
 
 # ╔═╡ ccbfad20-549e-4275-8bbb-644157d98926
 pops = collect(0.0:0.5:1.0)
@@ -356,6 +379,18 @@ md"## Diffusion analysis"
 # ╔═╡ d716423e-7945-4e0a-a6ab-17e0b94c721e
 md"### Compounded metrics"
 
+# ╔═╡ e518a2db-a02e-4cfb-8587-f892fd9cbc85
+gathered_metrics
+
+# ╔═╡ 006bf740-9fc1-41dc-982f-dda7c05ec977
+begin
+	dict = Dict()
+	dict["election_matrix"] = []
+	for i in 2:length(gathered_metrics["election_matrix"])
+		push!(dict["election_matrix"], abs.(gathered_metrics["election_matrix"][i] - gathered_metrics["election_matrix"][i - 1]))
+	end
+end
+
 # ╔═╡ a210fc8f-5d85-464d-8b0b-3fba19579a56
 md"## Diffusion with set seed"
 
@@ -384,6 +419,25 @@ function extreme_runs(result, metric)
 	values = [run["metrics"][metric][end] for run in result]
 	return argmin(values), argmax(values)
 end
+
+# ╔═╡ a4f875d7-685e-43bb-a806-be6ae6547ffb
+extremes = extreme_runs(result, "plurality_votings", 4)
+
+# ╔═╡ 3eb2368f-5cdf-4f43-84fa-478865936371
+min_model_seed, min_diffusion_seed = result[extremes[1]]["model_seed"], result[extremes[1]]["diffusion_seed"]
+
+# ╔═╡ 5cd2dbf8-5a55-4690-b16d-8b1432015054
+max_model_seed, max_diffusion_seed = result[extremes[2]]["model_seed"], result[extremes[2]]["diffusion_seed"]
+
+# ╔═╡ c86a8e9f-c5e9-4931-8923-dcf114df3118
+if anal_run
+	min_logger = OpinionDiffusion.run(election, candidates, model_config, min_model_seed, diffusion_config, diffusions, min_diffusion_seed)
+
+	max_logger = OpinionDiffusion.run(election, candidates, model_config, max_model_seed, diffusion_config, diffusions, max_diffusion_seed)
+end
+
+# ╔═╡ 9883316d-c845-4a4d-a4f8-b8022727cb0b
+min_log_idxs = sort([parse(Int64, split(splitext(file)[1], "_")[end]) for file in readdir(min_logger.exp_dir) if split(file, "_")[1] == "model"])
 
 # ╔═╡ 0932e410-4a74-42b3-86c5-ac40f6be3543
 md"## Dimensionality reduction and clustering"
@@ -513,58 +567,6 @@ function update_metrics!(model, diffusion_metrics)
     #push!(diffusion_metrics["copeland_votings"], copeland_voting(votes, can_count))
     push!(diffusion_metrics["positions"], get_positions(voters, can_count))
 end
-
-# ╔═╡ f6b4ba47-f9d2-42f0-9c86-e9810be7b810
-if cb_run
-	result = run_ensemble(
-		    ensemble_size,
-			ensemble_mode,
-		    diffusions,
-		    init_election,
-		    init_metrics,
-		    update_metrics!,
-		    model_configs,
-		    init_diff_configs,
-		    diff_configs,
-		    true
-		)
-	result = run_ensemble_model(ensemble_size, diffusions, election, candidates, init_metrics, update_metrics!, model_config, init_diff_configs, diff_configs, true)
-	gathered_metrics = gather_metrics([diffusion["metrics"] for diffusion in result])
-end
-
-# ╔═╡ 12ffda44-7cee-48a7-999b-2224c3549dea
-gathered_metrics
-
-# ╔═╡ e518a2db-a02e-4cfb-8587-f892fd9cbc85
-gathered_metrics
-
-# ╔═╡ 006bf740-9fc1-41dc-982f-dda7c05ec977
-begin
-	dict = Dict()
-	dict["election_matrix"] = []
-	for i in 2:length(gathered_metrics["election_matrix"])
-		push!(dict["election_matrix"], abs.(gathered_metrics["election_matrix"][i] - gathered_metrics["election_matrix"][i - 1]))
-	end
-end
-
-# ╔═╡ a4f875d7-685e-43bb-a806-be6ae6547ffb
-extremes = extreme_runs(result, "plurality_votings", 4)
-
-# ╔═╡ 3eb2368f-5cdf-4f43-84fa-478865936371
-min_model_seed, min_diffusion_seed = result[extremes[1]]["model_seed"], result[extremes[1]]["diffusion_seed"]
-
-# ╔═╡ 5cd2dbf8-5a55-4690-b16d-8b1432015054
-max_model_seed, max_diffusion_seed = result[extremes[2]]["model_seed"], result[extremes[2]]["diffusion_seed"]
-
-# ╔═╡ c86a8e9f-c5e9-4931-8923-dcf114df3118
-if anal_run
-	min_logger = OpinionDiffusion.run(election, candidates, model_config, min_model_seed, diffusion_config, diffusions, min_diffusion_seed)
-
-	max_logger = OpinionDiffusion.run(election, candidates, model_config, max_model_seed, diffusion_config, diffusions, max_diffusion_seed)
-end
-
-# ╔═╡ 9883316d-c845-4a4d-a4f8-b8022727cb0b
-min_log_idxs = sort([parse(Int64, split(splitext(file)[1], "_")[end]) for file in readdir(min_logger.exp_dir) if split(file, "_")[1] == "model"])
 
 # ╔═╡ 7f898ae7-8613-43a6-95e1-f61748cec34a
 function variable_size(sizes, ensemble_size, election, can_count, init_metrics, update_metrics, model_configs, diffusion_configs)
@@ -705,6 +707,36 @@ end
 # ╔═╡ f96c982d-b5db-47f7-91e0-9c9b3b36332f
 compare_metrics_vis(ensemble_logs, ["unique_votes", "avg_vote_length", "avg_edge_dist"])
 
+# ╔═╡ de7a5c20-d5d6-4fe5-b7c3-561b17a90143
+function ensemble_init_model(ensemble_size, election, can_count, init_metrics, update_metrics, model_configs, diffusion_config)
+	size_metrics = []
+	
+	sizes = collect(100:100:length(election))
+	for size in sizes
+		metrics = []
+
+		for model_config in model_configs
+			gathered_metrics = OpinionDiffusion.run_ensemble_model(ensemble_size, 0, election[1:size], init_metrics, can_count, update_metrics!, model_config, diffusion_config, false)
+			
+			gathered_metrics["size"] = [size]
+			push!(metrics, gathered_metrics)
+		end
+
+		push!(size_metrics, metrics)
+	end
+
+	metrics = [deepcopy(size_metrics[1][1]), deepcopy(size_metrics[1][2]), deepcopy(size_metrics[1][3])]
+	for i in 2:length(sizes)
+		for j in 1:length(pops)
+			for (metric, val) in size_metrics[i][j]
+				push!(metrics[j][metric], val[1])
+			end
+		end
+	end
+	
+	return metrics
+end
+
 # ╔═╡ eccddfc6-2e57-4f9e-88f3-88166fc5da11
 function ensemble_init_model(BA, ensemble_size, election, can_count, init_metrics, update_metrics, diffusion_config)
 	size_metrics = []
@@ -751,36 +783,6 @@ function ensemble_init_model(BA, ensemble_size, election, can_count, init_metric
 	return metrics
 end
 
-# ╔═╡ de7a5c20-d5d6-4fe5-b7c3-561b17a90143
-function ensemble_init_model(ensemble_size, election, can_count, init_metrics, update_metrics, model_configs, diffusion_config)
-	size_metrics = []
-	
-	sizes = collect(100:100:length(election))
-	for size in sizes
-		metrics = []
-
-		for model_config in model_configs
-			gathered_metrics = OpinionDiffusion.run_ensemble_model(ensemble_size, 0, election[1:size], init_metrics, can_count, update_metrics!, model_config, diffusion_config, false)
-			
-			gathered_metrics["size"] = [size]
-			push!(metrics, gathered_metrics)
-		end
-
-		push!(size_metrics, metrics)
-	end
-
-	metrics = [deepcopy(size_metrics[1][1]), deepcopy(size_metrics[1][2]), deepcopy(size_metrics[1][3])]
-	for i in 2:length(sizes)
-		for j in 1:length(pops)
-			for (metric, val) in size_metrics[i][j]
-				push!(metrics[j][metric], val[1])
-			end
-		end
-	end
-	
-	return metrics
-end
-
 # ╔═╡ Cell order:
 # ╟─957eb9d7-12d6-4a22-8338-4e8535b54c71
 # ╟─d2923f02-66d7-47de-9801-d4ad99c1230f
@@ -801,7 +803,6 @@ end
 # ╠═bcc5468c-2a49-409d-b810-05fc30f4edca
 # ╠═c6ccf2a8-e045-4da9-bbdb-270327c2d53f
 # ╠═8ea22c93-1fe3-44b2-88c1-fb6ccd195866
-# ╠═45ab6665-4adf-4c7e-9714-58e8860a1cd7
 # ╠═d750d8dd-5fff-423f-b143-5de8f4282fe7
 # ╠═c57020b3-5acd-4fe7-bc74-83af6abaa727
 # ╠═0dc047f5-a6cf-4477-b50d-625b7798f243
