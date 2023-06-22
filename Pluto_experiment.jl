@@ -66,14 +66,54 @@ Plots.plotly()
 # ╔═╡ 746f6fca-1733-4383-b423-f78c3ce80d6a
 md"## Pipeline"
 
-# ╔═╡ 46e8650e-f57d-48d7-89de-1c72e12dea45
-md"### 1. Election"
+# ╔═╡ 40fdc182-c693-48fb-99ee-43d1bc78d95f
+md"#### Weighting of Spearman voter"
+
+# ╔═╡ ed315e83-6d73-4f9a-afb9-f0174e08ef29
+md"#### Voter selection"
+
+# ╔═╡ c91395e7-393a-4ee1-ab44-7269cb1314d8
+md"### 3. Graph Initialization"
+
+# ╔═╡ 48a2cf2b-bd86-4131-a230-290124cc5f48
+md"#### DEG target degree distribution"
+
+# ╔═╡ c4dfe306-aad8-4248-bc9e-c2de841a7354
+md"#### Select a method for graph generation"
+
+# ╔═╡ 0093be21-0050-4237-803f-41bdf3afb378
+md"""
+---
+**Execution barrier** $(@bind cb_graph CheckBox())
+
+---
+"""
+
+# ╔═╡ eb331b26-ce7e-449a-a92b-2416a5449241
+md"### 4. Model Initialization"
+
+# ╔═╡ 09540198-bead-4df1-99bd-6e7848e7d215
+md"### 5. Diffusion Configuration"
+
+# ╔═╡ 6f40b5c4-1252-472c-8932-11a2ee0935d2
+md"Setup diffusion parameters and then check execution barrier for confirmation."
+
+# ╔═╡ 4a827a0c-b360-4b85-ac21-7e18e7e6af7d
+@bind ensemble_mode Select(["init_model", "init_diff", "diff"])
+
+# ╔═╡ 971693bb-1a08-4266-a93b-c3e9d60d8bcd
+md"""
+Restart: $(@bind restart CheckBox())
+"""
+
+# ╔═╡ de772425-25de-4228-b12e-d567b8ceb20f
+md"### 6. Run Diffusion"
 
 # ╔═╡ bcc5468c-2a49-409d-b810-05fc30f4edca
 md"""Select dataset: $(@bind input_filename Select([filename for filename in readdir("./data") if split(filename, ".")[end] == "toc"], default = "ED-00001-00000002.toc"))"""
 
 # ╔═╡ c6ccf2a8-e045-4da9-bbdb-270327c2d53f
-init_election = parse_data("./data/" * input_filename)
+election = parse_data("./data/" * input_filename)
 
 # ╔═╡ 8ea22c93-1fe3-44b2-88c1-fb6ccd195866
 if input_filename == "ED-00001-00000001.toc"
@@ -86,187 +126,107 @@ else
 	remove_candidates = []
 end
 
-# ╔═╡ d750d8dd-5fff-423f-b143-5de8f4282fe7
+# ╔═╡ 64b2d35c-6fa0-46c5-9aed-f8c861d07afa
+selection_configs = [Selection_config(
+	remove_candidates = remove_candidates,
+	rng = Random.MersenneTwister(rand(UInt32)),
+	sample_size = x
+	) for x in 100:100:1000]
+
+# ╔═╡ 54b38e9d-2081-42bb-a3c5-5fe31359e15e
 selection_config = Selection_config(
 	remove_candidates = remove_candidates,
 	rng = Random.MersenneTwister(rand(UInt32)),
-	sample_size = min(1000, length(init_election.votes))
+	sample_size = min(1000, length(election.votes))
 )
-
-# ╔═╡ c57020b3-5acd-4fe7-bc74-83af6abaa727
-election = select(init_election, selection_config)
-
-# ╔═╡ 0dc047f5-a6cf-4477-b50d-625b7798f243
-candidates = election.candidates
-
-# ╔═╡ 831816fa-7983-4c05-9a76-a03631bf1e57
-md"### 2. Voter Initialization"
-
-# ╔═╡ 40fdc182-c693-48fb-99ee-43d1bc78d95f
-md"#### Weighting of Spearman voter"
-
-# ╔═╡ a38a2e2e-e742-4c0b-9cf5-cd8376178300
-weighting_rate = 0.0
-
-# ╔═╡ 342d3d34-4a3a-4f2d-811b-e9ab143504fd
-function spearman_weights(weighting_rate, can_count)
-	weight_func = position -> (can_count - position)^weighting_rate
-	
-	weights = Vector{Float64}(undef, can_count)
-	weights[1] = 0.0
-	for i in 2:length(weights)
-		weights[i] = weights[i - 1] + weight_func(i - 1) + 1
-	end
-
-	# normalize by max distance
-	max_sp_distance = OpinionDiffusion.get_max_distance(can_count, weights)
-	weights = weights ./ max_sp_distance
-
-	eps=(weights[end] - weights[end - 1])/4
-	return weights, eps
-end
-
-# ╔═╡ ed315e83-6d73-4f9a-afb9-f0174e08ef29
-md"#### Voter selection"
 
 # ╔═╡ a87ea61d-13d9-4c91-b08e-9f24cde3d290
 md"""Select voter type: $(@bind voter_type Select(["Kendall-tau voter", "Spearman voter"], default="Spearman voter"))"""
 
-# ╔═╡ 10cb247f-d445-4091-b863-49deeb4c35fe
+# ╔═╡ 7022edd7-6b7f-4f31-9156-4a625875d2cb
+can_count = length(election.candidates) - length(selection_config.remove_candidates)
+
+# ╔═╡ c84a300c-b68e-4ecc-9797-c77b0d66853a
+
+
+# ╔═╡ a02c3b7d-b69a-4f34-91ee-5a735340715d
 if voter_type == "Spearman voter"
-	weights, eps = spearman_weights(weighting_rate, length(candidates))
 	voter_init_config = Spearman_voter_init_config(
-		weights = weights,
-		eps=eps
+		weighting_rate = 0.0
 	)
-else# voter_type == "Kendall-tau voter"
-	voter_init_config = Kendall_voter_init_config(
-		can_count = length(candidates)
+
+	init_voter_diffusion = SP_diff_init_config(
+		rng_seed=rand(UInt32),
+		stubbornness_distr=Distributions.Normal(0.5, 0.1)
 	)
-end
-
-# ╔═╡ a9d638de-52b8-4ce2-a9a6-e307220b05d6
-voters = init_voters(election.votes, voter_init_config)
-
-# ╔═╡ c91395e7-393a-4ee1-ab44-7269cb1314d8
-md"### 3. Graph Initialization"
-
-# ╔═╡ 48a2cf2b-bd86-4131-a230-290124cc5f48
-md"#### DEG target degree distribution"
-
-# ╔═╡ f012e77d-2703-4922-aa3e-7dd6f04757e4
-begin
-	exp = 0.7
-	scale = 2.0
-	max_degree = 500
-	deg_rng = Random.MersenneTwister(rand(UInt32))
-end
-
-# ╔═╡ c4dfe306-aad8-4248-bc9e-c2de841a7354
-md"#### Select a method for graph generation"
-
-# ╔═╡ 738b7617-00c5-4d25-ae1b-61788ba23f5c
-homophily = 0.8
-
-# ╔═╡ 693d2e10-57a7-4779-9178-0c98fc6e7c2b
-deg_graph_config = DEG_graph_config(
-		rng=deg_rng,
-		target_degrees=target_degrees = Int.(round.(rand(deg_rng, Distributions.truncated(Distributions.Pareto(exp, scale); upper=max_degree), selection_config.sample_size))),
-        target_cc=0.3,
-        homophily=homophily
-)
-
-# ╔═╡ 73f35178-c78b-49d1-825f-e3dfaa2e6ba5
-ba_graph_config = BA_graph_config(
-	rng=Random.MersenneTwister(rand(UInt32)),
-	m=10,
-	homophily=homophily
-)
-
-# ╔═╡ 39256cbd-7807-42bc-81b1-d6f2128ccaf9
-md"""Select graph generation method: $(@bind graph_type Select(["DEG", "Barabasi-Albert"]))"""
-
-# ╔═╡ 7e0d083d-2de1-4a4c-8d19-7dea4f95152a
-if graph_type == "DEG"
-	graph_init_config = deg_graph_config
-else# graph_type == "BA"
-	graph_init_config = ba_graph_config
-end
-
-# ╔═╡ 0093be21-0050-4237-803f-41bdf3afb378
-md"""
----
-**Execution barrier** $(@bind cb_graph CheckBox())
-
----
-"""
-
-# ╔═╡ f6cec9b0-82b9-4db3-b881-ed21818cb48c
-if cb_graph
-	social_network = init_graph(voters, graph_init_config)
-end
-
-# ╔═╡ eb331b26-ce7e-449a-a92b-2416a5449241
-md"### 4. Model Initialization"
-
-# ╔═╡ 25ea2f40-91d6-4191-bfd0-17b50c72f01a
-model = General_model(voters, social_network, election.party_names, election.candidates)
-
-# ╔═╡ 09540198-bead-4df1-99bd-6e7848e7d215
-md"### 5. Diffusion Configuration"
-
-# ╔═╡ 6f40b5c4-1252-472c-8932-11a2ee0935d2
-md"Setup diffusion parameters and then check execution barrier for confirmation."
-
-# ╔═╡ b6cd7a31-80b9-49eb-8004-34de5e6ad910
-attract_proba = 1.0
-
-# ╔═╡ e7f02f43-f8d5-4b7d-b097-4cbe7c7541a7
-graph_diffusion = Graph_diff_config(
-	rng=Random.MersenneTwister(rand(UInt32)),
-	evolve_edges=0.0,
-	homophily = homophily
-)
-
-# ╔═╡ d877c5d0-89af-48b9-bcd0-c1602d58339f
-diffusions = 10
-
-# ╔═╡ 51d392f8-92e0-4d21-b16b-44d75f93e505
-ensemble_size = 5
-
-# ╔═╡ e3f2c391-4fc3-47b5-bad2-5abc8f89a345
-if voter_type == "Spearman voter"
-	init_voter_diffusion = SP_init_diff_config(init_sample_size, Distributions.Normal(0.5, 0.1))
 	
 	voter_diffusion = SP_diff_config(
 		rng=Random.MersenneTwister(rand(UInt32)),
 		evolve_vertices=1.0,
-		attract_proba = attract_proba,
+		attract_proba = 1.0,
 		change_rate = 0.05,
-		normalize_shifts = (true, weights[1], weights[end])
+		normalize_shifts = (false, 0,0)#(true, voter_init_config.weights[1], voter_init_config.weights[end])
 	)
-else #Kendall voter
-	init_voter_diffusion = KT_init_diff_config(init_sample_size, Distributions.Normal(0.5, 0.1))
-	init_voter_diffusions = [KT_init_diff_config(init_sample_size, Distributions.Normal(0.5, 0.1)) for _ in 1:ensemble_size]
+else# voter_type == "Kendall-tau voter"
+	voter_init_config = Kendall_voter_init_config(
+	)
+	init_voter_diffusion = KT_diff_init_config(
+		rng_seed=rand(UInt32),
+		stubbornness_distr=Distributions.Normal(0.5, 0.1)
+	)
 	
 	voter_diffusion= KT_diff_config(
 		rng=Random.MersenneTwister(rand(UInt32)),
 		evolve_vertices=1.0,
-		attract_proba = attract_proba
+		attract_proba = 1.0
 	)
 end
+
+# ╔═╡ 39256cbd-7807-42bc-81b1-d6f2128ccaf9
+md"""Select graph generation method: $(@bind graph_type Select(["DEG", "Barabasi-Albert"]))"""
+
+# ╔═╡ 5faca0e5-7fef-42fd-a659-226dc74c0ad6
+if graph_type == "DEG"
+	exp = 0.7
+	scale = 2.0
+	max_degree = 500
+	graph_init_config = DEG_graph_config(
+		rng_seed=rand(UInt32),
+		target_deg_distr=Distributions.truncated(Distributions.Pareto(exp, scale); upper=max_degree),
+	    target_cc=0.3,
+	    homophily=0.8
+	)
+	
+	graph_diffusion = Graph_diff_config(
+		rng=Random.MersenneTwister(rand(UInt32)),
+		evolve_edges=0.0,
+		homophily = graph_init_config.homophily
+	)
+else# graph_type == "BA"
+	graph_init_config = ba_graph_config = BA_graph_config(
+		rng_seed=rand(UInt32),
+		m=10,
+		homophily=0.8
+	)
+
+	graph_diffusion = Graph_diff_config(
+		rng=Random.MersenneTwister(rand(UInt32)),
+		evolve_edges=0.0,
+		homophily = graph_init_config.homophily
+	)
+end
+
+# ╔═╡ b6cd7a31-80b9-49eb-8004-34de5e6ad910
+
 
 # ╔═╡ 970cf900-f459-4eee-a0d3-226a40b6422f
 init_diff_configs = [init_voter_diffusion]
 
+# ╔═╡ e74bc95a-e36d-434e-8ee4-2cb3172ab297
+
+
 # ╔═╡ f43b3b4c-9075-414b-9694-83e7c841605f
 diff_configs = [voter_diffusion, graph_diffusion]
-
-# ╔═╡ 4a827a0c-b360-4b85-ac21-7e18e7e6af7d
-@bind ensemble_mode Select(["init_model", "init_diff", "diff"])
-
-# ╔═╡ 63bbb84b-50ad-4c69-affe-397faadc7ed9
-checkpoint = 1 #not checkpointing ensemble runs
 
 # ╔═╡ 6e796169-f1bc-4d7f-a23a-4f18a0d5a664
 function eval(model)
@@ -300,22 +260,88 @@ function eval(model)
 	return metrics
 end
 
-# ╔═╡ 971693bb-1a08-4266-a93b-c3e9d60d8bcd
-md"""
-Restart: $(@bind restart CheckBox())
-"""
+# ╔═╡ d877c5d0-89af-48b9-bcd0-c1602d58339f
+diffusions = 10
 
-# ╔═╡ de772425-25de-4228-b12e-d567b8ceb20f
-md"### 6. Run Diffusion"
+# ╔═╡ 51d392f8-92e0-4d21-b16b-44d75f93e505
+ensemble_size = 5
+
+# ╔═╡ 63bbb84b-50ad-4c69-affe-397faadc7ed9
+checkpoint = 1 #not checkpointing ensemble runs
 
 # ╔═╡ d1b46b8b-004e-479c-909a-269066f446fe
-Experiment_config(
-	selection_configs = ,
-	voter_init_configs,
-	graph_init_configs,
-	init_diff_configs,
-	diff_configs
+experiment_config = Experiment_config(
+	input_filename,
+	selection_configs = [selection_config],
+	voter_init_configs = [voter_init_config],
+	graph_init_configs = [graph_init_config],
+	init_diff_configs = [init_diff_configs],
+	diff_configs = [diff_configs]
 )
+
+# ╔═╡ 78d9925f-7a91-4c14-ac5b-bb3ee4795cc1
+function pipeline_election(input_filename, selection_configs)
+	election = parse_data("./data/" * input_filename)
+
+	elections = []
+	for selection_config in selection_configs
+		push!(election, select(election, selection_config))
+	end
+	
+	return elections
+end
+
+# ╔═╡ 2856b747-05d7-4449-975c-c6121f72e7ce
+function pipeline_model(elections, voter_init_configs, graph_init_configs)
+	pairs = []
+	voter_packs = []
+	for voter_init_config in voter_init_configs
+		for election in elections
+			push!(models, (election, init_voters(election.votes, voter_init_config)))
+		end
+	end
+
+	triplets = []
+	for graph_init_config in graph_init_configs
+		for (election, voters) in pairs
+			push!(triplets, (election, voters, init_graph(voters, graph_init_config)))
+		end
+	end
+
+	models = []
+	loggers = []
+	for (election, voters, social_network) in models
+		push!(models, General_model(voters, social_network, election.party_names, election.candidates))
+		push!(loggers, Logger(model))
+	end
+
+	return models, loggers
+end
+
+# ╔═╡ ff2cf881-f779-4c0a-b1bd-ffd100f6fce3
+function pipeline_diffusion(models, loggers, init_diff_configs, diff_configs, get_metrics)
+	init_diffusion!(model, init_diff_configs)
+	accumulator = init_accumulator(get_metrics(model))
+	
+	actions = run!(model, diff_configs, diffusions; logger=nothing, accumulator=accumulator, get_metrics=get_metrics, rng=Random.GLOBAL_RNG)
+	
+	return accumulator
+end
+
+# ╔═╡ c21f5d19-0e3d-4529-9862-4ec819847bd0
+function pipeline(experiment_config)
+	election = pipeline_election(input_filename, selection_configs)
+	model, logger = pipeline_model(election, voter_init_configs, graph_init_configs)
+	accumulator = pipeline_diffusion(model, init_diff_configs, diff_configs)
+	gathered_metrics = gather_metrics(accumulator)
+
+	return gathered_metrics
+end
+
+# ╔═╡ 85aaafe5-d993-473c-9f47-ea44c5fc5ddd
+function expand()
+	
+end
 
 # ╔═╡ 20819900-1129-4ff1-b97e-d079ffce8ab8
 md"""
@@ -331,12 +357,8 @@ if cb_run
 		    ensemble_size,
 			ensemble_mode,
 		    diffusions,
-		    init_election,
-			selection_config,
-			voter_init_config,
-			graph_init_config,
-		    init_diff_configs,
-		    diff_configs,
+		    election,
+			experiment_config,
 			eval,
 		    true
 		)
@@ -524,50 +546,6 @@ function variable_dataset()
 	# for each dataset ensemble models ensemble diffusions
 end
 
-# ╔═╡ dba61064-49ec-4ed7-b8f0-429751318282
-function variable_model(ensemble_size, election, can_count, init_metrics, update_metrics, model_configs, init_diffusion_configs, diffusion_configs)
-	# for each model config ensemble models ensemble diffusions
-end
-
-# ╔═╡ 9b494231-4d23-4573-b686-e83119bafe88
-function variable_init_diffusion(ensemble_size, model, init_metrics, update_metrics, init_diffusion_configs, diffusion_configs)
-	# deterministic
-	# for each init diffusion config ensemble diffusions
-end
-
-# ╔═╡ e35b5055-6ebd-49cd-83be-429f0f7dcaf5
-function variable_diffusion(ensemble_size, model, init_metrics, update_metrics, diffusion_configs)
-	# random
-	# for each init diff config ensemble diffusions
-end
-
-# ╔═╡ 8d259bcc-d54c-401f-b864-87701f2bcf46
-function update_metrics!(model, diffusion_metrics)
-    g = get_social_network(model)
-    voters = get_voters(model)
-	candidates = get_candidates(model)
-	can_count = length(candidates)
-	
-    dict = Graphs.degree_histogram(g)
-    keyss = collect(keys(dict))
-	
-    push!(diffusion_metrics["min_degrees"], minimum(keyss))
-    push!(diffusion_metrics["avg_degrees"], Graphs.ne(g) * 2 / Graphs.nv(g))
-    push!(diffusion_metrics["max_degrees"], maximum(keyss))
-	push!(diffusion_metrics["avg_edge_dist"], OpinionDiffusion.StatsBase.mean(OpinionDiffusion.get_edge_distances(g, voters)))
-    push!(diffusion_metrics["clustering_coeff"], Graphs.global_clustering_coefficient(g))
-    #push!(diffusion_metrics["diameter"], Graphs.diameter(g))
-    
-    votes = get_votes(voters)
-	push!(diffusion_metrics["avg_vote_length"], OpinionDiffusion.StatsBase.mean([length(vote) for vote in votes]))
-    push!(diffusion_metrics["unique_votes"], length(unique(votes)))
-
-    push!(diffusion_metrics["plurality_votings"], plurality_voting(votes, can_count, true))
-    push!(diffusion_metrics["borda_votings"], borda_voting(votes, can_count, true))
-    #push!(diffusion_metrics["copeland_votings"], copeland_voting(votes, can_count))
-    push!(diffusion_metrics["positions"], get_positions(voters, can_count))
-end
-
 # ╔═╡ 7f898ae7-8613-43a6-95e1-f61748cec34a
 function variable_size(sizes, ensemble_size, election, can_count, init_metrics, update_metrics, model_configs, diffusion_configs)
 	# for each size ensemble models ensemble diffusions
@@ -602,6 +580,23 @@ end
 
 # ╔═╡ 1efa4e48-4a08-4aca-a255-8acd559c4bc8
 variable_size(sizes)
+
+# ╔═╡ dba61064-49ec-4ed7-b8f0-429751318282
+function variable_model(ensemble_size, election, can_count, init_metrics, update_metrics, model_configs, init_diffusion_configs, diffusion_configs)
+	# for each model config ensemble models ensemble diffusions
+end
+
+# ╔═╡ 9b494231-4d23-4573-b686-e83119bafe88
+function variable_init_diffusion(ensemble_size, model, init_metrics, update_metrics, init_diffusion_configs, diffusion_configs)
+	# deterministic
+	# for each init diffusion config ensemble diffusions
+end
+
+# ╔═╡ e35b5055-6ebd-49cd-83be-429f0f7dcaf5
+function variable_diffusion(ensemble_size, model, init_metrics, update_metrics, diffusion_configs)
+	# random
+	# for each init diff config ensemble diffusions
+end
 
 # ╔═╡ 66267f11-eac9-4fbd-814f-89897f74a046
 function ensemble_init_model_AB(ensemble_size, election, can_count, init_metrics, update_metrics, model_config, diffusion_config)
@@ -799,49 +794,43 @@ end
 # ╠═ff873978-d93f-4ba2-aadd-6cfd3b136e3d
 # ╠═419d618c-1ce4-4702-b2b0-9c3d160c245e
 # ╟─746f6fca-1733-4383-b423-f78c3ce80d6a
-# ╟─46e8650e-f57d-48d7-89de-1c72e12dea45
-# ╠═bcc5468c-2a49-409d-b810-05fc30f4edca
-# ╠═c6ccf2a8-e045-4da9-bbdb-270327c2d53f
-# ╠═8ea22c93-1fe3-44b2-88c1-fb6ccd195866
-# ╠═d750d8dd-5fff-423f-b143-5de8f4282fe7
-# ╠═c57020b3-5acd-4fe7-bc74-83af6abaa727
-# ╠═0dc047f5-a6cf-4477-b50d-625b7798f243
-# ╟─831816fa-7983-4c05-9a76-a03631bf1e57
-# ╟─40fdc182-c693-48fb-99ee-43d1bc78d95f
-# ╠═a38a2e2e-e742-4c0b-9cf5-cd8376178300
-# ╠═342d3d34-4a3a-4f2d-811b-e9ab143504fd
-# ╟─ed315e83-6d73-4f9a-afb9-f0174e08ef29
-# ╠═10cb247f-d445-4091-b863-49deeb4c35fe
-# ╟─a87ea61d-13d9-4c91-b08e-9f24cde3d290
-# ╠═a9d638de-52b8-4ce2-a9a6-e307220b05d6
+# ╠═40fdc182-c693-48fb-99ee-43d1bc78d95f
+# ╠═ed315e83-6d73-4f9a-afb9-f0174e08ef29
 # ╟─c91395e7-393a-4ee1-ab44-7269cb1314d8
 # ╟─48a2cf2b-bd86-4131-a230-290124cc5f48
-# ╠═f012e77d-2703-4922-aa3e-7dd6f04757e4
-# ╠═693d2e10-57a7-4779-9178-0c98fc6e7c2b
 # ╟─c4dfe306-aad8-4248-bc9e-c2de841a7354
-# ╠═738b7617-00c5-4d25-ae1b-61788ba23f5c
-# ╠═73f35178-c78b-49d1-825f-e3dfaa2e6ba5
-# ╠═7e0d083d-2de1-4a4c-8d19-7dea4f95152a
-# ╟─39256cbd-7807-42bc-81b1-d6f2128ccaf9
 # ╟─0093be21-0050-4237-803f-41bdf3afb378
-# ╠═f6cec9b0-82b9-4db3-b881-ed21818cb48c
 # ╟─eb331b26-ce7e-449a-a92b-2416a5449241
-# ╠═25ea2f40-91d6-4191-bfd0-17b50c72f01a
 # ╟─09540198-bead-4df1-99bd-6e7848e7d215
 # ╟─6f40b5c4-1252-472c-8932-11a2ee0935d2
-# ╠═b6cd7a31-80b9-49eb-8004-34de5e6ad910
-# ╠═e3f2c391-4fc3-47b5-bad2-5abc8f89a345
-# ╠═970cf900-f459-4eee-a0d3-226a40b6422f
-# ╠═e7f02f43-f8d5-4b7d-b097-4cbe7c7541a7
-# ╠═f43b3b4c-9075-414b-9694-83e7c841605f
-# ╠═d877c5d0-89af-48b9-bcd0-c1602d58339f
-# ╠═51d392f8-92e0-4d21-b16b-44d75f93e505
 # ╠═4a827a0c-b360-4b85-ac21-7e18e7e6af7d
-# ╠═63bbb84b-50ad-4c69-affe-397faadc7ed9
-# ╠═6e796169-f1bc-4d7f-a23a-4f18a0d5a664
 # ╟─971693bb-1a08-4266-a93b-c3e9d60d8bcd
 # ╟─de772425-25de-4228-b12e-d567b8ceb20f
+# ╟─bcc5468c-2a49-409d-b810-05fc30f4edca
+# ╠═c6ccf2a8-e045-4da9-bbdb-270327c2d53f
+# ╠═8ea22c93-1fe3-44b2-88c1-fb6ccd195866
+# ╠═64b2d35c-6fa0-46c5-9aed-f8c861d07afa
+# ╠═54b38e9d-2081-42bb-a3c5-5fe31359e15e
+# ╟─a87ea61d-13d9-4c91-b08e-9f24cde3d290
+# ╠═7022edd7-6b7f-4f31-9156-4a625875d2cb
+# ╠═c84a300c-b68e-4ecc-9797-c77b0d66853a
+# ╠═a02c3b7d-b69a-4f34-91ee-5a735340715d
+# ╟─39256cbd-7807-42bc-81b1-d6f2128ccaf9
+# ╠═5faca0e5-7fef-42fd-a659-226dc74c0ad6
+# ╠═b6cd7a31-80b9-49eb-8004-34de5e6ad910
+# ╠═970cf900-f459-4eee-a0d3-226a40b6422f
+# ╠═e74bc95a-e36d-434e-8ee4-2cb3172ab297
+# ╠═f43b3b4c-9075-414b-9694-83e7c841605f
+# ╠═6e796169-f1bc-4d7f-a23a-4f18a0d5a664
+# ╠═d877c5d0-89af-48b9-bcd0-c1602d58339f
+# ╠═51d392f8-92e0-4d21-b16b-44d75f93e505
+# ╠═63bbb84b-50ad-4c69-affe-397faadc7ed9
 # ╠═d1b46b8b-004e-479c-909a-269066f446fe
+# ╠═c21f5d19-0e3d-4529-9862-4ec819847bd0
+# ╠═78d9925f-7a91-4c14-ac5b-bb3ee4795cc1
+# ╠═2856b747-05d7-4449-975c-c6121f72e7ce
+# ╠═ff2cf881-f779-4c0a-b1bd-ffd100f6fce3
+# ╠═85aaafe5-d993-473c-9f47-ea44c5fc5ddd
 # ╟─20819900-1129-4ff1-b97e-d079ffce8ab8
 # ╠═f6b4ba47-f9d2-42f0-9c86-e9810be7b810
 # ╠═12ffda44-7cee-48a7-999b-2224c3549dea
@@ -895,7 +884,6 @@ end
 # ╠═de7a5c20-d5d6-4fe5-b7c3-561b17a90143
 # ╠═66267f11-eac9-4fbd-814f-89897f74a046
 # ╠═eccddfc6-2e57-4f9e-88f3-88166fc5da11
-# ╠═8d259bcc-d54c-401f-b864-87701f2bcf46
 # ╠═187da043-ee48-420a-91c7-5e3a4fdc30bb
 # ╠═ff89eead-5bf5-4d52-9134-aa415ae156b7
 # ╠═e70e36ad-066e-4619-a06a-56e325745a0e

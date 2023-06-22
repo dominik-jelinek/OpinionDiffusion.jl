@@ -1,10 +1,10 @@
 @kwdef struct random_graph_config <: Abstract_graph_init_config
-    rng::Random.MersenneTwister
+    rng_seed::UInt32
     average_degree::Float64
 end
 
 function init_graph(voters::Vector{T}, graph_init_config::random_graph_config) where {T<:Abstract_voter}
-    rng = graph_init_config.rng
+    rng = MersenneTwister(graph_init_config.rng_seed)
     return random_graph(voters, graph_init_config.average_degree; rng=rng)
 end
 

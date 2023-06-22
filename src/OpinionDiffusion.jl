@@ -67,9 +67,9 @@ export save_log, load_log, load_logs
 export load_model, restart_model, save_ensemble
 
 # Diffusion
-export SP_init_diff_config, SP_diff_config
-export KT_init_diff_config, KT_diff_config
-export Graph_init_diff_config, Graph_diff_config
+export SP_diff_init_config, SP_diff_config
+export KT_diff_init_config, KT_diff_config
+export Graph_diff_init_config, Graph_diff_config
 export init_diffusion!
 
 # Visualizations
@@ -96,7 +96,7 @@ abstract type Abstract_voter_init_config <: Config end
 abstract type Abstract_graph_init_config <: Config end
 
 abstract type Abstract_diff_config <: Config end
-abstract type Abstract_init_diff_config <: Config end
+abstract type Abstract_diff_init_config <: Config end
 
 abstract type Abstract_clustering_config <: Config end
 abstract type Abstract_dim_reduction_config <: Config end
@@ -107,6 +107,8 @@ abstract type Abstract_model end
 
 Bucket = Set{Int64}
 Vote = Vector{Bucket}
+candidate_count(vote::Vote) = sum([length(bucket) for bucket in vote])
+
 @kwdef struct Action
     operation::String
     ID::Union{Int64,Tuple{Int64,Int64}}

@@ -1,3 +1,51 @@
+function get_metrics(model)
+	g = get_social_network(model)
+    voters = get_voters(model)
+	candidates = get_candidates(model)
+	can_count = length(candidates)
+	
+	histogram = Graphs.degree_histogram(g)
+    keyss = collect(keys(histogram))
+    
+	votes = get_votes(voters)
+
+	metrics = Dict(
+		"min_degrees" => minimum(keyss),
+        "avg_degrees" => Graphs.ne(g) * 2 / Graphs.nv(g),
+        "max_degrees" => maximum(keyss),
+        "avg_edge_dist" => OpinionDiffusion.StatsBase.mean(OpinionDiffusion.get_edge_distances(g, voters)),
+        "clustering_coeff" => Graphs.global_clustering_coefficient(g),
+        #"diameter" => Graphs.diameter(g),
+        
+        "avg_vote_length" => OpinionDiffusion.StatsBase.mean([length(vote) for vote in votes]),
+        "unique_votes" => length(unique(votes)),
+        
+        "plurality_votings" => plurality_voting(votes, can_count, true),
+        "borda_votings" => borda_voting(votes, can_count, true),
+        #"copeland_votings" => copeland_voting(votes, can_count),
+        "positions" => get_positions(voters, can_count)
+	)
+	
+	return metrics
+end
+
+function init_accumulator(metrics::Dict)
+    accumulator = Dict()
+
+    for (key, value) in metrics
+        accumulator[key] = [value]
+    end
+
+    return accumulator
+end
+
+function add_metrics!(accumulator, metrics::Dict)
+    for (key, value) in metrics
+        push!(accumulator[key], value)
+    end
+end
+
+    
 function metrics_vis(metrics, candidates, parties, exp_dir=Nothing)
     degrees = draw_range(metrics["min_degrees"], metrics["avg_degrees"], metrics["max_degrees"], title="Degree range", xlabel="Timestamp", ylabel="Degree", value_label="avg")
 

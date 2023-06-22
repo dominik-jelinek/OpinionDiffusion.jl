@@ -1,7 +1,13 @@
-@kwdef struct SP_init_diff_config <: Abstract_init_diff_config
-    stubbornnesses::Vector{Float64}
+@kwdef struct SP_diff_init_config <: Abstract_diff_init_config
+    rng_seed::UInt32
+    stubbornness_distr::Distributions.UnivariateDistribution
 end
-SP_init_diff_config(n::Int64, stubbornness_distr::Distributions.UnivariateDistribution) = SP_init_diff_config(rand(stubbornness_distr, n))
+
+function init_diffusion!(model::T, diff_init_config::SP_diff_init_config) where {T<:Abstract_model}
+    rng = Random.MersenneTwister(diff_init_config.rng_seed)
+    voters = get_voters(model)
+    set_property!(voters, "stubbornnesses", rand(rng, diff_init_config.stubbornness_distr, length(voters)))
+end
 
 @kwdef struct SP_diff_config <: Abstract_diff_config
     rng::Random.MersenneTwister
@@ -9,10 +15,6 @@ SP_init_diff_config(n::Int64, stubbornness_distr::Distributions.UnivariateDistri
     attract_proba::Float64
     change_rate::Float64
     normalize_shifts::Union{Nothing,Tuple{Bool,Float64,Float64}}
-end
-
-function init_diffusion!(model::T, init_diff_config::SP_init_diff_config) where {T<:Abstract_model}
-    set_property!(get_voters(model), "stubbornness", init_diff_config.stubbornnesses)
 end
 
 function diffusion!(model::T, diffusion_config::SP_diff_config) where {T<:Abstract_model}

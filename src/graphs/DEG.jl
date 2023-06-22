@@ -1,25 +1,18 @@
 @kwdef struct DEG_graph_config <: Abstract_graph_init_config
-    rng::Random.MersenneTwister
-    target_degrees::Vector{Int64}
+    rng_seed::UInt32
+    target_deg_distr::Distributions.UnivariateDistribution
     target_cc::Float64
     homophily::Float64
-    #openmindednesses::Vector{Float64}
-end
-
-function DEG_graph_config(n::Int64, target_deg_distr::Distributions.UnivariateDistribution, target_cc::Float64, homophily::Float64, openmindedness_distr::Distributions.UnivariateDistribution)
-    rng = Random.MersenneTwister(rand(UInt32))
-    target_degrees = rand(target_deg_distr, n)
-    openmindednesses = rand(openmindedness_distr, n)
-    return DEG_graph_config(rng, target_degrees, target_cc, homophily, openmindednesses)
 end
 
 function init_graph(voters, graph_init_config::DEG_graph_config)
-    #set_property!(voters, "openmindedness", graph_init_config.openmindednesses)
-    rng = graph_init_config.rng
+    rng = MersenneTwister(graph_init_config.rng_seed)
+    target_degrees = Int.(round.(rand(rng, graph_init_config.target_deg_distr, length(voters))))
+    set_property!(voters, "target_degrees", target_degrees)
     
     return get_DEG(
         voters,
-        graph_init_config.target_degrees,
+        target_degrees,
         graph_init_config.target_cc,
         homophily=graph_init_config.homophily,
         rng=rng

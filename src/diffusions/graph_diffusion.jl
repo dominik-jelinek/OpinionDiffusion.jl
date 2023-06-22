@@ -1,10 +1,12 @@
-@kwdef struct Graph_init_diff_config <: Abstract_init_diff_config
-    openmindednesses::Vector{Float64}
+@kwdef struct Graph_diff_init_config <: Abstract_diff_init_config
+    rng_seed::UInt32
+    openmindedness_distr::Distributions.UnivariateDistribution
 end
-Graph_init_diff_config(n::Int64, openmindedness_distr::Distributions.UnivariateDistribution) = Graph_init_diff_config(rand(openmindedness_distr, n))
 
-function init_diffusion!(model::T, init_diff_config::Graph_init_diff_config) where {T<:Abstract_model}
-    set_property!(get_voters(model), "openmindedness", init_diff_config.openmindednesses)
+function init_diffusion!(model::T, diff_init_config::Graph_diff_init_config) where {T<:Abstract_model}
+    rng = Random.MersenneTwister(diff_init_config.rng_seed)
+    voters = get_voters(model)
+    set_property!(voters, "openmindedness", rand(rng, diff_init_config.openmindedness_distr, length(voters)))
 end
 
 @kwdef struct Graph_diff_config <: Abstract_diff_config

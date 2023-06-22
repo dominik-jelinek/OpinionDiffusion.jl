@@ -3,13 +3,13 @@ function get_rng(diffusion_config::T) where {T<:Abstract_diff_config}
     return diffusion_config.rng
 end
 
-function init_diffusion!(model, diffusion_configs::Vector{<:Abstract_init_diff_config})
-    for diffusion_config in diffusion_configs
-        init_diffusion!(model, diffusion_config)
+function init_diffusion!(model, diff_init_configs::Vector{<:Abstract_diff_init_config})
+    for diff_init_config in diff_init_configs
+        init_diffusion!(model, diff_init_config)
     end
 end
 
-function init_diffusion!(model, diffusion_config::T) where {T<:Abstract_init_diff_config}
+function init_diffusion!(model, diff_init_config::T) where {T<:Abstract_diff_init_config}
     throw(NotImplementedError("init_diffusion!"))
 end
 

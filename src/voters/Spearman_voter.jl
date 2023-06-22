@@ -8,29 +8,19 @@ struct Spearman_voter <: Abstract_voter
 end
 
 @kwdef struct Spearman_voter_init_config <: Abstract_voter_init_config
-    weights::Vector{Float64}
-    eps::Float64
+    weighting_rate::Float64
 end
 
-function get_max_distance(can_count, weights)
-    a = Vote()
-    b = Vote()
-    for i in 1:can_count
-        push!(a, Bucket([i]))
-        push!(b, Bucket([can_count - i + 1]))
-    end
-
-    return get_distance(spearman_encoding(a, weights), spearman_encoding(b, weights))
-end
-
-function init_voters(votes::Vector{Vote}, voter_config::Spearman_voter_init_config)
+function init_voters(votes::Vector{Vote}, voter_config::Spearman_voter_init_config)::Vector{Spearman_voter}
+    can_count = candidate_count(votes[1])
+    weights, eps = spearman_weights(voter_config.weighting_rate, can_count)
 
     voters = Vector{Spearman_voter}(undef, length(votes))
     for (i, vote) in enumerate(votes)
-        opinion = spearman_encoding(vote, voter_config.weights)
+        opinion = spearman_encoding(vote, weights)
 
         properties = Dict()
-        voters[i] = Spearman_voter(i, opinion, voter_config.eps, properties)
+        voters[i] = Spearman_voter(i, opinion, eps, properties)
     end
 
     return voters
@@ -88,4 +78,32 @@ end
 
 function get_pos(voter::Spearman_voter, can)
     return get_opinion(voter)[can]
+end
+
+function spearman_weights(weighting_rate, can_count)
+	weight_func = position -> (can_count - position)^weighting_rate
+	
+	weights = Vector{Float64}(undef, can_count)
+	weights[1] = 0.0
+	for i in 2:length(weights)
+		weights[i] = weights[i - 1] + weight_func(i - 1) + 1
+	end
+
+	# normalize by max distance
+	max_sp_distance = get_max_distance(can_count, weights)
+	weights = weights ./ max_sp_distance
+
+	eps=(weights[end] - weights[end - 1])/4
+	return weights, eps
+end
+
+function get_max_distance(can_count, weights)
+    a = Vote()
+    b = Vote()
+    for i in 1:can_count
+        push!(a, Bucket([i]))
+        push!(b, Bucket([can_count - i + 1]))
+    end
+
+    return get_distance(spearman_encoding(a, weights), spearman_encoding(b, weights))
 end

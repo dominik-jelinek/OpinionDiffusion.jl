@@ -1,3 +1,7 @@
+function init_graph(voters, graph_init_config::T) where {T<:Abstract_graph_init_config}
+   throw(NotImplementedError("init_graph"))
+end
+
 function init_graph(n::Int, edges::Vector{Graphs.SimpleGraphs.SimpleEdge{Int64}})
    g = Graphs.SimpleGraphFromIterator(edges)
 

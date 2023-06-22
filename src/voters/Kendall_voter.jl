@@ -9,14 +9,14 @@ struct Kendall_voter <: Abstract_voter
 end
 
 @kwdef struct Kendall_voter_init_config <: Abstract_voter_init_config
-   can_count::Int64
 end
 
 function init_voters(votes::Vector{Vote}, voter_config::Kendall_voter_init_config)
+   can_count = candidate_count(votes[1])
 
    voters = Vector{Kendall_voter}(undef, length(votes))
    for (i, vote) in enumerate(votes)
-      opinion = kendall_encoding(vote, voter_config.can_count)
+      opinion = kendall_encoding(vote, can_count)
 
       properties = Dict()
       voters[i] = Kendall_voter(i, opinion, vote, properties)
