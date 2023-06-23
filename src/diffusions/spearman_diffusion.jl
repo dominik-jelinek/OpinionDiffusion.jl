@@ -6,7 +6,7 @@ end
 function init_diffusion!(model::T, diff_init_config::SP_diff_init_config) where {T<:Abstract_model}
     rng = Random.MersenneTwister(diff_init_config.rng_seed)
     voters = get_voters(model)
-    set_property!(voters, "stubbornnesses", rand(rng, diff_init_config.stubbornness_distr, length(voters)))
+    set_property!(voters, "stubbornness", rand(rng, diff_init_config.stubbornness_distr, length(voters)))
 end
 
 @kwdef struct SP_diff_config <: Abstract_diff_config

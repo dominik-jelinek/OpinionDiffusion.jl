@@ -21,14 +21,15 @@ parse_data(path_data::String, ext)::Election = throw(ArgumentError("Unsupported 
 @kwdef struct Selection_config <: Config
     remove_candidates::Vector{Int64}
 
-    rng::Random.MersenneTwister
+    rng_seed::UInt32
     sample_size::Int64
 end
 
 function select(election::Election, selection_config::Selection_config)::Election
     filtered_votes, candidates = remove_candidates(election.votes, election.candidates, selection_config.remove_candidates)
 
-    votes = filtered_votes[StatsBase.sample(selection_config.rng, 1:length(filtered_votes), selection_config.sample_size, replace=false)]
+    rng = MersenneTwister(selection_config.rng_seed)
+    votes = filtered_votes[StatsBase.sample(rng, 1:length(filtered_votes), selection_config.sample_size, replace=false)]
 
     return Election(election.party_names, candidates, votes)
 end

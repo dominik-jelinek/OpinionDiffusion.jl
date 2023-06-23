@@ -17,6 +17,7 @@ import Distances
 import Statistics
 import StatsBase
 import Distributions
+using DataFrames
 
 # Graphs
 using Graphs
@@ -43,9 +44,10 @@ using JLD2
 # EXPORTS
 # ______________________________________________________________________________
 
+# election
 export parse_data
-export Selection_config 
 export select
+export Selection_config
 
 # Voters
 export init_voters, get_opinion, get_vote, get_votes, get_distance, get_ID
@@ -65,6 +67,9 @@ export run!, run_ensemble_model, run_ensemble
 export Logger
 export save_log, load_log, load_logs
 export load_model, restart_model, save_ensemble
+
+export Experiment_config, Ensemble_config
+export ensemble
 
 # Diffusion
 export SP_diff_init_config, SP_diff_config
