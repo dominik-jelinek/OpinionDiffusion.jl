@@ -3,150 +3,6 @@ get_social_network(model::T) where {T<:Abstract_model} = model.social_network
 get_candidates(model::T) where {T<:Abstract_model} = model.candidates
 
 #=
-function run_ensemble(
-    ensemble_size,
-    ensemble_mode,
-    diffusions,
-    election,
-    candidates,
-    init_metrics,
-    update_metrics!,
-    model_configs::Vector{Abstract_model_config},
-    diff_init_configs::Vector{Abstract_diff_init_config},
-    diff_configs::Vector{Abstract_diff_config},
-    log=false
-)
-
-    models = Vector{Any}(undef, ensemble_size)
-    metrics = Vector{Any}(undef, ensemble_size)
-    if length(model_configs) == 1
-        models[1] = init_model(election, candidates, model_config)
-        metrics[1] = init_metrics(models[1])
-    else
-        @threads for (i, model_config) in enumerate(model_configs)
-            models[i] = init_model(election, candidates, model_config)
-            metrics[i] = init_metrics(models[i])
-        end
-    end
-
-    if length(diff_init_configs) == 1
-        init_diffusion!(models[1], diff_init_configs[1])
-
-        if ensemble_mode == "model"
-            @threads for i in 2:ensemble_size
-                init_diffusion!(models[i], diff_init_configs[1])
-            end
-        end
-    else
-        @threads for (i, init_diff_config) in enumerate(diff_init_configs)
-            if i != 1
-                models[i] = deepcopy(models[1])
-                metrics[i] = deepcopy(metrics[1])
-            end
-            init_diffusion!(models[i], init_diff_config)
-        end
-    end
-
-
-    if length(diff_configs) == 1
-        # deepcopy diffusion config for the same rng
-        actions = run!(models[1], deepcopy(diff_configs[1]), diffusions; metrics=metrics[1], (update_metrics!)=update_metrics!)
-
-        if ensemble_mode == "model" || ensemble_mode == "init_diffusion"
-            @threads for i in 2:ensemble_size
-                actions = run!(models[i], deepcopy(diff_configs[1]), diffusions; metrics=metrics[i], (update_metrics!)=update_metrics!)
-            end
-        end
-    else
-        for i in 2:ensemble_size
-            models[i] = deepcopy(models[1])
-            metrics[i] = deepcopy(metrics[1])
-        end
-
-        @threads for (i, diff_config) in enumerate(diff_configs)
-            actions = run!(models[i], diff_config, diffusions; metrics=metrics[i], (update_metrics!)=update_metrics!)
-        end
-    end
-
-    if log
-        save_ensemble(election, model_configs, diff_init_configs, diff_configs, metrics)
-    end
-
-    return metrics
-end
-
-function run_ensemble(
-    model,
-    ensemble_size,
-    diffusions,
-    init_metrics,
-    update_metrics!,
-    diff_init_configs::Vector{Abstract_diff_init_config},
-    diff_configs::Vector{Abstract_diff_config},
-    log=false
-)
-
-    if length(diff_init_configs) == ensemble_size
-        mode = "init_diffusion"
-        if length(model_configs) != 1 || length(diff_configs) != 1
-            throw(ArgumentError("model_configs and diff_configs must be of length 1"))
-        end
-    elseif length(diff_configs) == ensemble_size
-        mode = "diffusion"
-        if length(model_configs) != 1 || length(diff_init_configs) != 1
-            throw(ArgumentError("model_configs and diff_init_configs must be of length 1"))
-        end
-    else
-        throw(ArgumentError("ensemble_size must be equal to the length of one of the following: model_configs, diff_init_configs, diff_configs"))
-        return
-    end
-
-    models = Vector{Any}(undef, ensemble_size)
-    metrics = Vector{Any}(undef, ensemble_size)
-    models[1] = model
-    metrics[1] = init_metrics(model)
-
-    if length(diff_init_configs) == 1
-        init_diffusion!(models[1], diff_init_configs[1])
-    else
-        @threads for (i, init_diff_config) in enumerate(diff_init_configs)
-            if i != 1
-                models[i] = deepcopy(models[1])
-                metrics[i] = deepcopy(metrics[1])
-            end
-
-            init_diffusion!(models[i], init_diff_config)
-        end
-    end
-
-
-    if length(diff_configs) == 1
-        # deepcopy diffusion config for the same rng
-        actions = run!(models[1], deepcopy(diff_configs[1]), diffusions; metrics=metrics[1], (update_metrics!)=update_metrics!)
-
-        if mode == "init_diffusion"
-            @threads for i in 2:ensemble_size
-                actions = run!(models[i], deepcopy(diff_configs[1]), diffusions; metrics=metrics[i], (update_metrics!)=update_metrics!)
-            end
-        end
-    else
-        for i in 2:ensemble_size
-            models[i] = deepcopy(models[1])
-            metrics[i] = deepcopy(metrics[1])
-        end
-
-        @threads for (i, diff_config) in enumerate(diff_configs)
-            actions = run!(models[i], diff_config, diffusions; metrics=metrics[i], (update_metrics!)=update_metrics!)
-        end
-    end
-
-    if log
-        save_ensemble(election, model_configs, diff_init_configs, diff_configs, metrics)
-    end
-
-    return metrics
-end
-
 function run_ensemble_model(
     ensemble_size,
     diffusions,
@@ -216,7 +72,19 @@ function run_ensemble(model::Abstract_model, ensemble_size, diffusions, init_met
     return ens_metrics
 end
 =#
+function run(model::T, diff_configs, diffusions; logger=nothing, checkpoint=1, accumulator=nothing, get_metrics=nothing) where {T<:Abstract_model}
+    model = deepcopy(model)
+    actions = Vector{Vector{Action}}()
+    
+    for j in 1:diffusions
+        push!(actions, _run!(model, diff_configs; logger=logger, checkpoint=checkpoint, accumulator=accumulator, get_metrics=get_metrics))
+    end
+
+    return model, actions
+end
+
 function run!(model::T, diff_configs, diffusions; logger=nothing, checkpoint=1, accumulator=nothing, get_metrics=nothing) where {T<:Abstract_model}
+    diff_configs = deepcopy(diff_configs)
     actions = Vector{Vector{Action}}()
     
     for j in 1:diffusions
@@ -322,79 +190,79 @@ end
     diff_config::Vector{Abstract_diff_config}
 end
 
-function config_dependencies(config, prev_configs)
+function resolve_dependencies(config, prev_configs)
     return config
 end
 
 function ensemble(ensemble_config::Ensemble_config, get_metrics)
-    experiment_configs = []
-    dataframes = []
+    dataframes = Vector{DataFrame}()
 
     # election
-    for selection_config in ensemble_config.selection_configs
+    for (i, selection_config) in enumerate(ensemble_config.selection_configs)
         election = parse_data(ensemble_config.input_filename)
         election = select(election, selection_config)
 
         prev_configs = Dict()
         prev_configs["selection_config"] = selection_config
         # model
-        for voter_init_config in ensemble_config.voter_init_configs
-            voter_init_config = config_dependencies(voter_init_config, prev_configs)
+        for (j, voter_init_config) in enumerate(ensemble_config.voter_init_configs)
+            voter_init_config = resolve_dependencies(voter_init_config, prev_configs)
             prev_configs["voter_init_config"] = voter_init_config
 
             voters = init_voters(election.votes, voter_init_config)
 
-            for graph_init_config in ensemble_config.graph_init_configs
-                graph_init_config = config_dependencies(graph_init_config, prev_configs)
+            for (k, graph_init_config) in enumerate(ensemble_config.graph_init_configs)
+                graph_init_config = resolve_dependencies(graph_init_config, prev_configs)
                 prev_configs["graph_init_config"] = graph_init_config
 
                 social_network = init_graph(voters, graph_init_config)
                 model = General_model(voters, social_network, election.party_names, election.candidates)
                 accumulator = init_accumulator(get_metrics(model))
-
-                if ensemble_config.diffusions == 0
-                    push!(dataframes, DataFrame(accumulator))
-                    push!(experiment_configs, Experiment_config(
-                        input_filename=ensemble_config.input_filename,
-                        selection_config=selection_config,
-                        voter_init_config=voter_init_config,
-                        graph_init_config=graph_init_config,
-                        diffusions=ensemble_config.diffusions,
-                        diff_init_config=[],
-                        diff_config=[]
-                    ))
+                
+                # no diffusion
+                if ensemble_config.diffusions == 0 || length(ensemble_config.diff_configs) == 0
+                    push!(dataframes, DataFrame(merge(prev_configs, accumulator)))
+                    continue
                 end
 
                 # diffusion
-                for diff_init_config in ensemble_config.diff_init_configs
-                    diff_init_config = config_dependencies(diff_init_config, prev_configs)
+                for (l, diff_init_config) in enumerate(ensemble_config.diff_init_configs)
+                    for n in eachindex(diff_init_config)
+                        diff_init_config[n] = resolve_dependencies(diff_init_config[n], prev_configs)
+                    end
                     prev_configs["diff_init_config"] = diff_init_config
 
                     model_init = deepcopy(model)                    
                     init_diffusion!(model_init, diff_init_config)
 
-                    for diff_config in ensemble_config.diff_configs
-                        diff_config = config_dependencies(diff_config, prev_configs)
-                        
+                    for (m, diff_config) in enumerate(ensemble_config.diff_configs)
+                        for n in eachindex(diff_config)
+                            diff_config[n] = resolve_dependencies(diff_config[n], prev_configs)
+                        end
+                        prev_configs["diff_config"] = diff_config
+
                         diff_accumulator = deepcopy(accumulator)
                         model_diff = deepcopy(model_init)
                         run!(model_diff, diff_config, ensemble_config.diffusions; accumulator=diff_accumulator, get_metrics=get_metrics)
 
-                        push!(dataframes, DataFrame(diff_accumulator))
-                        push!(experiment_configs, Experiment_config(
-                            input_filename=ensemble_config.input_filename,
-                            selection_config=selection_config,
-                            voter_init_config=voter_init_config,
-                            graph_init_config=graph_init_config,
-                            diffusions=ensemble_config.diffusions,
-                            diff_init_config=diff_init_config,
-                            diff_config=diff_config
-                        ))
+                        expanded_configs = Dict(key => fill(value, ensemble_config.diffusions + 1) for (key, value) in prev_configs)
+
+                        df = DataFrame(merge(expanded_configs, diff_accumulator))
+                        df.diffusion_step = collect(1:ensemble_config.diffusions + 1)
+                        push!(dataframes, df)
+                        
+                        delete!(prev_configs, "diff_config")
                     end
+
+                    delete!(prev_configs, "diff_init_config")
                 end
+
+                delete!(prev_configs, "graph_init_config")
             end
+
+            delete!(prev_configs, "voter_init_config")
         end
     end
 
-    return dataframes, experiment_configs
+    return dataframes
 end

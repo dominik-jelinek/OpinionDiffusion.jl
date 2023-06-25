@@ -3,6 +3,7 @@ struct Spearman_voter <: Abstract_voter
 
     opinion::Vector{Float64} # pSP
     eps::Float64 # cPBO
+    weights::Vector{Float64} # cPBO
 
     properties::Dict{String,Any}
 end
@@ -20,7 +21,7 @@ function init_voters(votes::Vector{Vote}, voter_config::Spearman_voter_init_conf
         opinion = spearman_encoding(vote, weights)
 
         properties = Dict()
-        voters[i] = Spearman_voter(i, opinion, eps, properties)
+        voters[i] = Spearman_voter(i, opinion, eps, weights, properties)
     end
 
     return voters

@@ -32,6 +32,12 @@ using OpinionDiffusion, PlutoUI
 # ╔═╡ 419d618c-1ce4-4702-b2b0-9c3d160c245e
 using GraphMakie, CairoMakie, Colors
 
+# ╔═╡ 902dc709-c5bc-4476-a868-fe21247b3aa0
+using DataFrames
+
+# ╔═╡ d647e8ea-03e1-4da5-a485-93a8ac315183
+using Statistics
+
 # ╔═╡ 957eb9d7-12d6-4a22-8338-4e8535b54c71
 md"# Opinion diffusion"
 
@@ -66,14 +72,6 @@ Plots.plotly()
 # ╔═╡ 746f6fca-1733-4383-b423-f78c3ce80d6a
 md"## Pipeline"
 
-# ╔═╡ 0093be21-0050-4237-803f-41bdf3afb378
-md"""
----
-**Execution barrier** $(@bind cb_graph CheckBox())
-
----
-"""
-
 # ╔═╡ 6e796169-f1bc-4d7f-a23a-4f18a0d5a664
 function get_metrics(model)
 	g = get_social_network(model)
@@ -106,33 +104,6 @@ function get_metrics(model)
 	return metrics
 end
 
-# ╔═╡ bcc5468c-2a49-409d-b810-05fc30f4edca
-md"""Select dataset: $(@bind input_filename Select([filename for filename in readdir("./data") if split(filename, ".")[end] == "toc"], default = "ED-00001-00000002.toc"))"""
-
-# ╔═╡ c6ccf2a8-e045-4da9-bbdb-270327c2d53f
-election = parse_data("./data/" * input_filename)
-
-# ╔═╡ 8ea22c93-1fe3-44b2-88c1-fb6ccd195866
-if input_filename == "ED-00001-00000001.toc"
-	remove_candidates = [3, 5, 8, 11]
-elseif input_filename == "ED-00001-00000002.toc"
-	remove_candidates = [8]#[1, 6, 8]
-elseif input_filename == "ED-00001-00000003.toc"
-	remove_candidates = [3, 8, 9, 11]
-else
-	remove_candidates = []
-end
-
-# ╔═╡ 54b38e9d-2081-42bb-a3c5-5fe31359e15e
-selection_config = Selection_config(
-	remove_candidates = remove_candidates,
-	rng_seed = rand(UInt32),
-	sample_size = min(1000, length(election.votes))
-)
-
-# ╔═╡ a87ea61d-13d9-4c91-b08e-9f24cde3d290
-md"""Select voter type: $(@bind voter_type Select(["Kendall-tau voter", "Spearman voter"], default="Spearman voter"))"""
-
 # ╔═╡ a02c3b7d-b69a-4f34-91ee-5a735340715d
 if voter_type == "Spearman voter"
 	voter_init_config = Spearman_voter_init_config(
@@ -149,7 +120,7 @@ if voter_type == "Spearman voter"
 		evolve_vertices=1.0,
 		attract_proba = 1.0,
 		change_rate = 0.05,
-		normalize_shifts = (false, 0,0)#(true, voter_init_config.weights[1], voter_init_config.weights[end])
+		normalize_shifts = true
 	)
 else# voter_type == "Kendall-tau voter"
 	voter_init_config = Kendall_voter_init_config(
@@ -165,9 +136,6 @@ else# voter_type == "Kendall-tau voter"
 		attract_proba = 1.0
 	)
 end
-
-# ╔═╡ 39256cbd-7807-42bc-81b1-d6f2128ccaf9
-md"""Select graph generation method: $(@bind graph_type Select(["DEG", "Barabasi-Albert"]))"""
 
 # ╔═╡ 5faca0e5-7fef-42fd-a659-226dc74c0ad6
 if graph_type == "DEG"
@@ -202,21 +170,12 @@ else# graph_type == "BA"
 	)
 end
 
-# ╔═╡ 970cf900-f459-4eee-a0d3-226a40b6422f
-init_diff_configs = [init_voter_diffusion]
-
-# ╔═╡ f43b3b4c-9075-414b-9694-83e7c841605f
-diff_configs = [voter_diffusion, graph_diffusion]
-
-# ╔═╡ 63bbb84b-50ad-4c69-affe-397faadc7ed9
-checkpoint = 1 #not checkpointing ensemble runs
-
 # ╔═╡ 30887bdf-9bcb-46ad-b93c-63ad0eb078f7
 experiment_config_DEG = Ensemble_config(
 	input_filename = "ED-00001-00000002.toc",
 	
 	selection_configs = [Selection_config(
-			remove_candidates = remove_candidates,
+			remove_candidates = [8],
 			rng_seed = rand(UInt32),
 			sample_size = x
 		) for x in 100:100:1000
@@ -240,7 +199,7 @@ experiment_config_BA = Ensemble_config(
 	input_filename = "./data/ED-00001-00000002.toc",
 	
 	selection_configs = [Selection_config(
-			remove_candidates = remove_candidates,
+			remove_candidates = [8],
 			rng_seed = rand(UInt32),
 			sample_size = x
 		) for x in 100:100:1000],
@@ -262,7 +221,7 @@ experiment_config_weight_result = Ensemble_config(
 	input_filename = "./data/ED-00001-00000002.toc",
 	
 	selection_configs = [Selection_config(
-			remove_candidates = remove_candidates,
+			remove_candidates = [8],
 			rng_seed = rand(UInt32),
 			sample_size = 1000
 	)],
@@ -294,7 +253,7 @@ experiment_config_weight_result = Ensemble_config(
 			evolve_vertices=1.0,
 			attract_proba = 1.0,
 			change_rate = 0.05,
-			normalize_shifts = (false, 0,0)#(true, voter_init_config.weights[1], voter_init_config.weights[end])
+			normalize_shifts = true
 		)]
 	]
 )
@@ -304,7 +263,7 @@ experiment_config_sample_result = Ensemble_config(
 	input_filename = "./data/ED-00001-00000002.toc",
 	
 	selection_configs = [Selection_config(
-			remove_candidates = remove_candidates,
+			remove_candidates = [8],
 			rng_seed = rand(UInt32),
 			sample_size = x
 	) for x in 100:100:1000],
@@ -318,8 +277,8 @@ experiment_config_sample_result = Ensemble_config(
 	graph_init_configs = [DEG_graph_config(
 		rng_seed=rand(UInt32),
 		target_deg_distr=Distributions.truncated(Distributions.Pareto(0.7, 2.0); upper=500),
-	    target_cc=0.3,
-	    homophily=0.8
+		target_cc=0.3,
+		homophily=0.8
 	)],
 	
 	diffusions = 100,
@@ -327,14 +286,14 @@ experiment_config_sample_result = Ensemble_config(
 	diff_init_configs = [[SP_diff_init_config(
 		rng_seed=rand(UInt32),
 		stubbornness_distr=Distributions.Normal(0.5, 0.1)
-	)] for _ in 1:5 ],
+	)]],
 	
 	diff_configs = [[SP_diff_config(
 		rng=Random.MersenneTwister(rand(UInt32)),
 		evolve_vertices=1.0,
 		attract_proba = 1.0,
 		change_rate = 0.05,
-		normalize_shifts = (false, 0,0)#(true, voter_init_config.weights[1], voter_init_config.weights[end])
+		normalize_shifts = true
 	)] for _ in 1:5 ]
 )
 
@@ -351,20 +310,17 @@ if cb_run
 	result = ensemble(experiment_config_sample_result, get_metrics)
 end
 
-# ╔═╡ 12ffda44-7cee-48a7-999b-2224c3549dea
-gathered_metrics
+# ╔═╡ 7a64d08a-d403-4f62-a814-e90955b8bdbb
+df = vcat(result...)
 
-# ╔═╡ ccbfad20-549e-4275-8bbb-644157d98926
-pops = collect(0.0:0.5:1.0)
+# ╔═╡ 52cae365-69ed-4b17-bfd1-6c62b2cb02b1
+#extract(df, :step, :clustering_coeff)
 
-# ╔═╡ 56d7f1d9-f291-446b-8281-013d017102f2
-#model_metrics = ensemble_init_model_AB(3, election, length(candidates), init_metrics, update_metrics!, model_config, diffusion_config)
+# ╔═╡ b3047e3d-76ba-4be6-b07a-6dc577b3ba6e
+extract(df, :selection_config, :sample_size, :clustering_coeff)
 
-# ╔═╡ 409b3357-dcf0-4ddb-8a4b-b7e2f21cee8f
-#model_metrics = ensemble_init_model(false, 3, election, length(candidates), init_metrics, update_metrics!, diffusion_config)
-
-# ╔═╡ 19c42165-d4ba-4c86-b134-514f6b017fe9
-#model_metrics = ensemble_init_model_DEG(3, election, length(candidates), init_metrics, update_metrics!, model_config, diffusion_config, 0.0)
+# ╔═╡ 4731d545-cfa9-40ea-8cd2-201bb3be7004
+extract(df, :selection_config, :sample_size, :borda_votings)
 
 # ╔═╡ 8fd45292-6704-4b57-b7e4-b650dce8d19c
 
@@ -380,6 +336,17 @@ pops = collect(0.0:0.5:1.0)
 	Plots.savefig(p, "img/AB_size_cc_hom.pdf")
 	p
 end=#
+
+# ╔═╡ 2d3e4761-d868-42ee-99fa-40f2a9ee522b
+begin
+	p = Plots.plot(title="DEG graph (target_cc=0.5)", xlabel="sample size", ylabel="clustering coefficient", legend=true)
+	for (i, pop) in enumerate(pops)
+		ccs = model_metrics[i]["clustering_coeff"]
+		OpinionDiffusion.draw_range!(p, [x[2] for x in ccs], [x[3] for x in ccs], [x[4] for x in ccs], label="Homophily: " * string(pop),c=i, x = sizes)
+	end
+	Plots.savefig(p, "img/DEG_size_cc05_hom.pdf")
+	p
+end
 
 # ╔═╡ aad0da61-59d2-4429-97fa-6612872bb863
 md"## Diffusion analysis"
@@ -513,102 +480,6 @@ ensemble_logs = [
 # ╔═╡ a68fa858-2751-451d-a8f3-5c34c95e8b04
  #ensemble_logs = [logger.model_dir * "/" * file for file in readdir(logger.model_dir) if split(file, "_")[1] == "ensemble"][2:end]
 
-# ╔═╡ d9fd7b27-7bd1-4e4d-a1b5-f4f173a86c2d
-sizes = collect(100:100:length(election))
-
-# ╔═╡ 2d3e4761-d868-42ee-99fa-40f2a9ee522b
-begin
-	p = Plots.plot(title="DEG graph (target_cc=0.5)", xlabel="sample size", ylabel="clustering coefficient", legend=true)
-	for (i, pop) in enumerate(pops)
-		ccs = model_metrics[i]["clustering_coeff"]
-		OpinionDiffusion.draw_range!(p, [x[2] for x in ccs], [x[3] for x in ccs], [x[4] for x in ccs], label="Homophily: " * string(pop),c=i, x = sizes)
-	end
-	Plots.savefig(p, "img/DEG_size_cc05_hom.pdf")
-	p
-end
-
-# ╔═╡ 07321ee6-3118-4e7d-9599-23865b8998bc
-function variable_dataset()
-	# for each dataset ensemble models ensemble diffusions
-end
-
-# ╔═╡ 7f898ae7-8613-43a6-95e1-f61748cec34a
-function variable_size(sizes, ensemble_size, election, can_count, init_metrics, update_metrics, model_configs, diffusion_configs)
-	# for each size ensemble models ensemble diffusions
-	size_metrics = []
-	
-	for size in sizes
-		metrics = []
-
-		for model_config in model_configs
-			result = run_ensemble_model(ensemble_size, diffusions, election, candidates, init_metrics, update_metrics!, model_config, init_diff_configs, diff_configs, true)
-			
-			gathered_metrics = gather_metrics([diffusion["metrics"] for diffusion in result])
-			
-			gathered_metrics["size"] = [size]
-			push!(metrics, gathered_metrics)
-		end
-
-		push!(size_metrics, metrics)
-	end
-
-	metrics = [deepcopy(size_metrics[1][i]) for i in 1:ensemble_size]
-	for i in 2:length(sizes)
-		for j in 1:length(pops)
-			for (metric, val) in size_metrics[i][j]
-				push!(metrics[j][metric], val[1])
-			end
-		end
-	end
-
-	return metrics
-end
-
-# ╔═╡ 1efa4e48-4a08-4aca-a255-8acd559c4bc8
-variable_size(sizes)
-
-# ╔═╡ dba61064-49ec-4ed7-b8f0-429751318282
-function variable_model(ensemble_size, election, can_count, init_metrics, update_metrics, model_configs, init_diffusion_configs, diffusion_configs)
-	# for each model config ensemble models ensemble diffusions
-end
-
-# ╔═╡ 9b494231-4d23-4573-b686-e83119bafe88
-function variable_init_diffusion(ensemble_size, model, init_metrics, update_metrics, init_diffusion_configs, diffusion_configs)
-	# deterministic
-	# for each init diffusion config ensemble diffusions
-end
-
-# ╔═╡ e35b5055-6ebd-49cd-83be-429f0f7dcaf5
-function variable_diffusion(ensemble_size, model, init_metrics, update_metrics, diffusion_configs)
-	# random
-	# for each init diff config ensemble diffusions
-end
-
-# ╔═╡ 66267f11-eac9-4fbd-814f-89897f74a046
-function ensemble_init_model_AB(ensemble_size, election, can_count, init_metrics, update_metrics, model_config, diffusion_config)
-	popularity_metrics = []
-	
-	sizes = collect(100:100:length(election))
-	for popularity_ratio in collect(0.0:0.5:1.0)
-		model_config = General_model_config(
-							voter_init_config = voter_type,
-							graph_init_config = weighted_AB_graph_config(
-							m=5, 
-							popularity_ratio=popularity_ratio),
-							)
-		metrics = []
-		for size in sizes
-			gathered_metrics = OpinionDiffusion.run_ensemble_model(ensemble_size, 0, election[1:size], init_metrics, can_count, update_metrics!, model_config, diffusion_config, false)
-			gathered_metrics["size"] = [size]
-			push!(metrics, gathered_metrics)
-		end
-
-		push!(popularity_metrics, metrics)
-	end
-
-	return popularity_metrics
-end
-
 # ╔═╡ 187da043-ee48-420a-91c7-5e3a4fdc30bb
 function draw_voting_rules(data, voting_rules, candidates, parties)
 	n = length(voting_rules)
@@ -688,82 +559,6 @@ end
 # ╔═╡ f96c982d-b5db-47f7-91e0-9c9b3b36332f
 compare_metrics_vis(ensemble_logs, ["unique_votes", "avg_vote_length", "avg_edge_dist"])
 
-# ╔═╡ eccddfc6-2e57-4f9e-88f3-88166fc5da11
-function ensemble_init_model(BA, ensemble_size, election, can_count, init_metrics, update_metrics, diffusion_config)
-	size_metrics = []
-	
-	for size in collect(100:100:length(election))
-		homophily_metrics = []
-		
-		for homophily_ratio in collect(0.0:0.5:1.0)
-			model_config = BA ? 
-			General_model_config(
-							voter_init_config = voter_type,
-							graph_init_config = BA_graph_config(
-							m=5, 
-							homophily=homophily_ratio),
-			) : General_model_config(
-							voter_init_config = voter_type,
-							graph_init_config = DEG_graph_config(
-								exp = 1.0,
-								scale = 2.0,
-								max_degree=min(500, size / 4),
-								target_cc = 0.5, 
-								homophily = homophily_ratio
-								)
-							)
-			
-			gathered_metrics = OpinionDiffusion.run_ensemble_model(ensemble_size, 0, election[1:size], init_metrics, can_count, update_metrics!, model_config, diffusion_config, false)
-			
-			gathered_metrics["size"] = [size]
-			push!(homophily_metrics, gathered_metrics)
-		end
-
-		push!(size_metrics, homophily_metrics)
-	end
-
-	metrics = [deepcopy(size_metrics[1][1]), deepcopy(size_metrics[1][2]), deepcopy(size_metrics[1][3])]
-	for i in 2:length(sizes)
-		for j in 1:length(pops)
-			for (metric, val) in size_metrics[i][j]
-				push!(metrics[j][metric], val[1])
-			end
-		end
-	end
-	
-	return metrics
-end
-
-# ╔═╡ de7a5c20-d5d6-4fe5-b7c3-561b17a90143
-function ensemble_init_model(ensemble_size, election, can_count, init_metrics, update_metrics, model_configs, diffusion_config)
-	size_metrics = []
-	
-	sizes = collect(100:100:length(election))
-	for size in sizes
-		metrics = []
-
-		for model_config in model_configs
-			gathered_metrics = OpinionDiffusion.run_ensemble_model(ensemble_size, 0, election[1:size], init_metrics, can_count, update_metrics!, model_config, diffusion_config, false)
-			
-			gathered_metrics["size"] = [size]
-			push!(metrics, gathered_metrics)
-		end
-
-		push!(size_metrics, metrics)
-	end
-
-	metrics = [deepcopy(size_metrics[1][1]), deepcopy(size_metrics[1][2]), deepcopy(size_metrics[1][3])]
-	for i in 2:length(sizes)
-		for j in 1:length(pops)
-			for (metric, val) in size_metrics[i][j]
-				push!(metrics[j][metric], val[1])
-			end
-		end
-	end
-	
-	return metrics
-end
-
 # ╔═╡ Cell order:
 # ╟─957eb9d7-12d6-4a22-8338-4e8535b54c71
 # ╟─d2923f02-66d7-47de-9801-d4ad99c1230f
@@ -780,30 +575,21 @@ end
 # ╠═ff873978-d93f-4ba2-aadd-6cfd3b136e3d
 # ╠═419d618c-1ce4-4702-b2b0-9c3d160c245e
 # ╟─746f6fca-1733-4383-b423-f78c3ce80d6a
-# ╟─0093be21-0050-4237-803f-41bdf3afb378
 # ╠═6e796169-f1bc-4d7f-a23a-4f18a0d5a664
-# ╠═bcc5468c-2a49-409d-b810-05fc30f4edca
-# ╠═c6ccf2a8-e045-4da9-bbdb-270327c2d53f
-# ╠═8ea22c93-1fe3-44b2-88c1-fb6ccd195866
-# ╠═54b38e9d-2081-42bb-a3c5-5fe31359e15e
-# ╟─a87ea61d-13d9-4c91-b08e-9f24cde3d290
 # ╠═a02c3b7d-b69a-4f34-91ee-5a735340715d
-# ╟─39256cbd-7807-42bc-81b1-d6f2128ccaf9
 # ╠═5faca0e5-7fef-42fd-a659-226dc74c0ad6
-# ╠═970cf900-f459-4eee-a0d3-226a40b6422f
-# ╠═f43b3b4c-9075-414b-9694-83e7c841605f
-# ╠═63bbb84b-50ad-4c69-affe-397faadc7ed9
 # ╠═30887bdf-9bcb-46ad-b93c-63ad0eb078f7
 # ╠═d8b50736-f793-48dd-b726-77c9941dfb08
 # ╠═793469d3-2862-48b0-a45a-16d2164b6609
 # ╠═1e6bb760-6a9c-4e6a-85b6-e2ec97653135
 # ╟─20819900-1129-4ff1-b97e-d079ffce8ab8
 # ╠═f6b4ba47-f9d2-42f0-9c86-e9810be7b810
-# ╠═12ffda44-7cee-48a7-999b-2224c3549dea
-# ╠═ccbfad20-549e-4275-8bbb-644157d98926
-# ╠═56d7f1d9-f291-446b-8281-013d017102f2
-# ╠═409b3357-dcf0-4ddb-8a4b-b7e2f21cee8f
-# ╠═19c42165-d4ba-4c86-b134-514f6b017fe9
+# ╠═7a64d08a-d403-4f62-a814-e90955b8bdbb
+# ╠═902dc709-c5bc-4476-a868-fe21247b3aa0
+# ╠═d647e8ea-03e1-4da5-a485-93a8ac315183
+# ╠═52cae365-69ed-4b17-bfd1-6c62b2cb02b1
+# ╠═b3047e3d-76ba-4be6-b07a-6dc577b3ba6e
+# ╠═4731d545-cfa9-40ea-8cd2-201bb3be7004
 # ╠═8fd45292-6704-4b57-b7e4-b650dce8d19c
 # ╠═a1714045-adf8-427e-a960-dad1fda7aaa3
 # ╠═2d3e4761-d868-42ee-99fa-40f2a9ee522b
@@ -840,16 +626,6 @@ end
 # ╠═a68fa858-2751-451d-a8f3-5c34c95e8b04
 # ╠═f96c982d-b5db-47f7-91e0-9c9b3b36332f
 # ╠═fc90baf0-a51d-4f3f-b036-b3bc381b2dbc
-# ╠═d9fd7b27-7bd1-4e4d-a1b5-f4f173a86c2d
-# ╠═1efa4e48-4a08-4aca-a255-8acd559c4bc8
-# ╠═07321ee6-3118-4e7d-9599-23865b8998bc
-# ╠═7f898ae7-8613-43a6-95e1-f61748cec34a
-# ╠═dba61064-49ec-4ed7-b8f0-429751318282
-# ╠═9b494231-4d23-4573-b686-e83119bafe88
-# ╠═e35b5055-6ebd-49cd-83be-429f0f7dcaf5
-# ╠═de7a5c20-d5d6-4fe5-b7c3-561b17a90143
-# ╠═66267f11-eac9-4fbd-814f-89897f74a046
-# ╠═eccddfc6-2e57-4f9e-88f3-88166fc5da11
 # ╠═187da043-ee48-420a-91c7-5e3a4fdc30bb
 # ╠═ff89eead-5bf5-4d52-9134-aa415ae156b7
 # ╠═e70e36ad-066e-4619-a06a-56e325745a0e

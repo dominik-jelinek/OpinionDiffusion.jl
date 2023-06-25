@@ -5,7 +5,8 @@ end
 
 function init_graph(voters::Vector{T}, graph_init_config::random_graph_config) where {T<:Abstract_voter}
     rng = MersenneTwister(graph_init_config.rng_seed)
-    return random_graph(voters, graph_init_config.average_degree; rng=rng)
+    return random_regular_graph(length(voters), average_degree; rng=rng)
+    #return random_graph(voters, graph_init_config.average_degree; rng=rng)
 end
 
 function random_graph(voters::Vector{T}, average_degree::Float64; rng=Random.GLOBAL_RNG) where {T<:Abstract_voter}

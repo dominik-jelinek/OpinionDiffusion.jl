@@ -127,3 +127,38 @@ function gather_metrics(ens_metrics)
 
     return res
 end
+
+function extract(df, x_col, y_col)
+	gdf = groupby(df, x_col)
+
+	cdf = combine(gdf, y_col .=> [mean, std, minimum, maximum])
+	if df[1, y_col] isa Vector{Float64}
+		cdf = squeeze(cdf, x_col)
+	end
+	return cdf
+end
+
+function extract(df, config, x_col, y_col)
+	df = deepcopy(df)
+	df[!, x_col] = [getproperty(x, x_col) for x in df[!, config]]
+	return extract(df, x_col, y_col)
+end
+
+function squeeze(df, x_col)
+	gdf = groupby(df, x_col)
+	return vcat([vectorize(df, x_col) for df in gdf]...)
+end
+
+function vectorize(gdf, variable)
+    new_data = Dict{String, Vector}()
+    
+    for col in names(gdf)
+		if Symbol(col) == variable
+			new_data[col] = gdf[[1], col]
+		else
+        	new_data[col] = [collect(gdf[!, col])]
+		end
+    end
+
+    return DataFrame(new_data)
+end

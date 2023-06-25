@@ -14,7 +14,7 @@ end
     evolve_vertices::Float64
     attract_proba::Float64
     change_rate::Float64
-    normalize_shifts::Union{Nothing,Tuple{Bool,Float64,Float64}}
+    normalize_shifts::Bool
 end
 
 function diffusion!(model::T, diffusion_config::SP_diff_config) where {T<:Abstract_model}
@@ -53,8 +53,8 @@ function average_all!(voter_1::Spearman_voter, voter_2::Spearman_voter, attract_
     end
 
     if normalize !== nothing && normalize[1]
-        shifts_1 = normalize_shifts(shifts_1, opinion_1, normalize[2], normalize[3])
-        shifts_2 = normalize_shifts(shifts_2, opinion_2, normalize[2], normalize[3])
+        shifts_1 = normalize_shifts(shifts_1, opinion_1, voter_1.weights)
+        shifts_2 = normalize_shifts(shifts_2, opinion_2, voter_2.weights)
     end
 
     cp_1 = deepcopy(voter_1)
@@ -64,7 +64,8 @@ function average_all!(voter_1::Spearman_voter, voter_2::Spearman_voter, attract_
     return [Action(method, (get_ID(voter_2), get_ID(voter_1)), cp_1, deepcopy(voter_1)), Action(method, (get_ID(voter_1), get_ID(voter_2)), cp_2, deepcopy(voter_2))]
 end
 
-function normalize_shifts(shifts::Vector{Float64}, opinion::Vector{Float64}, min_opin, max_opin)
+function normalize_shifts(shifts::Vector{Float64}, opinion::Vector{Float64}, weights::Vector{Float64})
+    min_opin, max_opin = weights[1], weights[end]
     # decrease opinion changes that push candidates outside of [min_opin, max_opin] boundary
     #safeguard
     if max_opin < min_opin

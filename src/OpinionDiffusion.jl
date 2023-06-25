@@ -14,7 +14,7 @@ import Base.@kwdef
 
 # Basic
 import Distances
-import Statistics
+using Statistics
 import StatsBase
 import Distributions
 using DataFrames
@@ -77,16 +77,19 @@ export KT_diff_init_config, KT_diff_config
 export Graph_diff_init_config, Graph_diff_config
 export init_diffusion!
 
+# Metrics
+export extract
+export draw_range!, draw_voting_res
+export plurality_voting, borda_voting, copeland_voting, get_positions
+
 # Visualizations
 export get_election_summary, draw_election_summary
 export reduce_dims, MDS_dim_reduction_config, Tsne_dim_reduction_config, PCA_dim_reduction_config
 export clustering, Kmeans_clustering_config, GM_clustering_config, Party_clustering_config, DBSCAN_clustering_config, Density_clustering_config
 
-export plurality_voting, borda_voting, copeland_voting, get_positions
 export clustering, draw_voter_vis, draw_heat_vis, unify_projections!, gather_metrics
 export gather_vis, timestamp_vis
 export get_edge_distances, draw_degree_distr, draw_edge_distances
-export draw_range!, draw_voting_res
 
 # Utils
 export to_string
