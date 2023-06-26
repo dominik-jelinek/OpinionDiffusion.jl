@@ -178,6 +178,13 @@ end
     diff_configs::Vector{Vector{Abstract_diff_config}}
 end
 
+function length(ensemble_config::Ensemble_config)
+	return length(ensemble_config.selection_configs) * 
+    length(ensemble_config.voter_init_configs) * 
+    length(ensemble_config.graph_init_configs) * 
+    length(ensemble_config.diff_init_configs) * 
+    length(ensemble_config.diff_configs)
+end
 @kwdef struct Experiment_config
     input_filename::String
     selection_config::Selection_config
@@ -221,7 +228,9 @@ function ensemble(ensemble_config::Ensemble_config, get_metrics)
                 
                 # no diffusion
                 if ensemble_config.diffusions == 0 || length(ensemble_config.diff_configs) == 0
-                    push!(dataframes, DataFrame(merge(prev_configs, accumulator)))
+                    df = DataFrame(merge(prev_configs, accumulator))
+                    df.diffusion_step = [0]
+                    push!(dataframes, df)
                     continue
                 end
 
@@ -248,7 +257,7 @@ function ensemble(ensemble_config::Ensemble_config, get_metrics)
                         expanded_configs = Dict(key => fill(value, ensemble_config.diffusions + 1) for (key, value) in prev_configs)
 
                         df = DataFrame(merge(expanded_configs, diff_accumulator))
-                        df.diffusion_step = collect(1:ensemble_config.diffusions + 1)
+                        df.diffusion_step = collect(0:ensemble_config.diffusions)
                         push!(dataframes, df)
                         
                         delete!(prev_configs, "diff_config")
@@ -264,5 +273,5 @@ function ensemble(ensemble_config::Ensemble_config, get_metrics)
         end
     end
 
-    return dataframes
+    return vcat(dataframes...)
 end

@@ -18,6 +18,7 @@ using Statistics
 import StatsBase
 import Distributions
 using DataFrames
+using PartialFunctions
 
 # Graphs
 using Graphs

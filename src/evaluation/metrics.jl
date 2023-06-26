@@ -62,6 +62,7 @@ function metrics_vis(metrics, candidates, parties, exp_dir=Nothing)
     return plots
 end
 
+#=
 function draw_range(min, value, max; c=1, label, x=nothing)
     plot = Plots.plot()
     draw_range!(plot, min, value, max; c=c, label=label, x=x)
@@ -78,23 +79,42 @@ function draw_range!(plot, min, value, max; c=1, label, linestyle=:solid, x=noth
     Plots.plot!(plot, x, value, linewidth=3, label=label, c=c, linestyle=linestyle)
 end
 
-function draw_metric(values, title::String; linestyle=:solid, log_idx=nothing)
+function draw_metric(values, lows, highs, title::String; linestyle=:solid, log_idx=nothing)
     plot = Plots.plot()
-    draw_metric!(plot, values, title; log_idx=log_idx, linestyle=linestyle)
+    draw_metric!(plot, values, lows, highs, title; log_idx=log_idx, linestyle=linestyle)
 
     return plot
 end
 
-function draw_metric!(plot, values, title::String; linestyle=:solid, log_idx=nothing)
+function draw_metric!(plot, values, lows, highs, title::String; linestyle=:solid, log_idx=nothing)
     label = log_idx === nothing ? title : title * " " * string(log_idx)
     c = log_idx === nothing ? 1 : log_idx
 
-    draw_range!(plot, [x[2] for x in values], [x[3] for x in values], [x[4] for x in values], label=label, linestyle=linestyle, c=c)
+    draw_range!(plot, lows, values, highs, label=label, linestyle=linestyle, c=c)
     Plots.plot!(plot, title=title, xlabel="Timestamp", ylabel="Value", yformatter=:plain)
 
     return plot
 end
+=#
+function draw_metric!(ax, x, y; band::Union{Tuple, Nothing}=nothing, c=1, label, linestyle=:solid)
+    color = Colors.distinguishable_colors(c)[c]
+    lines!(ax, x, y, linewidth=3, color = color, linestyle=linestyle, label=label)
 
+    if band !== nothing
+        min_y, max_y = band
+        band!(ax, x, min_y, max_y, color=(color, 0.3), transparency=true)
+    end
+end
+
+function draw_metric(ax, x, y; band::Union{Tuple, Nothing}=nothing, c=1, label, linestyle=:solid)
+    color = Colors.distinguishable_colors(c)[c]
+    lines(ax, x, y, linewidth=3, color = color, linestyle=linestyle, label=label)
+
+    if band !== nothing
+        min_y, max_y = band
+        band!(ax, x, min_y, max_y, color=(color, 0.3), transparency=true)
+    end
+end
 #___________________________________________________________________
 # ENSEMBLE
 
@@ -130,11 +150,14 @@ end
 
 function extract(df, x_col, y_col)
 	gdf = groupby(df, x_col)
+    y_col_name = String(y_col)
+    y_col_names = [y_col_name * "_" * metric for metric in ["mean", "std", "minimum", "maximum"]]
+	cdf = combine(gdf, y_col .=> [apply $ mean, apply $ std, apply $ minimum, apply $ maximum] .=> y_col_names)
 
-	cdf = combine(gdf, y_col .=> [mean, std, minimum, maximum])
 	if df[1, y_col] isa Vector{Float64}
 		cdf = squeeze(cdf, x_col)
 	end
+	
 	return cdf
 end
 
@@ -142,6 +165,14 @@ function extract(df, config, x_col, y_col)
 	df = deepcopy(df)
 	df[!, x_col] = [getproperty(x, x_col) for x in df[!, config]]
 	return extract(df, x_col, y_col)
+end
+
+function apply(func, x)
+	if x[1] isa Vector
+		return vec(func(hcat(x...), dims=2))
+	else
+		return [func(x)]
+	end
 end
 
 function squeeze(df, x_col)
