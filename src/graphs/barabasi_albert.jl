@@ -1,17 +1,18 @@
 @kwdef struct BA_graph_config <: Abstract_graph_init_config
     rng_seed::UInt32
-    m::Integer
-    homophily::Real
+    average_degree::Int64
+    homophily::Float64
 end
 
 function init_graph(voters, graph_init_config::BA_graph_config;)
     rng = Random.MersenneTwister(graph_init_config.rng_seed)
-    return barabasi_albert_graph(voters, graph_init_config.m; homophily=graph_init_config.homophily, rng=rng)
+    return barabasi_albert_graph(voters, graph_init_config.average_degree; homophily=graph_init_config.homophily, rng=rng)
 end
 
-function barabasi_albert_graph(voters::Vector{T}, m::Integer; homophily=0.0, rng=Random.GLOBAL_RNG) where {T<:Abstract_voter}
+function barabasi_albert_graph(voters::Vector{T}, average_degree::Int64; homophily=0.0, rng=Random.GLOBAL_RNG) where {T<:Abstract_voter}
+    m = ceil(Int64, average_degree / 2)
     if m > length(voters)
-        throw(ArgumentError("Argument m for Barabasi-Albert graph creation is higher than number of voters."))
+        throw(ArgumentError("Argument average_degree for Barabasi-Albert graph creation is higher than number of voters."))
     end
     n = length(voters)
     social_network = SimpleGraph(n)

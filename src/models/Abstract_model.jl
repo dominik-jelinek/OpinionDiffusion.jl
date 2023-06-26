@@ -178,12 +178,20 @@ end
     diff_configs::Vector{Vector{Abstract_diff_config}}
 end
 
-function length(ensemble_config::Ensemble_config)
-	return length(ensemble_config.selection_configs) * 
+function Base.length(ensemble_config::Ensemble_config)
+    len = length(ensemble_config.selection_configs) * 
     length(ensemble_config.voter_init_configs) * 
-    length(ensemble_config.graph_init_configs) * 
-    length(ensemble_config.diff_init_configs) * 
-    length(ensemble_config.diff_configs)
+    length(ensemble_config.graph_init_configs)
+    
+    if length(ensemble_config.diff_init_configs) > 0
+        len *= length(ensemble_config.diff_init_configs)
+    end
+    
+    if length(ensemble_config.diff_configs) > 0
+        len *= length(ensemble_config.diff_configs)
+    end
+
+	return len
 end
 @kwdef struct Experiment_config
     input_filename::String
@@ -258,8 +266,9 @@ function ensemble(ensemble_config::Ensemble_config, get_metrics)
 
                         df = DataFrame(merge(expanded_configs, diff_accumulator))
                         df.diffusion_step = collect(0:ensemble_config.diffusions)
+    
                         push!(dataframes, df)
-                        
+                    
                         delete!(prev_configs, "diff_config")
                     end
 

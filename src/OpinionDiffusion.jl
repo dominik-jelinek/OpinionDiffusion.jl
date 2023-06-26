@@ -57,7 +57,7 @@ export Kendall_voter_init_config, Kendall_voter_diff_config
 
 # Graphs
 export init_graph
-export BA_graph_config, DEG_graph_config
+export BA_graph_config, DEG_graph_config, Random_graph_config
 
 # Model
 export General_model
@@ -79,7 +79,7 @@ export Graph_diff_init_config, Graph_diff_config
 export init_diffusion!
 
 # Metrics
-export extract
+export agg_stats, extract!
 export draw_range!, draw_voting_res
 export plurality_voting, borda_voting, copeland_voting, get_positions
 

@@ -147,12 +147,17 @@ function gather_metrics(ens_metrics)
 
     return res
 end
+function new_col_name(col, func)
+    return string(col) * "_" * string(func)
+end
 
-function extract(df, x_col, y_col)
+function agg_stats(df, x_col, y_col)
 	gdf = groupby(df, x_col)
-    y_col_name = String(y_col)
-    y_col_names = [y_col_name * "_" * metric for metric in ["mean", "std", "minimum", "maximum"]]
-	cdf = combine(gdf, y_col .=> [apply $ mean, apply $ std, apply $ minimum, apply $ maximum] .=> y_col_names)
+    y_col_name = string(y_col)
+    functions = [mean, std, minimum, maximum]
+    y_col_names = [new_col_name(y_col_name, func) for func in functions]
+
+	cdf = combine(gdf, y_col .=> [apply $ func for  func in functions] .=> y_col_names)
 
 	if df[1, y_col] isa Vector{Float64}
 		cdf = squeeze(cdf, x_col)
@@ -161,10 +166,18 @@ function extract(df, x_col, y_col)
 	return cdf
 end
 
-function extract(df, config, x_col, y_col)
+function extract!(df, config_col::Union{String, Symbol}, variable::Union{String, Symbol})
+	df[!, variable] = [getproperty(x, Symbol(variable)) for x in df[!, config_col]]
+end
+
+function extract!(df, config_col::Union{String, Symbol}, func::Function)
+	df[!,string(config_col) * "_" * string(nameof(func))] = [func(x) for x in df[!, config_col]]
+end
+
+function agg_stats(df, config, x_col, y_col)
 	df = deepcopy(df)
 	df[!, x_col] = [getproperty(x, x_col) for x in df[!, config]]
-	return extract(df, x_col, y_col)
+	return agg_stats(df, x_col, y_col)
 end
 
 function apply(func, x)
@@ -180,11 +193,11 @@ function squeeze(df, x_col)
 	return vcat([vectorize(df, x_col) for df in gdf]...)
 end
 
-function vectorize(gdf, variable)
+function vectorize(gdf, variable::String)
     new_data = Dict{String, Vector}()
     
     for col in names(gdf)
-		if Symbol(col) == variable
+		if col == variable
 			new_data[col] = gdf[[1], col]
 		else
         	new_data[col] = [collect(gdf[!, col])]
