@@ -137,7 +137,7 @@ function get_positions(voters::Vector{Abstract_voter}, can_count::Int)
             positions[i] = get_pos(voter, can)
         end
 
-        res[can] = Statistics.mean(positions)
+        res[can] = StatsBase.mean(positions)
     end
 
     return res

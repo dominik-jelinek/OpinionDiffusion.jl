@@ -646,5 +646,5 @@ function test_random_KT(n, can_count; log_lvl=0)
       end
    end
 
-   println(Statistics.mean(ratios))
+   println(StatsBase.mean(ratios))
 end

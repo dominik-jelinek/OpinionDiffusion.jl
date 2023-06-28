@@ -1,51 +1,3 @@
-function get_metrics(model)
-	g = get_social_network(model)
-    voters = get_voters(model)
-	candidates = get_candidates(model)
-	can_count = length(candidates)
-	
-	histogram = Graphs.degree_histogram(g)
-    keyss = collect(keys(histogram))
-    
-	votes = get_votes(voters)
-
-	metrics = Dict(
-		"min_degrees" => minimum(keyss),
-        "avg_degrees" => Graphs.ne(g) * 2 / Graphs.nv(g),
-        "max_degrees" => maximum(keyss),
-        "avg_edge_dist" => OpinionDiffusion.StatsBase.mean(OpinionDiffusion.get_edge_distances(g, voters)),
-        "clustering_coeff" => Graphs.global_clustering_coefficient(g),
-        #"diameter" => Graphs.diameter(g),
-        
-        "avg_vote_length" => OpinionDiffusion.StatsBase.mean([length(vote) for vote in votes]),
-        "unique_votes" => length(unique(votes)),
-        
-        "plurality_votings" => plurality_voting(votes, can_count, true),
-        "borda_votings" => borda_voting(votes, can_count, true),
-        #"copeland_votings" => copeland_voting(votes, can_count),
-        "positions" => get_positions(voters, can_count)
-	)
-	
-	return metrics
-end
-
-function init_accumulator(metrics::Dict)
-    accumulator = Dict()
-
-    for (key, value) in metrics
-        accumulator[key] = [value]
-    end
-
-    return accumulator
-end
-
-function add_metrics!(accumulator, metrics::Dict)
-    for (key, value) in metrics
-        push!(accumulator[key], value)
-    end
-end
-
-    
 function metrics_vis(metrics, candidates, parties, exp_dir=Nothing)
     degrees = draw_range(metrics["min_degrees"], metrics["avg_degrees"], metrics["max_degrees"], title="Degree range", xlabel="Timestamp", ylabel="Degree", value_label="avg")
 
@@ -62,51 +14,18 @@ function metrics_vis(metrics, candidates, parties, exp_dir=Nothing)
     return plots
 end
 
-#=
-function draw_range(min, value, max; c=1, label, x=nothing)
-    plot = Plots.plot()
-    draw_range!(plot, min, value, max; c=c, label=label, x=x)
-
-    return plot
-end
-
-function draw_range!(plot, min, value, max; c=1, label, linestyle=:solid, x=nothing)
-    if x === nothing
-        x = 1:length(value)
-    end
-
-    Plots.plot!(plot, x, min, fillrange=max, fillalpha=0.4, c=c, linewidth=0, label=label)
-    Plots.plot!(plot, x, value, linewidth=3, label=label, c=c, linestyle=linestyle)
-end
-
-function draw_metric(values, lows, highs, title::String; linestyle=:solid, log_idx=nothing)
-    plot = Plots.plot()
-    draw_metric!(plot, values, lows, highs, title; log_idx=log_idx, linestyle=linestyle)
-
-    return plot
-end
-
-function draw_metric!(plot, values, lows, highs, title::String; linestyle=:solid, log_idx=nothing)
-    label = log_idx === nothing ? title : title * " " * string(log_idx)
-    c = log_idx === nothing ? 1 : log_idx
-
-    draw_range!(plot, lows, values, highs, label=label, linestyle=linestyle, c=c)
-    Plots.plot!(plot, title=title, xlabel="Timestamp", ylabel="Value", yformatter=:plain)
-
-    return plot
-end
-=#
-function draw_metric!(ax, x, y; band::Union{Tuple, Nothing}=nothing, c=1, label, linestyle=:solid)
-    color = Colors.distinguishable_colors(c)[c]
-    lines!(ax, x, y, linewidth=3, color = color, linestyle=linestyle, label=label)
+function draw_metric!(ax, x, y; band::Union{Tuple, Nothing}=nothing, color=Makie.wong_colors()[1], label="", linestyle=:solid)
+    line = lines!(ax, x, y, linewidth=3, color = color, linestyle=linestyle, label=label)
 
     if band !== nothing
         min_y, max_y = band
         band!(ax, x, min_y, max_y, color=(color, 0.3), transparency=true)
     end
+
+    return line
 end
 
-function draw_metric(ax, x, y; band::Union{Tuple, Nothing}=nothing, c=1, label, linestyle=:solid)
+function draw_metric(ax, x, y; band::Union{Tuple, Nothing}=nothing, c=1, label="", linestyle=:solid)
     color = Colors.distinguishable_colors(c)[c]
     lines(ax, x, y, linewidth=3, color = color, linestyle=linestyle, label=label)
 
@@ -115,47 +34,16 @@ function draw_metric(ax, x, y; band::Union{Tuple, Nothing}=nothing, c=1, label, 
         band!(ax, x, min_y, max_y, color=(color, 0.3), transparency=true)
     end
 end
+
 #___________________________________________________________________
 # ENSEMBLE
-
-"""
-Gather data from the logs of multiple diffusion experiments and visualize spreads
-"""
-function gather_metrics(ens_metrics)
-    if length(ens_metrics) == 0
-        return
-    end
-
-    res = Dict()
-    for metric in keys(ens_metrics[1])
-        # create a matrix out of all the runs for specific metric
-        matrix = transpose(hcat([run[metric] for run in ens_metrics]...))
-
-        if matrix[1, 1] isa Number
-            # number
-            res[metric] = [Statistics.quantile(col, [0.0, 0.25, 0.5, 0.75, 1.0]) for col in eachcol(matrix)]
-
-        else
-            # vector
-            res[metric] = []
-            for col in eachcol(matrix)
-                matrix_vect = vcat(col...)
-                push!(res[metric], [Statistics.quantile(col, [0.0, 0.25, 0.5, 0.75, 1.0]) for col in eachcol(matrix_vect)])
-            end
-        end
-    end
-
-    return res
-end
-function new_col_name(col, func)
-    return string(col) * "_" * string(func)
-end
+#___________________________________________________________________
 
 function agg_stats(df, x_col, y_col)
 	gdf = groupby(df, x_col)
     y_col_name = string(y_col)
     functions = [mean, std, minimum, maximum]
-    y_col_names = [new_col_name(y_col_name, func) for func in functions]
+    y_col_names = [col_name(y_col_name, func) for func in functions]
 
 	cdf = combine(gdf, y_col .=> [apply $ func for  func in functions] .=> y_col_names)
 
@@ -205,4 +93,89 @@ function vectorize(gdf, variable::String)
     end
 
     return DataFrame(new_data)
+end
+
+function col_name(col, func)
+    return string(col) * "_" * string(func)
+end
+
+function col_name(col)
+    split_col = split(string(col), "_")
+    # capitalize first letter of each word
+    for (i, word) in enumerate(split_col)
+        split_col[i] = uppercase(word[1]) * word[2:end]
+    end
+    return join(split_col, " ")
+end
+
+function compare(gdf, col_x, col_y; labels=nothing, linestyle=:solid)
+	f = Figure()
+	ax = f[1, 1] = Axis(f; xlabel=col_name(col_x), ylabel=col_name(col_y))
+	compare!(ax, gdf, col_x, col_y, labels=labels, linestyle=linestyle)
+
+	return f
+end
+
+function compare!(ax, gdf, col_x, col_y; labels=nothing, linestyle=:solid)
+    colors = Makie.wong_colors()
+    
+    for (i, df) in enumerate(gdf)
+        stats_df = agg_stats(df, col_x, col_y)
+        
+        line = draw_metric!(
+            ax, 
+            stats_df[!, col_x], 
+            stats_df[!, col_y * "_mean"], 
+            band=(stats_df[!, col_y * "_minimum"], stats_df[!, col_y * "_maximum"]), 
+            color=colors[i],
+            linestyle=linestyle
+        )
+
+        if labels !== nothing
+            line[:label] = labels[i]
+        end
+    end
+    axislegend(ax)
+end
+
+function voting_rule()
+    f = Figure()
+	
+	x_col = "sample_size"
+	extract!(dff, "selection_config", x_col)
+	y_col = "borda_scores"
+	
+	ax = f[1, 1] = Axis(f; xlabel=x_col, ylabel=y_col)
+
+	config_col = "graph_init_config"
+	extract!(dff, config_col, typeof)
+	gdf = groupby(dff, col_name(config_col, typeof))
+	for (df, linestyle) in zip(gdf, [:solid, :dashdot, :dot]) 
+		voting_rule_vis!(ax, agg_stats(df, x_col, y_col), x_col, y_col, linestyle)
+	end
+	leg = Legend(f[1, 2], ax)
+	f
+end
+
+function voting_rule_vis(df, x_col, voting_rule)
+	f = Figure()
+	ax = f[1, 1] = Axis(f; xlabel=x_col, ylabel=voting_rule)
+	voting_rule_vis!(ax, df, x_col, voting_rule)
+	leg = Legend(f[1, 2], ax)
+	return f
+end
+
+function voting_rule_vis!(ax, df, x_col, voting_rule, linestyle=:solid)
+	means = extract_candidates(df, voting_rule * "_mean")
+	mins = extract_candidates(df, voting_rule * "_minimum")
+	maxs = extract_candidates(df, voting_rule * "_maximum")
+    colors = Makie.wong_colors()
+	for candidate in eachindex(means)
+		draw_metric!(ax, df[!, x_col], means[candidate], band=(mins[candidate], maxs[candidate]), color=colors[candidate], label=string(candidate), linestyle=linestyle)
+	end
+end
+
+function extract_candidates(df, col)
+	values = df[!, col]
+	return [[val[candidate] for val in values] for candidate in 1:length(values[1])]
 end

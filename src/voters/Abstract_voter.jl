@@ -84,5 +84,5 @@ end
 
 function get_median_distance(distance_matrix)
     n = size(distance_matrix, 1)
-    return Statistics.median(sort(vec(distance_matrix))[n+1:end])
+    return StatsBase.median(sort(vec(distance_matrix))[n+1:end])
 end

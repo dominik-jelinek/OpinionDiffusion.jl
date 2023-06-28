@@ -26,9 +26,12 @@ function run!(
 ) where {T<:Abstract_model}
 
     diff_configs = deepcopy(diff_configs)
+    if logger !== nothing
+        log(logger, model)
+    end
     actions = Vector{Vector{Action}}()
 
-    for j in 1:diffusions
+    for _ in 1:diffusions
         push!(actions, _run!(model, diff_configs; logger=logger, accumulator=accumulator))
     end
 
@@ -53,45 +56,6 @@ function _run!(
     end
 
     return actions
-end
-
-function save_log(model::T, model_dir) where {T<:Abstract_model}
-    jldsave("$(model_dir)/model_init.jld2"; model)
-end
-
-function save_log(model::T, exp_dir::String, idx::Int64) where {T<:Abstract_model}
-    jldsave("$(exp_dir)/model_$(idx).jld2"; model)
-end
-
-#restart
-function load_log(model_dir::String)
-    return load("$(model_dir)/model_init.jld2", "model")
-end
-
-#load
-function load_log(exp_dir::String, idx::Int64)
-    if idx == -1
-        idx = last_log_idx(exp_dir)
-    end
-
-    return load("$(exp_dir)/model_$(idx).jld2", "model")
-end
-
-function load_log(exp_dir::String, model_name::String)
-    return load("$(exp_dir)/$(model_name)", "model")
-end
-
-function load_logs(exp_dir::String, start_idx::Int64, end_idx::Int64)
-    if end_idx == -1
-        end_idx = last_log_idx(exp_dir)
-    end
-    models = Vector{Abstract_model}(undef, end_idx - start_idx + 1)
-
-    for (i, j) in enumerate(start_idx:end_idx)
-        models[i] = load_log(exp_dir, j)
-    end
-
-    return models
 end
 
 function select_neighbor(self, model; rng=Random.GLOBAL_RNG)
@@ -174,8 +138,8 @@ function ensemble(init_election, ensemble_config::Ensemble_config, get_metrics)
 
                 social_network = init_graph(voters, graph_init_config)
                 model = General_model(voters, social_network, election.party_names, election.candidates)
-                accumulator = init_accumulator(get_metrics, model)
 
+                accumulator = init_accumulator(get_metrics, model)
                 # no diffusion
                 if ensemble_config.diffusions == 0 || length(ensemble_config.diff_configs) == 0
                     df = hcat(Dataframe(prev_configs), accumulated_metrics(diff_accumulator))

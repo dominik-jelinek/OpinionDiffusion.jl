@@ -22,7 +22,7 @@ function get_cluster_graph(model, clusters, labels, projections)
    for (i, (label, indices)) in enumerate(clusters)
       set_prop!(cluster_graph, i, :label, label)
       set_prop!(cluster_graph, i, :indices, indices)
-      set_prop!(cluster_graph, i, :pos, Statistics.mean(projections[:, collect(indices)], dims=2))
+      set_prop!(cluster_graph, i, :pos, StatsBase.mean(projections[:, collect(indices)], dims=2))
    end
 
    #for each edge in graph add one to grouped graph and if there is one already

@@ -10,13 +10,13 @@ struct Election
     votes::Vector{Vote}
 end
 
-function parse_data(path_data::String)
-    ext = Symbol(lowercase(splitext(path_data)[2][2:end]))
+function parse_data(data_path::String)
+    ext = Symbol(lowercase(splitext(data_path)[2][2:end]))
 
-    return parse_data(path_data, Val(ext))
+    return parse_data(data_path, Val(ext))
 end
 
-parse_data(path_data::String, ext)::Election = throw(ArgumentError("Unsupported format of input data $ext. Supported: [toc, soi]"))
+parse_data(data_path::String, ext)::Election = throw(ArgumentError("Unsupported format of input data $ext. Supported: [toc, soi]"))
 
 @kwdef struct Selection_config <: Config
     remove_candidates::Vector{Int64}

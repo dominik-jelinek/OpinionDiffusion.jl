@@ -366,7 +366,7 @@ function best_k_silhouettes(opinions, max_k::Int)
         kmeans_result = Clustering.kmeans(opinions, k)
         assignments = Clustering.assignments(kmeans_result)
         silhouette_vals = Clustering.silhouettes(assignments, distances)
-        silhouette_avg = Statistics.mean(silhouette_vals)
+        silhouette_avg = StatsBase.mean(silhouette_vals)
 
         if silhouette_avg > best_silhouette_avg
             best_silhouette_avg = silhouette_avg

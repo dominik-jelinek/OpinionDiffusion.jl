@@ -3,6 +3,13 @@ function get_rng(diffusion_config::T) where {T<:Abstract_diff_config}
     return diffusion_config.rng
 end
 
+function init_diffusion(model, diff_init_configs::Vector{<:Abstract_diff_init_config})
+    model_cp = deepcopy(model)
+    init_diffusion!(model_cp, diff_init_configs)
+
+    return model_cp
+end
+
 function init_diffusion!(model, diff_init_configs::Vector{<:Abstract_diff_init_config})
     for diff_init_config in diff_init_configs
         init_diffusion!(model, diff_init_config)
