@@ -14,7 +14,6 @@ import Base.@kwdef
 
 # Basic
 import Distances
-using Statistics
 import StatsBase
 import Distributions
 using DataFrames
@@ -36,6 +35,7 @@ import GaussianMixtures
 # Dimensionality reduction
 using MultivariateStats
 
+# KDE
 import KernelDensity
 
 # Serialization
@@ -79,8 +79,8 @@ export Graph_diff_init_config, Graph_diff_config
 export init_diffusion!
 
 # Metrics
-export agg_stats, extract!
-export draw_range!, draw_voting_res
+export agg_stats, extract!, col_name, compare, compare!
+export draw_metric!, draw_metric, draw_range!, draw_voting_res
 export plurality_voting, borda_voting, copeland_voting, get_positions
 
 # Visualizations
@@ -143,6 +143,7 @@ include("diffusions/graph_diffusion.jl")
 include("diffusions/kendall_diffusion.jl")
 include("diffusions/spearman_diffusion.jl")
 
+include("evaluation/Accumulator.jl")
 include("models/Abstract_model.jl")
 include("models/General_model.jl")
 include("models/Logger.jl")
