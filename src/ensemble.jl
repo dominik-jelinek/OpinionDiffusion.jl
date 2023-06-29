@@ -29,7 +29,6 @@ function Base.length(ensemble_config::Ensemble_config)
 	return len
 end
 
-
 function ensemble(init_election::Election, ensemble_config::Ensemble_config, get_metrics::Function)
 	dataframes = Vector{DataFrame}()
 
@@ -53,12 +52,12 @@ function ensemble(init_election::Election, ensemble_config::Ensemble_config, get
 				social_network = init_graph(voters, graph_init_config)
 				model = General_model(voters, social_network, election.party_names, election.candidates)
 
-				accumulator = init_accumulator(get_metrics)
+				accumulator = Accumulator(get_metrics)
 				add_metrics!(accumulator, model)
 
 				# no diffusion
-				if ensemble_config.diffusion_configs.diffusion_steps == 0 || length(ensemble_config.diffusion_configs) == 0
-					df = hcat(Dataframe(prev_configs), accumulated_metrics(accumulator))
+				if ensemble_config.diffusion_configs === nothing
+					df = hcat(DataFrame(prev_configs), accumulated_metrics(accumulator))
 					df.diffusion_step = [0]
 					push!(dataframes, df)
 					continue
@@ -75,8 +74,8 @@ function ensemble(init_election::Election, ensemble_config::Ensemble_config, get
 					init_diffusion!(model_init, diffusion_init_config)
 
 					for (m, diffusion_config) in enumerate(ensemble_config.diffusion_configs)
-						for n in eachindex(diffusion_config)
-							diffusion_config[n] = resolve_dependencies(diffusion_config[n], prev_configs)
+						for n in eachindex(diffusion_config.mutation_configs)
+							diffusion_config.mutation_configs[n] = resolve_dependencies(diffusion_config.mutation_configs[n], prev_configs)
 						end
 						prev_configs["diffusion_config"] = diffusion_config
 
@@ -86,7 +85,7 @@ function ensemble(init_election::Election, ensemble_config::Ensemble_config, get
 
 						expanded_configs = Dict(key => fill(value, diffusion_config.diffusion_steps + 1) for (key, value) in prev_configs)
 
-						df = hcat(Dataframe(expanded_configs), accumulated_metrics(accumulator_diffusion))
+						df = hcat(DataFrame(expanded_configs), accumulated_metrics(accumulator_diffusion))
 						df.diffusion_step = collect(0:diffusion_config.diffusion_steps)
 
 						push!(dataframes, df)

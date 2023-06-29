@@ -49,7 +49,7 @@ function _run!(
 	actions = diffusion!(model, mutation_configs)
 
 	if accumulator !== nothing
-		add_metrics!(accumulator, get_metrics(model))
+		add_metrics!(accumulator, model)
 	end
 
 	if experiment_logger !== nothing

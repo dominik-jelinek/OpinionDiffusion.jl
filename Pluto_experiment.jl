@@ -380,7 +380,7 @@ ensemble_config_sample_result_SP = Ensemble_config(
 	
 	diffusion_configs = [
 		Diffusion_config(
-			diffusion_steps=250,
+			diffusion_steps=1,
 			mutation_configs=[
 				SP_mutation_config(
 					rng=Random.MersenneTwister(rand(UInt32)),
@@ -401,6 +401,15 @@ md"""
 	
 ---
 """
+
+# ╔═╡ f6b4ba47-f9d2-42f0-9c86-e9810be7b810
+if cb_run
+	sample_result_df = ensemble(election, ensemble_config_sample_result_SP, get_metrics)
+	JLD2.jldsave("logs/ensemble_sample_result.jld2"; config=ensemble_config_sample_result_SP, df=sample_result_df)
+end
+
+# ╔═╡ f4d6f5ee-146a-428a-8ecf-eafef3865665
+sample_result_df
 
 # ╔═╡ 03bd1c60-4389-4b52-90f4-d1ddf8ef9158
 md"Uses DEG graph for the clustering coefficient"
@@ -464,12 +473,6 @@ end
 
 # ╔═╡ f2cd6477-977e-41af-ac92-acd8aef59197
 compare(sample_graph_df, col_name("graph_init_config", typeof), "sample_size",  "clustering_coeff")
-
-# ╔═╡ f6b4ba47-f9d2-42f0-9c86-e9810be7b810
-if cb_run
-	sample_result_df = ensemble(election, ensemble_config_sample_result, get_metrics)
-	JLD2.jldsave("logs/ensemble_sample_result.jld2"; config=ensemble_config_sample_result, df=sample_result_df)
-end
 
 # ╔═╡ a83aafb3-7bb3-4dc6-a610-062abdb9b402
 #selection = filter(row -> row[:diffusion_step] == maximum(sample_result_df[!, :diffusion_step]), sample_result_df)
@@ -696,6 +699,8 @@ end
 # ╟─48f5e7a0-260b-4153-a443-e4962a57861c
 # ╠═1e6bb760-6a9c-4e6a-85b6-e2ec97653135
 # ╟─20819900-1129-4ff1-b97e-d079ffce8ab8
+# ╠═f6b4ba47-f9d2-42f0-9c86-e9810be7b810
+# ╠═f4d6f5ee-146a-428a-8ecf-eafef3865665
 # ╟─03bd1c60-4389-4b52-90f4-d1ddf8ef9158
 # ╟─1cce7716-74eb-4766-a678-51bf46d588fd
 # ╟─a1cbb7fb-fb0a-46a4-a8f6-0bfed218cb3d
@@ -713,7 +718,6 @@ end
 # ╠═ac3e648a-1d70-408a-b151-6f5c099f404e
 # ╠═4e06848c-4c0a-4441-9894-715f622ccf4e
 # ╠═f2cd6477-977e-41af-ac92-acd8aef59197
-# ╠═f6b4ba47-f9d2-42f0-9c86-e9810be7b810
 # ╠═a83aafb3-7bb3-4dc6-a610-062abdb9b402
 # ╠═7b11bf1f-4386-42a9-9e28-d2720e72c170
 # ╠═a2c1ef1a-285f-4bef-8c70-ae7813699111

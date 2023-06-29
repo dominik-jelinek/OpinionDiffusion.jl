@@ -21,7 +21,7 @@ function add_metrics!(accumulator::Accumulator, model::T) where {T<:Abstract_mod
 end
 
 function accumulated_metrics(accumulator::Accumulator)
-	return Dataframe(accumulator)
+	return DataFrame(accumulator.accumulator)
 end
 
 function get_metrics(model)
