@@ -100,17 +100,18 @@ export test_KT
 # Custom Types
 # ______________________________________________________________________________
 
-abstract type Config end
-abstract type Abstract_voter_init_config <: Config end
-abstract type Abstract_graph_init_config <: Config end
+abstract type Abstract_config end
+abstract type Abstract_voter_config <: Abstract_config end
+abstract type Abstract_graph_config <: Abstract_config end
 
-abstract type Abstract_diff_config <: Config end
-abstract type Abstract_diff_init_config <: Config end
+abstract type Abstract_diff_config <: Abstract_config end
+abstract type Abstract_diff_init_config <: Abstract_config end
 
-abstract type Abstract_clustering_config <: Config end
-abstract type Abstract_dim_reduction_config <: Config end
+abstract type Abstract_clustering_config <: Abstract_config end
+abstract type Abstract_dim_reduction_config <: Abstract_config end
 
-abstract type Abstract_model_config <: Config end
+abstract type Abstract_model_config <: Abstract_config end
+
 abstract type Abstract_voter end
 abstract type Abstract_model end
 
@@ -119,10 +120,10 @@ Vote = Vector{Bucket}
 candidate_count(vote::Vote) = sum([length(bucket) for bucket in vote])
 
 @kwdef struct Action
-    operation::String
-    ID::Union{Int64,Tuple{Int64,Int64}}
-    old::Abstract_voter
-    new::Abstract_voter
+	operation::String
+	ID::Union{Int64,Tuple{Int64,Int64}}
+	old::Abstract_voter
+	new::Abstract_voter
 end
 
 include("election/election.jl")
@@ -144,9 +145,12 @@ include("diffusions/kendall_diffusion.jl")
 include("diffusions/spearman_diffusion.jl")
 
 include("evaluation/Accumulator.jl")
+include("logging/Experiment_logger.jl")
+include("logging/logging.jl")
+include("logging/Model_logger.jl")
+
 include("models/Abstract_model.jl")
 include("models/General_model.jl")
-include("models/Logger.jl")
 
 include("evaluation/visualizations.jl")
 include("evaluation/metrics.jl")
