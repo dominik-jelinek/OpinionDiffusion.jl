@@ -1,15 +1,15 @@
-@kwdef struct SP_diff_init_config <: Abstract_diff_init_config
+@kwdef struct SP_mutation_init_config <: Abstract_mutation_init_config
 	rng_seed::UInt32
 	stubbornness_distr::Distributions.UnivariateDistribution
 end
 
-function init_diffusion!(model::T, diff_init_config::SP_diff_init_config) where {T<:Abstract_model}
-	rng = Random.MersenneTwister(diff_init_config.rng_seed)
+function init_mutation!(model::T, mutation_init_config::SP_mutation_init_config) where {T<:Abstract_model}
+	rng = Random.MersenneTwister(mutation_init_config.rng_seed)
 	voters = get_voters(model)
-	set_property!(voters, "stubbornness", rand(rng, diff_init_config.stubbornness_distr, length(voters)))
+	set_property!(voters, "stubbornness", rand(rng, mutation_init_config.stubbornness_distr, length(voters)))
 end
 
-@kwdef struct SP_diff_config <: Abstract_diff_config
+@kwdef struct SP_mutation_config <: Abstract_mutation_config
 	rng::Random.MersenneTwister
 	evolve_vertices::Float64
 	attract_proba::Float64
@@ -17,11 +17,11 @@ end
 	normalize_shifts::Bool
 end
 
-function diffusion!(model::T, diffusion_config::SP_diff_config) where {T<:Abstract_model}
-	rng = diffusion_config.rng
+function mutate!(model::T, mutation_config::SP_mutation_config) where {T<:Abstract_model}
+	rng = mutation_config.rng
 	voters = get_voters(model)
 	actions = Vector{Action}()
-	evolve_vertices = diffusion_config.evolve_vertices
+	evolve_vertices = mutation_config.evolve_vertices
 
 	sample_size = ceil(Int, evolve_vertices * length(voters))
 	vertex_ids = StatsBase.sample(rng, 1:length(voters), sample_size, replace=true)
@@ -32,7 +32,7 @@ function diffusion!(model::T, diffusion_config::SP_diff_config) where {T<:Abstra
 			continue
 		end
 
-		append!(actions, average_all!(voters[id], neighbor, diffusion_config.attract_proba, diffusion_config.change_rate, diffusion_config.normalize_shifts; rng=rng))
+		append!(actions, average_all!(voters[id], neighbor, mutation_config.attract_proba, mutation_config.change_rate, mutation_config.normalize_shifts; rng=rng))
 	end
 
 	return actions

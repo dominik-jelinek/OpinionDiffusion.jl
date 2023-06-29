@@ -227,13 +227,13 @@ ensemble_sample_graph = Ensemble_config(
 		) for x in 100:200:2100
 	],
 	
-	voter_init_configs = [
-		Spearman_voter_init_config(
+	voter_configs = [
+		Spearman_voter_config(
 			weighting_rate = 0.0
 		)
 	],
 	
-	graph_init_configs = vcat(
+	graph_configs = vcat(
 		[
 			DEG_graph_config(
 				rng_seed=rand(UInt32),
@@ -287,11 +287,9 @@ ensemble_sample_graph = Ensemble_config(
 		]
 	),
 	
-	diffusions = 0,
+	diffusion_init_configs = nothing,
 	
-	diff_init_configs = [],
-	
-	diff_configs = []
+	diffusion_configs = nothing
 )
 
 # ╔═╡ 3c830004-1902-406c-8984-27bfb0318722
@@ -338,16 +336,16 @@ ensemble_config_sample_result_SP = Ensemble_config(
 		) for x in 100:200:2100
 	],
 	
-	voter_init_configs = [
-		Spearman_voter_init_config(
+	voter_configs = [
+		Spearman_voter_config(
 			weighting_rate = 0.0
 		),
-		Spearman_voter_init_config(
+		Spearman_voter_config(
 			weighting_rate = 1.0
 		)
 	],
 	
-	graph_init_configs = vcat(
+	graph_configs = vcat(
 		[
 			DEG_graph_config(
 				rng_seed=rand(UInt32),
@@ -371,90 +369,28 @@ ensemble_config_sample_result_SP = Ensemble_config(
 		]
 	),
 	
-	diffusions = 250,
-	
-	diff_init_configs = [
+	diffusion_init_configs = [
 		[
-			SP_diff_init_config(
+			SP_mutation_init_config(
 				rng_seed=rand(UInt32),
 				stubbornness_distr=Distributions.Normal(0.5, 0.0)
 			)
 		]
 	],
 	
-	diff_configs = [
-		[
-			SP_diff_config(
-				rng=Random.MersenneTwister(rand(UInt32)),
-				evolve_vertices=1.0,
-				attract_proba = 1.0,
-				change_rate = 0.05,
-				normalize_shifts = true
-			)
-		]
-	]
-)
-
-# ╔═╡ 59df032d-e540-4daa-88f3-2cd27b35794c
-ensemble_config_sample_result_KT = Ensemble_config(
-	input_filename = input_filename,
-	
-	selection_configs = [
-		Selection_config(
-			remove_candidates = remove_candidates,
-			rng_seed = 42,
-			sample_size = x
-		) for x in 100:200:2100
-	],
-	
-	voter_init_configs = [
-		Kendall_voter_init_config(
-		),
-	],
-	
-	graph_init_configs = vcat(
-		[
-			DEG_graph_config(
-				rng_seed=rand(UInt32),
-				target_deg_distr=Distributions.truncated(Distributions.Pareto(0.7, 2.0); upper=500),
-				target_cc=0.3,
-				homophily=0.0
-			) for _ in 1:5
-		],
-		[
-			BA_graph_config(
-				rng_seed=rand(UInt32),
-				average_degree=18,
-				homophily=0.0
-			) for _ in 1:5
-		],
-		[
-			Random_graph_config(
-		    	rng_seed=rand(UInt32),
-		    	average_degree=18
-			) for _ in 1:5
-		]
-	),
-	
-	diffusions = 250,
-	
-	diff_init_configs = [
-		[
-			KT_diff_init_config(
-				rng_seed=rand(UInt32),
-				stubbornness_distr=Distributions.Normal(0.5, 0.0)
-			)
-		]
-	],
-	
-	diff_configs = [
-		[
-			KT_diff_config(
-				rng=Random.MersenneTwister(rand(UInt32)),
-				evolve_vertices=1.0,
-				attract_proba = 1.0
-			)
-		]
+	diffusion_configs = [
+		Diffusion_config(
+			diffusion_steps=250,
+			mutation_configs=[
+				SP_mutation_config(
+					rng=Random.MersenneTwister(rand(UInt32)),
+					evolve_vertices=1.0,
+					attract_proba = 1.0,
+					change_rate = 0.05,
+					normalize_shifts = true
+				)
+			]
+		)
 	]
 )
 
@@ -749,7 +685,7 @@ end
 # ╠═7e2feb03-1ab4-454e-ad9d-a46e5215d0d6
 # ╟─eabc778b-5af6-47d5-97ef-c6156786ef19
 # ╟─978aca85-e644-40f3-ab0c-4dddf1c77b80
-# ╟─30887bdf-9bcb-46ad-b93c-63ad0eb078f7
+# ╠═30887bdf-9bcb-46ad-b93c-63ad0eb078f7
 # ╟─3c830004-1902-406c-8984-27bfb0318722
 # ╠═5298f733-de5b-4d59-83e3-063eb5a546ba
 # ╟─b3007e9c-7b02-40e7-8666-e485bbe6ab05
@@ -758,9 +694,8 @@ end
 # ╠═313f240c-9031-4721-89d8-2c302ef82b89
 # ╟─5745da71-6421-41d9-aa2f-1626a3892ea0
 # ╟─48f5e7a0-260b-4153-a443-e4962a57861c
-# ╟─1e6bb760-6a9c-4e6a-85b6-e2ec97653135
+# ╠═1e6bb760-6a9c-4e6a-85b6-e2ec97653135
 # ╟─20819900-1129-4ff1-b97e-d079ffce8ab8
-# ╟─59df032d-e540-4daa-88f3-2cd27b35794c
 # ╟─03bd1c60-4389-4b52-90f4-d1ddf8ef9158
 # ╟─1cce7716-74eb-4766-a678-51bf46d588fd
 # ╟─a1cbb7fb-fb0a-46a4-a8f6-0bfed218cb3d

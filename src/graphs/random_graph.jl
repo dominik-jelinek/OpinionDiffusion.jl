@@ -1,4 +1,4 @@
-@kwdef struct Random_graph_config <: Abstract_graph_init_config
+@kwdef struct Random_graph_config <: Abstract_graph_config
 	rng_seed::UInt32
 	average_degree::Int64
 end

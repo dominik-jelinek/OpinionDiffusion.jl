@@ -6,9 +6,9 @@ end
 
 function Experiment_logger(
 	model_logger::Model_logger,
-	diffusion_configs,
-	experiment_name::String = "experiment",
-	checkpoint::Int64
+	diffusion_configs;
+	checkpoint::Int64 = 1,
+	experiment_name::String = "experiment"
 )
 	experiment_dir = "$(model_logger.model_dir)/$(experiment_name)_" * Dates.format(now(), "yyyy-mm-dd_HH-MM-SS")
 	mkpath(experiment_dir)

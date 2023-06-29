@@ -1,26 +1,25 @@
-@kwdef struct KT_diff_init_config <: Abstract_diff_init_config
+@kwdef struct KT_mutation_init_config <: Abstract_mutation_init_config
 	rng_seed::UInt32
 	stubbornness_distr::Distributions.UnivariateDistribution
 end
 
-function init_diffusion!(model::T, diff_init_config::KT_diff_init_config) where {T<:Abstract_model}
-	rng = Random.MersenneTwister(diff_init_config.rng_seed)
+function init_mutation!(model::T, mutation_init_config::KT_mutation_init_config) where {T<:Abstract_model}
+	rng = Random.MersenneTwister(mutation_init_config.rng_seed)
 	voters = get_voters(model)
-	set_property!(voters, "stubbornness", rand(rng, diff_init_config.stubbornness_distr, length(voters)))
+	set_property!(voters, "stubbornness", rand(rng, mutation_init_config.stubbornness_distr, length(voters)))
 end
 
-@kwdef struct KT_diff_config <: Abstract_diff_config
+@kwdef struct KT_mutation_config <: Abstract_mutation_config
 	rng::Random.MersenneTwister
 	attract_proba::Float64
 	evolve_vertices::Float64
 end
 
-
-function diffusion!(model::T, diffusion_config::KT_diff_config) where {T<:Abstract_model}
+function mutate!(model::T, mutation_config::KT_mutation_config) where {T<:Abstract_model}
 	voters = get_voters(model)
 	actions = Vector{Action}()
-	evolve_vertices = diffusion_config.evolve_vertices
-	rng = diffusion_config.rng
+	evolve_vertices = mutation_config.evolve_vertices
+	rng = mutation_config.rng
 
 	sample_size = ceil(Int, evolve_vertices * length(voters))
 	vertex_ids = StatsBase.sample(rng, 1:length(voters), sample_size, replace=true)
@@ -31,7 +30,7 @@ function diffusion!(model::T, diffusion_config::KT_diff_config) where {T<:Abstra
 			continue
 		end
 
-		append!(actions, step!(voters[id], neighbor, voter_diff_config.attract_proba, length(get_candidates(model)); rng=Random.GLOBAL_RNG))
+		append!(actions, step!(voters[id], neighbor, mutation_config.attract_proba, length(get_candidates(model)); rng=Random.GLOBAL_RNG))
 	end
 
 	return actions

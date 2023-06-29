@@ -1,25 +1,25 @@
-@kwdef struct Graph_diff_init_config <: Abstract_diff_init_config
+@kwdef struct Graph_mutation_init_config <: Abstract_mutation_init_config
 	rng_seed::UInt32
 	openmindedness_distr::Distributions.UnivariateDistribution
 end
 
-function init_diffusion!(model::T, diff_init_config::Graph_diff_init_config) where {T<:Abstract_model}
-	rng = Random.MersenneTwister(diff_init_config.rng_seed)
+function init_diffusion!(model::T, mutation_init_config::Graph_mutation_init_config) where {T<:Abstract_model}
+	rng = Random.MersenneTwister(mutation_init_config.rng_seed)
 	voters = get_voters(model)
-	set_property!(voters, "openmindedness", rand(rng, diff_init_config.openmindedness_distr, length(voters)))
+	set_property!(voters, "openmindedness", rand(rng, mutation_init_config.openmindedness_distr, length(voters)))
 end
 
-@kwdef struct Graph_diff_config <: Abstract_diff_config
+@kwdef struct Graph_mutation_config <: Abstract_mutation_config
 	rng::Random.MersenneTwister
 	evolve_edges::Float64
 	homophily::Float64
 end
 
-function diffusion!(model::T, diffusion_config::Graph_diff_config) where {T<:Abstract_model}
+function mutate!(model::T, mutation_config::Graph_mutation_config) where {T<:Abstract_model}
 	voters = get_voters(model)
 	actions = Vector{Action}()
-	evolve_vertices = diffusion_config.evolve_edges
-	rng = diffusion_config.rng
+	evolve_vertices = mutation_config.evolve_edges
+	rng = mutation_config.rng
 
 	sample_size = ceil(Int, evolve_vertices * length(voters))
 	vertex_ids = StatsBase.sample(rng, 1:length(voters), sample_size, replace=true)

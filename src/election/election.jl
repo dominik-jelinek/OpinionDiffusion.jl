@@ -18,7 +18,7 @@ end
 
 parse_data(data_path::String, ext)::Election = throw(ArgumentError("Unsupported format of input data $ext. Supported: [toc, soi]"))
 
-@kwdef struct Selection_config <: Config
+@kwdef struct Selection_config <: Abstract_config
 	remove_candidates::Vector{Int64}
 
 	rng_seed::UInt32

@@ -42,61 +42,6 @@ import KernelDensity
 using JLD2
 
 # ______________________________________________________________________________
-# EXPORTS
-# ______________________________________________________________________________
-
-# election
-export parse_data
-export select
-export Selection_config
-
-# Voters
-export init_voters, get_opinion, get_vote, get_votes, get_distance, get_ID
-export Spearman_voter_init_config, Spearman_voter_diff_config
-export Kendall_voter_init_config, Kendall_voter_diff_config
-
-# Graphs
-export init_graph
-export BA_graph_config, DEG_graph_config, Random_graph_config
-
-# Model
-export General_model
-export get_voters, get_social_network, get_candidates
-export init_model
-export General_model_config, General_graph_diff_config, Diffusion_config
-export run!, run_ensemble_model, run_ensemble
-export Logger
-export save_log, load_log, load_logs
-export load_model, restart_model, save_ensemble
-
-export Experiment_config, Ensemble_config
-export ensemble
-
-# Diffusion
-export SP_diff_init_config, SP_diff_config
-export KT_diff_init_config, KT_diff_config
-export Graph_diff_init_config, Graph_diff_config
-export init_diffusion!
-
-# Metrics
-export agg_stats, extract!, col_name, compare, compare!
-export draw_metric!, draw_metric, draw_range!, draw_voting_res
-export plurality_voting, borda_voting, copeland_voting, get_positions
-
-# Visualizations
-export get_election_summary, draw_election_summary
-export reduce_dims, MDS_dim_reduction_config, Tsne_dim_reduction_config, PCA_dim_reduction_config
-export clustering, Kmeans_clustering_config, GM_clustering_config, Party_clustering_config, DBSCAN_clustering_config, Density_clustering_config
-
-export clustering, draw_voter_vis, draw_heat_vis, unify_projections!, gather_metrics
-export gather_vis, timestamp_vis
-export get_edge_distances, draw_degree_distr, draw_edge_distances
-
-# Utils
-export to_string
-export test_KT
-
-# ______________________________________________________________________________
 # Custom Types
 # ______________________________________________________________________________
 
@@ -104,8 +49,8 @@ abstract type Abstract_config end
 abstract type Abstract_voter_config <: Abstract_config end
 abstract type Abstract_graph_config <: Abstract_config end
 
-abstract type Abstract_diff_config <: Abstract_config end
-abstract type Abstract_diff_init_config <: Abstract_config end
+abstract type Abstract_mutation_config <: Abstract_config end
+abstract type Abstract_mutation_init_config <: Abstract_config end
 
 abstract type Abstract_clustering_config <: Abstract_config end
 abstract type Abstract_dim_reduction_config <: Abstract_config end
@@ -139,19 +84,22 @@ include("graphs/barabasi_albert.jl")
 include("graphs/DEG.jl")
 include("graphs/random_graph.jl")
 
-include("diffusions/diffusion.jl")
-include("diffusions/graph_diffusion.jl")
-include("diffusions/kendall_diffusion.jl")
-include("diffusions/spearman_diffusion.jl")
-
-include("evaluation/Accumulator.jl")
-include("logging/Experiment_logger.jl")
 include("logging/logging.jl")
 include("logging/Model_logger.jl")
+include("logging/Experiment_logger.jl")
+
+include("evaluation/Accumulator.jl")
+
+include("diffusions/init_diffusion.jl")
+include("diffusions/diffusion.jl")
+include("diffusions/graph_mutation.jl")
+include("diffusions/kendall_mutation.jl")
+include("diffusions/spearman_mutation.jl")
 
 include("models/Abstract_model.jl")
 include("models/General_model.jl")
 
+include("ensemble.jl")
 include("evaluation/visualizations.jl")
 include("evaluation/metrics.jl")
 include("evaluation/voting_rules.jl")
@@ -159,5 +107,64 @@ include("evaluation/dim_reduction.jl")
 include("evaluation/clustering.jl")
 
 include("utils.jl")
+
+# ______________________________________________________________________________
+# EXPORTS
+# ______________________________________________________________________________
+
+# Election
+export Candidate, Election
+export parse_data
+export Selection_config, select
+
+# Voters
+export init_voters
+export get_vote, get_votes, get_opinion, get_distance, get_ID, get_properties, get_property
+export Spearman_voter, Spearman_voter_config
+export Kendall_voter, Kendall_voter_config
+
+# Graphs
+export init_graph
+export BA_graph_config, DEG_graph_config, Random_graph_config
+
+# Model
+export General_model
+export get_voters, get_social_network, get_candidates
+
+# Diffusion
+export Diffusion_config
+export init_diffusion!
+export SP_mutation_init_config, SP_mutation_config
+export KT_mutation_init_config, KT_mutation_config
+export Graph_mutation_init_config, Graph_mutation_config
+export run, run!
+
+# Ensemble
+export Ensemble_config, Experiment_config
+export ensemble
+
+# logging
+export Model_logger, Experiment_logger
+export save_model, load_model
+export save_config, save_configs, load_config, load_configs
+
+# Metrics
+export Accumulator, add_metrics!, accumulated_metrics, get_metrics
+export agg_stats, extract!, col_name, compare, compare!
+export draw_metric!, draw_metric, draw_range!, draw_voting_res
+export plurality_voting, borda_voting, copeland_voting, get_positions
+
+# Visualizations
+export get_election_summary, draw_election_summary
+export reduce_dims, PCA_dim_reduction_config, Tsne_dim_reduction_config, MDS_dim_reduction_config
+export clustering, Kmeans_clustering_config, GM_clustering_config, Party_clustering_config, DBSCAN_clustering_config, Density_clustering_config
+
+export draw_voter_vis, draw_heat_vis, unify_projections!, gather_metrics
+export gather_vis, timestamp_vis
+export get_edge_distances, draw_degree_distr, draw_edge_distances
+
+# Utils
+export to_string
+export test_KT
 
 end
