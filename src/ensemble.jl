@@ -120,3 +120,16 @@ end
 function resolve_dependencies(config::Abstract_config, prev_configs)
 	return config
 end
+
+function save_ensemble(ensemble_config::Ensemble_config, dataframe::DataFrame, path::String)
+	try
+		jldsave(path; ensemble_config, dataframe)
+	catch
+		mkpath(dirname(path))
+		jldsave(path; ensemble_config, dataframe)
+	end
+end
+
+function load_ensemble(path::String)
+	return load(path, "ensemble_config"), load(path, "dataframe")
+end

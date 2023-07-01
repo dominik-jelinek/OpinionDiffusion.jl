@@ -3,6 +3,7 @@
 	average_degree::Int64
 	homophily::Float64
 end
+name(type::Type{BA_graph_config}) = "Barabasi-Albert"
 
 function init_graph(voters::Vector{T}, graph_config::BA_graph_config) where {T<:Abstract_voter}
 	rng = Random.MersenneTwister(graph_config.rng_seed)

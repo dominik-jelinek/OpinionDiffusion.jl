@@ -38,9 +38,9 @@ function mutate!(model::T, mutation_config::SP_mutation_config) where {T<:Abstra
 	return actions
 end
 
-function average_all!(voter_1::Spearman_voter, voter_2::Spearman_voter, attract_proba, change_rate, normalize=nothing; rng=Random.GLOBAL_RNG)
-	opinion_1 = get_opinion(voter_1)
-	opinion_2 = get_opinion(voter_2)
+function average_all!(self::Spearman_voter, neighbor::Spearman_voter, attract_proba, change_rate, normalize=nothing; rng=Random.GLOBAL_RNG)
+	opinion_1 = get_opinion(self)
+	opinion_2 = get_opinion(neighbor)
 
 	shifts_1 = (opinion_2 - opinion_1) / 2
 	shifts_2 = shifts_1 .* (-1.0)
@@ -53,15 +53,15 @@ function average_all!(voter_1::Spearman_voter, voter_2::Spearman_voter, attract_
 	end
 
 	if normalize !== nothing && normalize[1]
-		shifts_1 = normalize_shifts(shifts_1, opinion_1, voter_1.weights)
-		shifts_2 = normalize_shifts(shifts_2, opinion_2, voter_2.weights)
+		shifts_1 = normalize_shifts(shifts_1, opinion_1, self.weights)
+		shifts_2 = normalize_shifts(shifts_2, opinion_2, neighbor.weights)
 	end
 
-	cp_1 = deepcopy(voter_1)
-	cp_2 = deepcopy(voter_2)
-	opinion_1 .+= shifts_1 * (1.0 - get_property(voter_1, "stubbornness")) * change_rate
-	opinion_2 .+= shifts_2 * (1.0 - get_property(voter_2, "stubbornness")) * change_rate
-	return [Action(method, (get_ID(voter_2), get_ID(voter_1)), cp_1, deepcopy(voter_1)), Action(method, (get_ID(voter_1), get_ID(voter_2)), cp_2, deepcopy(voter_2))]
+	cp_1 = deepcopy(self)
+	cp_2 = deepcopy(neighbor)
+	opinion_1 .+= shifts_1 * (1.0 - get_property(self, "stubbornness")) * change_rate
+	#opinion_2 .+= shifts_2 * (1.0 - get_property(neighbor, "stubbornness")) * change_rate
+	return [Action(method, (get_ID(neighbor), get_ID(self)), cp_1, deepcopy(self))]#, Action(method, (get_ID(self), get_ID(neighbor)), cp_2, deepcopy(neighbor))]
 end
 
 function normalize_shifts(shifts::Vector{Float64}, opinion::Vector{Float64}, weights::Vector{Float64})

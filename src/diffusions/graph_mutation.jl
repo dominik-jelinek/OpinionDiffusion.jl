@@ -3,7 +3,7 @@
 	openmindedness_distr::Distributions.UnivariateDistribution
 end
 
-function init_diffusion!(model::T, mutation_init_config::Graph_mutation_init_config) where {T<:Abstract_model}
+function init_diffusion!(model::Abstract_model, mutation_init_config::Graph_mutation_init_config)
 	rng = Random.MersenneTwister(mutation_init_config.rng_seed)
 	voters = get_voters(model)
 	set_property!(voters, "openmindedness", rand(rng, mutation_init_config.openmindedness_distr, length(voters)))
@@ -15,7 +15,7 @@ end
 	homophily::Float64
 end
 
-function mutate!(model::T, mutation_config::Graph_mutation_config) where {T<:Abstract_model}
+function mutate!(model::Abstract_model, mutation_config::Graph_mutation_config)
 	voters = get_voters(model)
 	actions = Vector{Action}()
 	evolve_vertices = mutation_config.evolve_edges

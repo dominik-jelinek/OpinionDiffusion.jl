@@ -2,6 +2,7 @@
 	rng_seed::UInt32
 	average_degree::Int64
 end
+name(type::Type{Random_graph_config}) = "Random"
 
 function init_graph(voters::Vector{T}, graph_config::Random_graph_config) where {T<:Abstract_voter}
 	rng = MersenneTwister(graph_config.rng_seed)

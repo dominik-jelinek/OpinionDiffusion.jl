@@ -14,8 +14,8 @@ import Base.@kwdef
 
 # Basic
 import Distances
-import StatsBase
-import Distributions
+using StatsBase
+using Distributions
 using DataFrames
 using PartialFunctions
 
@@ -84,10 +84,12 @@ include("graphs/barabasi_albert.jl")
 include("graphs/DEG.jl")
 include("graphs/random_graph.jl")
 
+include("models/Abstract_model.jl")
+include("models/General_model.jl")
+
 include("logging/logging.jl")
 include("logging/Model_logger.jl")
 include("logging/Experiment_logger.jl")
-
 include("evaluation/Accumulator.jl")
 
 include("diffusions/init_diffusion.jl")
@@ -96,10 +98,8 @@ include("diffusions/graph_mutation.jl")
 include("diffusions/kendall_mutation.jl")
 include("diffusions/spearman_mutation.jl")
 
-include("models/Abstract_model.jl")
-include("models/General_model.jl")
-
 include("ensemble.jl")
+
 include("evaluation/visualizations.jl")
 include("evaluation/metrics.jl")
 include("evaluation/voting_rules.jl")
@@ -147,6 +147,7 @@ export ensemble
 export Model_logger, Experiment_logger
 export save_model, load_model
 export save_config, save_configs, load_config, load_configs
+export save_ensemble, load_ensemble
 
 # Metrics
 export Accumulator, add_metrics!, accumulated_metrics, get_metrics
@@ -166,5 +167,5 @@ export get_edge_distances, draw_degree_distr, draw_edge_distances
 # Utils
 export to_string
 export test_KT
-
+export name
 end

@@ -11,6 +11,7 @@ end
 @kwdef struct Spearman_voter_config <: Abstract_voter_config
 	weighting_rate::Float64
 end
+name(config::Spearman_voter_config) = "Spearman voter"
 
 function init_voters(votes::Vector{Vote}, voter_config::Spearman_voter_config)::Vector{Spearman_voter}
 	can_count = candidate_count(votes[1])

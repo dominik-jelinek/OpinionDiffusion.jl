@@ -25,29 +25,30 @@ function mutate!(model::T, mutation_config::KT_mutation_config) where {T<:Abstra
 	vertex_ids = StatsBase.sample(rng, 1:length(voters), sample_size, replace=true)
 
 	for id in vertex_ids
-		neighbor = select_neighbor(voters[id], model; rng=rng)
+		self = voters[id]
+		neighbor = select_neighbor(self, model; rng=rng)
 		if neighbor === nothing
 			continue
 		end
 
-		append!(actions, step!(voters[id], neighbor, mutation_config.attract_proba, length(get_candidates(model)); rng=Random.GLOBAL_RNG))
+		append!(actions, step!(self, neighbor, mutation_config.attract_proba, length(get_candidates(model)), voters; rng=rng))
 	end
 
 	return actions
 end
 
-function step!(self::Kendall_voter, neighbor::Kendall_voter, attract_proba, can_count; rng=Random.GLOBAL_RNG)
+function step!(self::Kendall_voter, neighbor::Kendall_voter, attract_proba, can_count, voters; rng=Random.GLOBAL_RNG)
 	if rand(rng) <= attract_proba
 		method = "attract"
-		voters[get_ID(self)] = attract(self, neighbor, can_count)
-		voters[get_ID(neighbor)] = attract(neighbor, self, can_count)
+		voters[get_ID(self)] = attract(self, neighbor, can_count, rng=rng)
+		#voters[get_ID(neighbor)] = attract(neighbor, self, can_count)
 	else
 		method = "repel"
-		voters[get_ID(self)] = repel(self, neighbor, can_count)
-		voters[get_ID(neighbor)] = repel(neighbor, self, can_count)
+		voters[get_ID(self)] = repel(self, neighbor, can_count, rng=rng)
+		#voters[get_ID(neighbor)] = repel(neighbor, self, can_count)
 	end
 
-	return [Action(method, (neighbor.ID, self.ID), self, deepcopy(voters[self.ID])), Action("repel", (self.ID, neighbor.ID), neighbor, deepcopy(voters[neighbor.ID]))]
+	return [Action(method, (neighbor.ID, self.ID), self, deepcopy(voters[self.ID]))]#, Action(method, (self.ID, neighbor.ID), neighbor, deepcopy(voters[neighbor.ID]))]
 end
 
 #=

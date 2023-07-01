@@ -4,6 +4,7 @@
 	target_cc::Float64
 	homophily::Float64
 end
+name(type::Type{DEG_graph_config}) = "DEG"
 
 function init_graph(voters::Vector{T}, graph_config::DEG_graph_config) where {T<:Abstract_voter}
 	rng = MersenneTwister(graph_config.rng_seed)

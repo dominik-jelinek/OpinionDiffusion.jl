@@ -35,15 +35,18 @@ function draw_metric(ax, x, y; band::Union{Tuple,Nothing}=nothing, c=1, label=""
 	end
 end
 
-function compare(gdf, col_x, col_y; labels=nothing, linestyle=:solid)
+function compare(gdf, col_x, col_y; labels=nothing, linestyles=[:solid], title="")
 	f = Figure()
 	ax = f[1, 1] = Axis(f; xlabel=col_name(col_x), ylabel=col_name(col_y))
-	compare!(ax, gdf, col_x, col_y, labels=labels, linestyle=linestyle)
+	compare!(ax, gdf, col_x, col_y, labels=labels, linestyles=linestyles)
+	if title != ""
+		ax.title = title
+	end
 
 	return f
 end
 
-function compare!(ax, gdf, col_x, col_y; labels=nothing, linestyle=:solid)
+function compare!(ax, gdf, col_x, col_y; labels=nothing, linestyles=[:solid])
 	colors = Makie.wong_colors()
 
 	for (i, df) in enumerate(gdf)
@@ -55,14 +58,16 @@ function compare!(ax, gdf, col_x, col_y; labels=nothing, linestyle=:solid)
 			stats_df[!, col_y*"_mean"],
 			band=(stats_df[!, col_y*"_minimum"], stats_df[!, col_y*"_maximum"]),
 			color=colors[i],
-			linestyle=linestyle
+			linestyle=linestyles[i % length(linestyles) + 1]
 		)
 
 		if labels !== nothing
 			line[:label] = labels[i]
 		end
 	end
-	axislegend(ax)
+	if labels !== nothing
+		axislegend(ax)
+	end
 end
 
 function voting_rule()

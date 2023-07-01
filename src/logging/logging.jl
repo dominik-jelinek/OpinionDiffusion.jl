@@ -1,4 +1,4 @@
-function save_model(model::T, path::String) where {T<:Abstract_model}
+function save_model(model::Abstract_model, path::String)
 	try
 		jldsave(path; model)
 	catch
@@ -7,7 +7,7 @@ function save_model(model::T, path::String) where {T<:Abstract_model}
 	end
 end
 
-function save_config(config::T, path::String) where {T<:Abstract_config}
+function save_config(config::Abstract_config, path::String)
 	try
 		jldsave(path; config)
 	catch

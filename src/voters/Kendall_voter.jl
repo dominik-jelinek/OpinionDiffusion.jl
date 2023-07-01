@@ -10,6 +10,7 @@ end
 
 @kwdef struct Kendall_voter_config <: Abstract_voter_config
 end
+name(config::Kendall_voter_config) = "Kendall voter"
 
 function init_voters(votes::Vector{Vote}, voter_config::Kendall_voter_config)::Vector{Kendall_voter}
 	can_count = candidate_count(votes[1])
