@@ -151,7 +151,7 @@ export save_ensemble, load_ensemble
 
 # Metrics
 export Accumulator, add_metrics!, accumulated_metrics, get_metrics
-export agg_stats, extract!, col_name, compare, compare!
+export agg_stats, extract!, col_name, compare, compare!, compare_voting_rule, compare_voting_rule!
 export draw_metric!, draw_metric, draw_range!, draw_voting_res
 export plurality_voting, borda_voting, copeland_voting, get_positions
 

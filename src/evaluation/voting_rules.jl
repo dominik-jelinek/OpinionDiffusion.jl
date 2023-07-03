@@ -7,7 +7,7 @@ function drawElectionResult(candidates, parties, result)
 		bar_position=:stack,
 		bar_width=0.7,
 		xticks=(1:length(candidates)),
-		label=[candidate.name * "-" * parties[candidate.party] for candidate in candidates],
+		label=[get_name(candidate) * "-" * parties[get_party_ID(candidate)] for candidate in candidates],
 		yformatter=:plain
 	)
 end

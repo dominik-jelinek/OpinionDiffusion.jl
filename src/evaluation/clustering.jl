@@ -46,7 +46,7 @@ Cluster voters based on highest ranked candidate
 function clustering(voters, clustering_config::Party_clustering_config, projections=nothing)
 	candidates = clustering_config.candidates
 
-	labels = [candidates[iterate(get_vote(voter)[1])[1]].party for voter in voters]
+	labels = [get_party_ID(candidates[iterate(get_vote(voter)[1])[1]]) for voter in voters]
 
 	clusters = clusterize(labels)
 

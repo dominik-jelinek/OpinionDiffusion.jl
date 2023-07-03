@@ -1,14 +1,22 @@
 struct Candidate
 	ID::Int64
 	name::String
-	party::Int64
+	party_ID::Int64
 end
+
+get_ID(candidate::Candidate) = candidate.ID
+get_name(candidate::Candidate) = candidate.name
+get_party_ID(candidate::Candidate) = candidate.party_ID
 
 struct Election
 	party_names::Vector{String}
 	candidates::Vector{Candidate}
 	votes::Vector{Vote}
 end
+
+get_party_names(election::Election) = election.party_names
+get_candidates(election::Election) = election.candidates
+get_votes(election::Election) = election.votes
 
 function parse_data(data_path::String)
 	ext = Symbol(lowercase(splitext(data_path)[2][2:end]))
@@ -74,7 +82,7 @@ function remove_candidates(election, candidates, remove_candidates)
 	new_candidates = Vector{OpinionDiffusion.Candidate}()
 	for (i, can) in enumerate(candidates)
 		if i ∉ remove_candidates
-			push!(new_candidates, OpinionDiffusion.Candidate(can.ID, can.name, can.party))
+			push!(new_candidates, OpinionDiffusion.Candidate(get_ID(can), can.name, get_party_ID(can)))
 		end
 	end
 
