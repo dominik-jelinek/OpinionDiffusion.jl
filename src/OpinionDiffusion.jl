@@ -115,7 +115,8 @@ include("utils.jl")
 # Election
 export Candidate, Election
 export parse_data
-export Selection_config, select
+export remove_candidates
+export Sampling_config, sample
 
 # Voters
 export init_voters

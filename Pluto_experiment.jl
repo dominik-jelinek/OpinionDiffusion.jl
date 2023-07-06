@@ -660,7 +660,7 @@ ensemble_config_graphType_result = Ensemble_config(
 )
 
 # ╔═╡ acbfce7b-a7d1-4a75-9ccd-647dc05e3eab
-graphType_result = run(election, ensemble_config_graphType_result, get_metrics, log_dir * "ensemble_graphType_result.jld2", recalculate=false)
+graphType_result = run(election, ensemble_config_graphType_result, get_metrics, log_dir * "ensemble_graphType_result.jld2", recalculate=true)
 
 # ╔═╡ 8aeade88-f959-4171-9951-c47faaf3f10e
 begin
@@ -674,14 +674,18 @@ graphType_result_dff = [
 	
 	filter(row -> typeof(row["graph_config"]) == DEG_graph_config && row["graph_config"].homophily==0.8, graphType_result),
 	
-	filter(row -> typeof(row["graph_config"]) != DEG_graph_config, graphType_result)
+	filter(row -> typeof(row["graph_config"]) == BA_graph_config, graphType_result),
+	filter(row -> typeof(row["graph_config"]) == Random_graph_config, graphType_result)
 ]
 
+# ╔═╡ 10c76fd6-fb89-43b9-93ed-81ced694285f
+
+
 # ╔═╡ ec952bc1-57fa-4f95-b5b9-67827c28bc53
-compare_voting_rule(graphType_result_dff, "diffusion_step", "borda_scores", linestyles=linestyles)
+compare_voting_rule(graphType_result_dff, "diffusion_step", "borda_scores", linestyles=linestyles, labels=["DEG, homophily=0", "DEG, homophily=0.8", "BA", "Random"])
 
 # ╔═╡ aca1a017-ae15-4879-be84-7f2eb02779b7
-compare_voting_rule(graphType_result_dff, "diffusion_step", "plurality_scores", linestyles=linestyles)
+compare_voting_rule(graphType_result_dff, "diffusion_step", "plurality_scores", linestyles=linestyles, labels=["DEG, homophily=0", "DEG, homophily=0.8", "BA", "Random"])
 
 # ╔═╡ 0969d15f-216f-4c7f-ba18-59ef0e0ea542
 md"
@@ -933,6 +937,9 @@ begin
 	stubbornness_result_SP_labels = ["Stubbornness std=" * string(key[1]) for (key, _) in pairs(stubbornness_result_SP_gdf)]
 end
 
+# ╔═╡ d7a1f736-0870-49d6-b2a9-d5767a21956e
+[(key, val) for (key, val) in pairs(stubbornness_result_SP_gdf)]
+
 # ╔═╡ fd198c81-9aad-4f2f-905d-583f927fd423
 compare_voting_rule(stubbornness_result_SP_gdf, "diffusion_step", "borda_scores", linestyles=linestyles, labels=stubbornness_result_SP_labels)
 
@@ -1065,6 +1072,15 @@ md"""
 # ╔═╡ ebb18c60-75bf-45dd-8a20-3d402aed23ee
 md"Load specific config and save all the logs for in depth analysis."
 
+# ╔═╡ a35605c7-382c-4443-aa79-386b02834c40
+begin
+	run_experiment(min_config; get_metrics=get_metrics, checkpoint=1)
+	run_experiment(max_config; get_metrics=get_metrics, checkpoint=1)
+end
+
+# ╔═╡ 6c7029b8-51ce-49e5-bdbf-8ec44b0a54d6
+
+
 # ╔═╡ 1173f5f8-b355-468c-8bfb-beebff5ba12b
 function extreme_runs(result, metric, can)
 	values = [run["metrics"][metric][end][can] for run in result]
@@ -1170,6 +1186,7 @@ min_log_idxs = sort([parse(Int64, split(splitext(file)[1], "_")[end]) for file i
 # ╠═acbfce7b-a7d1-4a75-9ccd-647dc05e3eab
 # ╠═8aeade88-f959-4171-9951-c47faaf3f10e
 # ╠═2717c36b-5c32-4cf2-a7b2-7e14b834de5b
+# ╠═10c76fd6-fb89-43b9-93ed-81ced694285f
 # ╠═ec952bc1-57fa-4f95-b5b9-67827c28bc53
 # ╠═aca1a017-ae15-4879-be84-7f2eb02779b7
 # ╠═0969d15f-216f-4c7f-ba18-59ef0e0ea542
@@ -1192,6 +1209,7 @@ min_log_idxs = sort([parse(Int64, split(splitext(file)[1], "_")[end]) for file i
 # ╟─7015811a-1d7e-4bee-80b8-b11e2c004b5a
 # ╠═a1cf685e-646d-4619-aecf-a483373babc2
 # ╠═321019e0-a8dc-483c-92fd-cb954d029cf4
+# ╠═d7a1f736-0870-49d6-b2a9-d5767a21956e
 # ╠═62553a5a-cfa7-4dab-a2cb-ce90aa750d86
 # ╠═fd198c81-9aad-4f2f-905d-583f927fd423
 # ╠═f2f5e329-81ed-48cd-988e-48a96b1e5516
@@ -1212,6 +1230,8 @@ min_log_idxs = sort([parse(Int64, split(splitext(file)[1], "_")[end]) for file i
 # ╠═5cd2dbf8-5a55-4690-b16d-8b1432015054
 # ╟─3fe9215c-ba2f-4aaa-bcb0-1eb8f1982db8
 # ╟─ebb18c60-75bf-45dd-8a20-3d402aed23ee
+# ╠═a35605c7-382c-4443-aa79-386b02834c40
+# ╠═6c7029b8-51ce-49e5-bdbf-8ec44b0a54d6
 # ╠═c86a8e9f-c5e9-4931-8923-dcf114df3118
 # ╠═9883316d-c845-4a4d-a4f8-b8022727cb0b
 # ╠═1173f5f8-b355-468c-8bfb-beebff5ba12b

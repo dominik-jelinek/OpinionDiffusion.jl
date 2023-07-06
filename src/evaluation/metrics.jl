@@ -88,8 +88,12 @@ end
 
 function voting_rule_vis!(ax, stats_df, x_col, y_col; candidates, linestyle=:solid, colors=to_colormap(:tab20))
 	means = extract_candidates(stats_df, y_col * "_mean")
-	mins = extract_candidates(stats_df, y_col * "_minimum")
-	maxs = extract_candidates(stats_df, y_col * "_maximum")
+	stds = extract_candidates(stats_df, y_col * "_std")
+	mins = means - stds
+	maxs = means + stds
+
+	#mins = extract_candidates(stats_df, y_col * "_minimum")
+	#maxs = extract_candidates(stats_df, y_col * "_maximum")
 	#colors = Makie.wong_colors()
 	#colors = Colors.distinguishable_colors(length(means))
 

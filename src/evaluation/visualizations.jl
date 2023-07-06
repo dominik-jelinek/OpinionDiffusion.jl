@@ -184,19 +184,28 @@ function draw_edge_distances!(plot, distances)
 		xlabel="Distance")
 end
 
-function get_election_summary(votes::Vector{Vote}, can_count::Int64)
+function get_election_summary(votes::Vector{Vote}; drop_last::Bool=false)
+	can_count = candidate_count(votes[1])
 	result = zeros(Float64, can_count, can_count)
 
 	for vote in votes
 		position = 1
-		for bucket in vote
+		for i in 1:length(vote) - 1
+			bucket = vote[i]
 			for c in bucket
 				result[c, position] += 1.0 / length(bucket)
 				position += 1
 			end
 		end
-	end
 
+		if !drop_last || length(vote[end]) == 1
+			last_bucket = vote[end]
+			for c in last_bucket
+				result[c, position] += 1.0 / length(last_bucket)
+				position += 1
+			end
+		end
+	end
 
 	return result ./ length(votes)
 end

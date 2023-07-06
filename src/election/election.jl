@@ -18,6 +18,31 @@ get_party_names(election::Election) = election.party_names
 get_candidates(election::Election) = election.candidates
 get_votes(election::Election) = election.votes
 
+@kwdef struct Sampling_config <: Abstract_config
+	rng_seed::UInt32=rand(UInt32)
+	sample_size::Int64
+end
+
+@kwdef struct Election_config <: Abstract_config
+	data_path::String
+	remove_candidates_ids::Vector{Int64} = []
+	sampling_config::Union{Sampling_config, Nothing} = nothing
+end
+
+function init_election(config::Election_config)
+	election = parse_data(config.data_path)
+
+	if length(config.remove_candidates_ids) > 0
+		election = remove_candidates(election, config.remove_candidates_ids)
+	end
+
+	if config.sampling_config !== nothing
+		election = sample(election, config.sampling_config)
+	end
+
+	return election
+end
+
 function parse_data(data_path::String)
 	ext = Symbol(lowercase(splitext(data_path)[2][2:end]))
 
@@ -26,44 +51,35 @@ end
 
 parse_data(data_path::String, ext)::Election = throw(ArgumentError("Unsupported format of input data $ext. Supported: [toc, soi]"))
 
-@kwdef struct Selection_config <: Abstract_config
-	remove_candidates::Vector{Int64}
+function remove_candidates(election::Election, candidate_ids::Vector{Int64})::Election
+	filtered_votes, filtered_candidates = remove_candidates(election.votes, election.candidates, candidate_ids)
 
-	rng_seed::UInt32
-	sample_size::Int64
+	return Election(election.party_names, filtered_candidates, filtered_votes)
 end
 
-function select(election::Election, selection_config::Selection_config)::Election
-	filtered_votes, candidates = remove_candidates(election.votes, election.candidates, selection_config.remove_candidates)
+function remove_candidates(votes::Vector{Vote}, candidates::Vector{Candidate}, candidate_ids::Vector{Int64})
+	if length(candidate_ids) == 0
+		return votes, candidates
+	end
 
-	rng = MersenneTwister(selection_config.rng_seed)
-	votes = filtered_votes[StatsBase.sample(rng, 1:length(filtered_votes), selection_config.sample_size, replace=false)]
-
-	return Election(election.party_names, candidates, votes)
-end
-
-function remove_candidates(election, candidates, remove_candidates)
 	can_count = length(candidates)
 
-	if length(remove_candidates) == 0
-		return election, candidates
-	end
 	# calculate candidate index offset dependant
 	adjust = zeros(can_count)
-	for i in 1:length(remove_candidates)-1
-		adjust[remove_candidates[i]+1:remove_candidates[i+1]-1] += fill(i, remove_candidates[i+1] - remove_candidates[i] - 1)
+	for i in 1:length(candidate_ids)-1
+		adjust[candidate_ids[i]+1:candidate_ids[i+1]-1] += fill(i, candidate_ids[i+1] - candidate_ids[i] - 1)
 	end
-	adjust[remove_candidates[end]+1:end] += fill(length(remove_candidates), can_count - remove_candidates[end])
+	adjust[candidate_ids[end]+1:end] += fill(length(candidate_ids), can_count - candidate_ids[end])
 
 	#copy election without the filtered out candidates
 	new_election = Vector{Vote}()
-	for vote in election
+	for vote in votes
 		new_vote = Vote()
 		for bucket in vote
 			new_bucket = Bucket()
 
 			for can in bucket
-				if can ∉ remove_candidates
+				if can ∉ candidate_ids
 					push!(new_bucket, can - adjust[can])
 				end
 			end
@@ -81,7 +97,7 @@ function remove_candidates(election, candidates, remove_candidates)
 
 	new_candidates = Vector{OpinionDiffusion.Candidate}()
 	for (i, can) in enumerate(candidates)
-		if i ∉ remove_candidates
+		if i ∉ candidate_ids
 			push!(new_candidates, OpinionDiffusion.Candidate(get_ID(can), can.name, get_party_ID(can)))
 		end
 	end
@@ -89,4 +105,12 @@ function remove_candidates(election, candidates, remove_candidates)
 	#candidates = deleteat!(copy(candidates), remove_candidates)
 
 	return new_election, new_candidates
+end
+
+function sample(election::Election, sampling_config::Sampling_config)::Election
+	rng = MersenneTwister(sampling_config.rng_seed)
+	votes = get_votes(election)
+	votes = votes[StatsBase.sample(rng, 1:length(votes), sampling_config.sample_size, replace=false)]
+
+	return Election(get_party_names(election), get_candidates(election), votes)
 end

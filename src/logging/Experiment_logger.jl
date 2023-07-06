@@ -6,7 +6,7 @@ end
 
 function Experiment_logger(
 	model_logger::Model_logger,
-	diffusion_configs;
+	diffusion_config::Diffusion_config;
 	checkpoint::Int64 = 1,
 	experiment_name::String = "experiment"
 )
@@ -16,7 +16,7 @@ function Experiment_logger(
 	experiment_logger = Experiment_logger(experiment_dir, [0], checkpoint)
 
 	save_model(model_logger, experiment_logger)
-	save_configs(diffusion_configs, experiment_logger)
+	save_configs(diffusion_config, experiment_logger)
 
 	return experiment_logger
 end

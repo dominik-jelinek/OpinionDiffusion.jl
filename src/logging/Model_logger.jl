@@ -3,8 +3,9 @@ struct Model_logger
 end
 
 function Model_logger(
+	election::Election,
 	model::Abstract_model,
-	model_configs;
+	model_configs::Abstract_model_config;
 	log_dir::String="./logs",
 	model_name::String="model"
 )
@@ -12,19 +13,15 @@ function Model_logger(
 	model_dir = "$(log_dir)/$(model_name)_" * Dates.format(now(), "yyyy-mm-dd_HH-MM-SS")
 	mkpath(model_dir)
 
-	model_logger = Model_logger(model_dir, [])
-	save_model(model, model_logger)
-	save_configs(model_configs, model_logger)
+	save_election(election, "$(model_dir)/election.jld2")
+	save_model(model, "$(model_dir)/model.jld2")
+	save_config(model_configs, "$(model_dir)/model_configs.jld2")
 
-	return model_logger
+	return Model_logger(model_dir)
 end
 
-function save_model(model::Abstract_model, model_logger::Model_logger)
-	save_model(model, "$(model_logger.model_dir)/model.jld2")
-end
-
-function save_configs(model_configs, model_logger::Model_logger)
-	save_config(model_configs, "$(model_logger.model_dir)/model_configs.jld2")
+function load_election(model_logger::Model_logger)
+	return load_election("$(model_logger.model_dir)/election.jld2")
 end
 
 function load_model(model_logger::Model_logger)

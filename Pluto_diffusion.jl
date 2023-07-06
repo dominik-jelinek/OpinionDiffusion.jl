@@ -32,9 +32,6 @@ using OpinionDiffusion, PlutoUI
 # ╔═╡ 419d618c-1ce4-4702-b2b0-9c3d160c245e
 using GraphMakie, CairoMakie, Colors
 
-# ╔═╡ 29b4d650-9e90-451a-b553-80d721b37c13
-using JLD2
-
 # ╔═╡ 957eb9d7-12d6-4a22-8338-4e8535b54c71
 md"# Opinion diffusion"
 
@@ -72,66 +69,46 @@ md"## Dataset"
 # ╔═╡ bcc5468c-2a49-409d-b810-05fc30f4edca
 md"""Select dataset: $(@bind input_filename Select([filename for filename in readdir("./data") if split(filename, ".")[end] == "toc"], default = "ED-00001-00000002.toc"))"""
 
+# ╔═╡ 2f08ff39-d1d6-4341-8da8-5c46e23ae856
+
+
 # ╔═╡ c6ccf2a8-e045-4da9-bbdb-270327c2d53f
-parties, src_candidates, src_election = parse_data(input_filename)
-
-# ╔═╡ c89f636d-0bc8-4587-a226-3ebd4605c67e
-src_election
-
-# ╔═╡ 42d0439b-fdfc-4ec1-a2b6-a5dc188eac6f
-begin
-	function get_counts(votes, can_count)
-		result = zeros(Int64, can_count, can_count)
-		
-		for vote in votes
-	        for (i, bucket) in enumerate(vote)
-				#iterate buckets in vote
-	            result[iterate(bucket)[1], i] += 1
-	        end
-	    end
-		
-		return result / length(votes)
-	end
-	strict_orders = [length(vote[end]) > 1 ? vote[1:end - 1] : vote  for vote in src_election ]
-	counts = get_counts(strict_orders, length(src_candidates))
-	fn = draw_election_summary(counts)
-	Makie.save("election.png", fn)
-end
+init_election = parse_data("./data/" * input_filename)
 
 # ╔═╡ c8522415-1fd9-4c06-bf2a-38ab23153b56
 md"### Dataset Summary"
 
-# ╔═╡ 786a7d7b-47af-4151-aad9-cd9df9b0404c
-election_summary = get_election_summary(src_election, length(src_candidates))
-
-# ╔═╡ d5d394c0-9b7c-4255-95fd-dc8cc32ca018
-draw_election_summary(election_summary)
+# ╔═╡ 61fa4389-3b1e-4be3-a5a2-ee37218d7d55
+draw_election_summary(get_election_summary(get_votes(init_election), drop_last=true))
 
 # ╔═╡ 977d39e2-7f82-49e8-a93f-889204bd19cb
 md"### Remove unnecessary candidates"
 
 # ╔═╡ 8ea22c93-1fe3-44b2-88c1-fb6ccd195866
 if input_filename == "ED-00001-00000001.toc"
-	remove_candidates = [3, 5, 8, 11]
+	remove_candidate_ids = [3, 5, 8, 11]
 elseif input_filename == "ED-00001-00000002.toc"
-	remove_candidates = [8]#[1, 6, 8]
+	remove_candidate_ids = [8]#[1, 6, 8]
 elseif input_filename == "ED-00001-00000003.toc"
-	remove_candidates = [3, 8, 9, 11]
+	remove_candidate_ids = [3, 8, 9, 11]
 else
-	remove_candidates = []
+	remove_candidate_ids = []
 end
 
-# ╔═╡ 28f103a9-2b18-4cfc-bcf3-34d512f8da03
-filtered_election, candidates = OpinionDiffusion.filter_candidates(src_election, src_candidates, remove_candidates, length(src_candidates))
+# ╔═╡ 4aa4cdb4-af2a-4fcb-913d-389a9a899ab0
+election_removed_candidates = remove_candidates(init_election, remove_candidate_ids)
 
 # ╔═╡ 100d0645-1178-428a-b4c1-3859ecb3ee18
 md"### Sample voters"
 
-# ╔═╡ ad94415f-fc56-4a2f-9068-e05d8633aafe
-init_sample_size = min(1000, length(filtered_election))
+# ╔═╡ 1626bf3e-8fe6-4e21-8cf4-76d84848114f
+sampling_config = Sampling_config(
+	rng_seed=69,
+	sample_size=min(1000, length(get_votes(election_removed_candidates)))
+)
 
-# ╔═╡ 93b8909b-479c-422a-b475-2befadf5e9ec
-election = filtered_election[OpinionDiffusion.StatsBase.sample(1:length(filtered_election), init_sample_size, replace=false)]
+# ╔═╡ 8a760833-139b-406b-b985-a1daf7585ed3
+election = sample(election_removed_candidates, sampling_config)
 
 # ╔═╡ 20893df2-fa42-46bf-889e-582b9ac39164
 md"## Configure model"
@@ -141,9 +118,6 @@ md"### Voter config"
 
 # ╔═╡ 40fdc182-c693-48fb-99ee-43d1bc78d95f
 md"#### Weighting of Spearman voter"
-
-# ╔═╡ a38a2e2e-e742-4c0b-9cf5-cd8376178300
-weighting_rate = 0.0
 
 # ╔═╡ 342d3d34-4a3a-4f2d-811b-e9ab143504fd
 begin
@@ -158,24 +132,6 @@ begin
 	weights
 end
 
-# ╔═╡ d0a649dc-9bbc-449d-bfc9-34a18c1ef7a0
-u = OpinionDiffusion.spearman_encoding([Set([1]), Set([2]),Set([3]),Set(4), Set(5),Set(6),Set([7]), Set([8])], weights)
-
-# ╔═╡ edc6f4b9-6863-4fc4-ba5e-1c184d40c53d
-v = OpinionDiffusion.spearman_encoding([Set([8]), Set([7]),Set([6]),Set(5), Set(4),Set([3]), Set([2]), Set([1])], weights)
-
-# ╔═╡ 278c8df9-1a14-48e3-9bb4-9023f736ae1b
-get_distance(u, v)
-
-# ╔═╡ 20f77dbd-ebd4-4e84-a96f-1d1643e9f897
-u/sum(u)
-
-# ╔═╡ 721ecdb2-3dcf-41b9-82c6-297710f7a4c9
-v/sum(v)
-
-# ╔═╡ c2d75170-789d-41b4-b30b-40b143d23702
-max_sp_distance
-
 # ╔═╡ 825b45d1-fe6a-4460-8fe2-b323019c56b6
 Plots.bar([string(i) * '-' * string(i + 1) for i in 1:length(candidates)-1], [weight_func(x) for x in 1:length(candidates)-1], legend=false, title="Bucket Distances")
 
@@ -187,15 +143,16 @@ md"""Select voter type: $(@bind voter_type Select(["Kendall-tau voter", "Spearma
 
 # ╔═╡ 10cb247f-d445-4091-b863-49deeb4c35fe
 if voter_type == "Spearman voter"
-	voter_init_config = Spearman_voter_init_config(
-		weights = weights,
-		eps=(weights[end] - weights[end - 1])/4
+		voter_config = Spearman_voter_config(
+		weighting_rate = 0.0
 	)
 else# voter_type == "Kendall-tau voter"
-	voter_init_config = Kendall_voter_init_config(
-		can_count = length(candidates)
+	voter_config = Kendall_voter_init_config(
 	)
 end
+
+# ╔═╡ d1de5e6d-cbfd-40af-9580-f5633105c63e
+voters = init_voters(get_votes(election), voter_config)
 
 # ╔═╡ c91395e7-393a-4ee1-ab44-7269cb1314d8
 md"### Graph config"
@@ -210,21 +167,6 @@ begin
 	max_degree = 500
 end
 
-# ╔═╡ 4a6d00b9-5de6-4a31-8d4c-74f8e74ac81f
-typeof(supertype(Distributions.Pareto(exp, scale)))
-
-# ╔═╡ ae05a7df-bc1c-4d17-9c77-2e3669e51b7b
-target_degrees = Int.(round.(rand(Distributions.truncated(Distributions.Pareto(exp, scale); upper=max_degree), init_sample_size)))
-
-# ╔═╡ 25374289-3cf1-4d27-887f-a47f9794f2bc
-Plots.histogram(target_degrees, bins=100)
-
-# ╔═╡ 7069907d-2949-4f68-9602-9bef9ff46064
-sum(target_degrees) / init_sample_size
-
-# ╔═╡ 44dace14-5ec3-439f-9f74-60db63ee5399
-openmindednesses = rand(Distributions.Normal(0.5, 0.1), init_sample_size)
-
 # ╔═╡ c4dfe306-aad8-4248-bc9e-c2de841a7354
 md"#### Select a method for graph generation"
 
@@ -232,45 +174,46 @@ md"#### Select a method for graph generation"
 homophily = 0.8
 
 # ╔═╡ 39256cbd-7807-42bc-81b1-d6f2128ccaf9
-md"""Select graph generation method: $(@bind graph_type Select(["DEG", "Barabasi-Albert"]))"""
+md"""Select graph generation method: $(@bind graph_type Select(["DEG", "Barabasi-Albert", "Random"]))"""
 
 # ╔═╡ 7e0d083d-2de1-4a4c-8d19-7dea4f95152a
 if graph_type == "DEG"
-	graph_init_config = DEG_graph_config(
-		rng=Random.MersenneTwister(rand(UInt32)),
-		target_degrees=target_degrees,
-        target_cc=0.3,
-        homophily=homophily,
-        openmindednesses=openmindednesses
+	graph_config = DEG_graph_config(
+		rng_seed=rand(UInt32),
+		target_deg_distr=Distributions.truncated(Distributions.Pareto(0.7, 2.0); upper=500),
+		target_cc=0.3,
+		homophily=0.0
 	)
-else# graph_type == "BA"
-	graph_init_config = BA_graph_config(
-		rng=Random.MersenneTwister(rand(UInt32)),
-		m=10, 
-		homophily=homophily
+elseif graph_type == "BA"
+	graph_config = BA_graph_config(
+		rng_seed=rand(UInt32),
+		average_degree=18,
+		homophily=0.0
+	)
+else
+	graph_config = Random_graph_config(
+		rng_seed=rand(UInt32),
+		average_degree=18
 	)
 end
 
+# ╔═╡ 00c4a4be-33a7-4943-9f03-ecbb71d2a2b2
+social_network = init_graph(voters, graph_config)				
+
 # ╔═╡ 341a601f-2727-4362-b7d1-29dd47a92539
 md"### Model config"
-
-# ╔═╡ 508b979f-6255-4be7-8b4d-3f6319ecbe24
-model_config = General_model_config(
-    voter_init_config=voter_init_config,
-    graph_init_config=graph_init_config
-)
 
 # ╔═╡ 759557c0-228f-4827-9038-1963b54a08d9
 md"### Locate model"
 
 # ╔═╡ 637a053e-1ce8-4107-926a-46f46b4718f8
-log_dir_path = "./logs"
+log_dir_path = "./logs/"
 
 # ╔═╡ 345c5270-0822-4ba6-b326-14a60d8a8d46
 md"""Select model: $(@bind model_dir Select([filename for filename in readdir( log_dir_path) if split(filename, "_")[1] == "model" && split(filename, "_")[2] != "ensemble"]))"""
 
 # ╔═╡ 985131a7-7c11-4f9d-ae00-ef031002592d
-model_dir_path = log_dir_path * "/" * model_dir
+model_dir_path = log_dir_path * model_dir
 
 # ╔═╡ 3cede6ac-5765-4c72-9b53-103c9c6a9bd9
 md"## Create/load model"
@@ -280,7 +223,7 @@ md"Choose source of the model and then check execution barrier for generation of
 
 # ╔═╡ 72450aaf-c6c4-458e-9555-39c31345116b
 md"""
-Model source $(@bind model_source Select(["restart_model" => "Restart", "load_model" => "Load", "new_model" => "New (takes time)"]))
+Model source: $(@bind model_source Select(["load_model" => "Load", "new_model" => "New (takes time)"]))
 """
 
 # ╔═╡ 8e0750a9-2b83-4652-805b-dc1be2484161
@@ -296,27 +239,22 @@ md"""
 ---
 """
 
-# ╔═╡ 93cb669f-6743-4b50-80de-c8594ea20497
-if cb_model && logging
-	if model_source == "new_model"
-		model = init_model(election, candidates, model_config)
-		logger = Logger(model)
-		
-	else # restart and create new experiment
-		model, logger = load_model(model_dir_path)
-	end
-elseif cb_model && !logging
-	if model_source == "new_model"
-		model = init_model(election, candidates, model_config)
-		
-	else # restart
-		model = load_log(model_dir_path)
-	end
-	logger = nothing
+# ╔═╡ 9b6e56ed-cd89-4684-83d7-b2f931a07d14
+General_model_config(
+	voter_config=voter_config,
+	graph_config=graph_config
+)
+
+# ╔═╡ 3671ba34-71bc-4e11-ad5e-aaeecf3f1e3f
+if logging
+	logger = Model_logger(model, )
 end
 
 # ╔═╡ 2c837f03-3329-4ab3-ad31-b0fe79df6bb7
 md"## Initial model metrics"
+
+# ╔═╡ a13fff49-bc77-492c-8402-3fec14e9a7e4
+
 
 # ╔═╡ a6590191-0fbd-41a9-a7c3-b99e68bb27aa
 begin
@@ -337,45 +275,11 @@ end
 # ╔═╡ 09540198-bead-4df1-99bd-6e7848e7d215
 md"## Configure diffusion"
 
-# ╔═╡ 3b310c94-2125-4e60-bdec-ffa7673fd5af
-rng = Random.MersenneTwister(rand(UInt32))
-
-# ╔═╡ 4ec19946-3ac0-4fc4-8bd1-7cb50a4f42d4
-rand(rng), rand(rng) 
-
-# ╔═╡ 5e637de5-3c0d-4e99-8a56-0c3dd39d53c3
-save("test.jld2", "rng", rng)
-
-# ╔═╡ 25b71670-e966-4944-8c47-48f9a3f8ab73
-rngg = load("test.jld2", "rng")
-
-# ╔═╡ 921e3f48-c12e-4e83-8042-170fb4dee72c
-Random.seed!(rngg, rngg.seed)
-
-# ╔═╡ 70ecec9e-16c3-41fb-b093-7ad28d9e9568
-rand(rngg), rand(rngg) 
-
 # ╔═╡ 6f40b5c4-1252-472c-8932-11a2ee0935d2
 md"Setup diffusion parameters and then check execution barrier for confirmation."
 
 # ╔═╡ b6cd7a31-80b9-49eb-8004-34de5e6ad910
 attract_proba = 1.0
-
-# ╔═╡ e7f02f43-f8d5-4b7d-b097-4cbe7c7541a7
-graph_diffusion = Graph_diff_config(
-	rng=Random.MersenneTwister(rand(UInt32)),
-	evolve_edges=0.0,
-	homophily = homophily
-)
-
-# ╔═╡ f7d39302-5a36-4a2c-a1da-099e372c2a13
-
-
-# ╔═╡ d877c5d0-89af-48b9-bcd0-c1602d58339f
-diffusions = 10
-
-# ╔═╡ 51d392f8-92e0-4d21-b16b-44d75f93e505
-ensemble_size = 5
 
 # ╔═╡ e3f2c391-4fc3-47b5-bad2-5abc8f89a345
 if voter_type == "Spearman voter"
@@ -399,17 +303,18 @@ else #Kendall voter
 	)
 end
 
+# ╔═╡ e7f02f43-f8d5-4b7d-b097-4cbe7c7541a7
+graph_diffusion = Graph_diff_config(
+	rng=Random.MersenneTwister(rand(UInt32)),
+	evolve_edges=0.0,
+	homophily = homophily
+)
+
 # ╔═╡ 970cf900-f459-4eee-a0d3-226a40b6422f
 init_diff_configs = [init_voter_diffusion]
 
 # ╔═╡ f43b3b4c-9075-414b-9694-83e7c841605f
 diff_configs = [voter_diffusion, graph_diffusion]
-
-# ╔═╡ 4a827a0c-b360-4b85-ac21-7e18e7e6af7d
-@bind ensemble_mode Select(["init_model", "init_diff", "diff"])
-
-# ╔═╡ 63bbb84b-50ad-4c69-affe-397faadc7ed9
-checkpoint = 1 #not checkpointing ensemble runs
 
 # ╔═╡ 971693bb-1a08-4266-a93b-c3e9d60d8bcd
 md"""
@@ -427,64 +332,11 @@ md"""
 ---
 """
 
-# ╔═╡ ccbfad20-549e-4275-8bbb-644157d98926
-pops = collect(0.0:0.5:1.0)
-
-# ╔═╡ 56d7f1d9-f291-446b-8281-013d017102f2
-#model_metrics = ensemble_init_model_AB(3, election, length(candidates), init_metrics, update_metrics!, model_config, diffusion_config)
-
-# ╔═╡ 409b3357-dcf0-4ddb-8a4b-b7e2f21cee8f
-#model_metrics = ensemble_init_model(false, 3, election, length(candidates), init_metrics, update_metrics!, diffusion_config)
-
-# ╔═╡ 19c42165-d4ba-4c86-b134-514f6b017fe9
-#model_metrics = ensemble_init_model_DEG(3, election, length(candidates), init_metrics, update_metrics!, model_config, diffusion_config, 0.0)
-
-# ╔═╡ 13624365-3fba-49c7-bbe0-b33f9865e953
-model_metrics
-
-# ╔═╡ 8fd45292-6704-4b57-b7e4-b650dce8d19c
-
-#p = OpinionDiffusion.draw_range([x[2] for x in ccs], [x[3] for x in ccs], [x[4] for x in ccs], label="", x = sizess)
-
-# ╔═╡ a1714045-adf8-427e-a960-dad1fda7aaa3
-#=begin
-	p = Plots.plot(title="Barabasi-Albert graph (m=5)", xlabel="sample size", ylabel="clustering coefficient", legend=true)
-	for (i, pop) in enumerate(pops)
-		ccs = model_metrics[i]["clustering_coeff"]
-		OpinionDiffusion.draw_range!(p, [x[2] for x in ccs], [x[3] for x in ccs], [x[4] for x in ccs], label="Homophily: " * string(pop),c=i, x = sizes)
-	end
-	Plots.savefig(p, "img/AB_size_cc_hom.pdf")
-	p
-end=#
-
 # ╔═╡ aad0da61-59d2-4429-97fa-6612872bb863
 md"## Diffusion analysis"
 
 # ╔═╡ d716423e-7945-4e0a-a6ab-17e0b94c721e
 md"### Compounded metrics"
-
-# ╔═╡ a210fc8f-5d85-464d-8b0b-3fba19579a56
-md"## Diffusion with set seed"
-
-# ╔═╡ 3fe9215c-ba2f-4aaa-bcb0-1eb8f1982db8
-md"""
----
-**Execution barrier** $(@bind anal_run CheckBox())
-
----
-"""
-
-# ╔═╡ 1173f5f8-b355-468c-8bfb-beebff5ba12b
-function extreme_runs(result, metric, can)
-	values = [run["metrics"][metric][end][can] for run in result]
-	return argmin(values), argmax(values)
-end
-
-# ╔═╡ 0cf5fa96-ff32-4853-b6c7-ef1843f5281f
-function extreme_runs(result, metric)
-	values = [run["metrics"][metric][end] for run in result]
-	return argmin(values), argmax(values)
-end
 
 # ╔═╡ 0932e410-4a74-42b3-86c5-ac40f6be3543
 md"## Dimensionality reduction and clustering"
@@ -552,9 +404,6 @@ ensemble_logs = [
 # ╔═╡ fa876197-2401-4b54-8b56-e4abdf8f8801
  #ensemble_logs = ["logs/" * file for file in readdir("logs") if split(file, "_")[2] == "ensemble"][1:end]
 
-# ╔═╡ 48a2a821-f104-49da-b4e3-de7280f2eb03
-model_configs = [OpinionDiffusion.load(log, "model_config") for log in ensemble_logs]
-
 # ╔═╡ e8971acb-dc93-4a01-85f8-5190f1972ece
 typeof(model_configs[1].voter_init_config)
 
@@ -608,17 +457,6 @@ Graph centric: (graph)
 # ╔═╡ d9fd7b27-7bd1-4e4d-a1b5-f4f173a86c2d
 sizes = collect(100:100:length(election))
 
-# ╔═╡ 2d3e4761-d868-42ee-99fa-40f2a9ee522b
-begin
-	p = Plots.plot(title="DEG graph (target_cc=0.5)", xlabel="sample size", ylabel="clustering coefficient", legend=true)
-	for (i, pop) in enumerate(pops)
-		ccs = model_metrics[i]["clustering_coeff"]
-		OpinionDiffusion.draw_range!(p, [x[2] for x in ccs], [x[3] for x in ccs], [x[4] for x in ccs], label="Homophily: " * string(pop),c=i, x = sizes)
-	end
-	Plots.savefig(p, "img/DEG_size_cc05_hom.pdf")
-	p
-end
-
 # ╔═╡ 545103ec-9f9b-4b24-a993-818a20f18f49
 
 
@@ -668,9 +506,6 @@ function init_metrics(model)
 	
 	return metrics
 end
-
-# ╔═╡ 2d564bf0-2584-4da3-9890-40b56b023915
-metrics = init_metrics(model)
 
 # ╔═╡ 8d259bcc-d54c-401f-b864-87701f2bcf46
 function update_metrics!(model, diffusion_metrics)
@@ -728,42 +563,8 @@ if cb_run
 	end
 end
 
-# ╔═╡ 12ffda44-7cee-48a7-999b-2224c3549dea
-gathered_metrics
-
-# ╔═╡ 6deeecf9-f727-4b5d-82c5-f4f9a85eb55c
-result
-
 # ╔═╡ e518a2db-a02e-4cfb-8587-f892fd9cbc85
 gathered_metrics
-
-# ╔═╡ 006bf740-9fc1-41dc-982f-dda7c05ec977
-begin
-	dict = Dict()
-	dict["election_matrix"] = []
-	for i in 2:length(gathered_metrics["election_matrix"])
-		push!(dict["election_matrix"], abs.(gathered_metrics["election_matrix"][i] - gathered_metrics["election_matrix"][i - 1]))
-	end
-end
-
-# ╔═╡ a4f875d7-685e-43bb-a806-be6ae6547ffb
-extremes = extreme_runs(result, "plurality_votings", 4)
-
-# ╔═╡ 3eb2368f-5cdf-4f43-84fa-478865936371
-min_model_seed, min_diffusion_seed = result[extremes[1]]["model_seed"], result[extremes[1]]["diffusion_seed"]
-
-# ╔═╡ 5cd2dbf8-5a55-4690-b16d-8b1432015054
-max_model_seed, max_diffusion_seed = result[extremes[2]]["model_seed"], result[extremes[2]]["diffusion_seed"]
-
-# ╔═╡ c86a8e9f-c5e9-4931-8923-dcf114df3118
-if anal_run
-	min_logger = OpinionDiffusion.run(election, candidates, model_config, min_model_seed, diffusion_config, diffusions, min_diffusion_seed)
-
-	max_logger = OpinionDiffusion.run(election, candidates, model_config, max_model_seed, diffusion_config, diffusions, max_diffusion_seed)
-end
-
-# ╔═╡ 9883316d-c845-4a4d-a4f8-b8022727cb0b
-min_log_idxs = sort([parse(Int64, split(splitext(file)[1], "_")[end]) for file in readdir(min_logger.exp_dir) if split(file, "_")[1] == "model"])
 
 # ╔═╡ 7f898ae7-8613-43a6-95e1-f61748cec34a
 function variable_size(sizes, ensemble_size, election, can_count, init_metrics, update_metrics, model_configs, diffusion_configs)
@@ -903,6 +704,9 @@ end
 # ╔═╡ f96c982d-b5db-47f7-91e0-9c9b3b36332f
 compare_metrics_vis(ensemble_logs, ["unique_votes", "avg_vote_length", "avg_edge_dist"])
 
+# ╔═╡ 48a2a821-f104-49da-b4e3-de7280f2eb03
+model_configs = [OpinionDiffusion.load(log, "model_config") for log in ensemble_logs]
+
 # ╔═╡ eccddfc6-2e57-4f9e-88f3-88166fc5da11
 function ensemble_init_model(BA, ensemble_size, election, can_count, init_metrics, update_metrics, diffusion_config)
 	size_metrics = []
@@ -979,6 +783,13 @@ function ensemble_init_model(ensemble_size, election, can_count, init_metrics, u
 	return metrics
 end
 
+# ╔═╡ b9ea7ab5-080b-496a-bac6-3d02cf8936b3
+if model_source == "Load" 
+	model, model_configs = load_model(model_dir_path)
+else
+	model, model_configs = General_model(voters, social_network, get_party_names(election), get_candidates(election))
+end
+
 # ╔═╡ Cell order:
 # ╟─957eb9d7-12d6-4a22-8338-4e8535b54c71
 # ╟─d2923f02-66d7-47de-9801-d4ad99c1230f
@@ -996,112 +807,69 @@ end
 # ╠═419d618c-1ce4-4702-b2b0-9c3d160c245e
 # ╟─46e8650e-f57d-48d7-89de-1c72e12dea45
 # ╟─bcc5468c-2a49-409d-b810-05fc30f4edca
-# ╟─c6ccf2a8-e045-4da9-bbdb-270327c2d53f
-# ╟─c89f636d-0bc8-4587-a226-3ebd4605c67e
-# ╠═42d0439b-fdfc-4ec1-a2b6-a5dc188eac6f
+# ╠═2f08ff39-d1d6-4341-8da8-5c46e23ae856
+# ╠═c6ccf2a8-e045-4da9-bbdb-270327c2d53f
 # ╟─c8522415-1fd9-4c06-bf2a-38ab23153b56
-# ╠═786a7d7b-47af-4151-aad9-cd9df9b0404c
-# ╠═d5d394c0-9b7c-4255-95fd-dc8cc32ca018
+# ╠═61fa4389-3b1e-4be3-a5a2-ee37218d7d55
 # ╟─977d39e2-7f82-49e8-a93f-889204bd19cb
 # ╠═8ea22c93-1fe3-44b2-88c1-fb6ccd195866
-# ╠═28f103a9-2b18-4cfc-bcf3-34d512f8da03
+# ╠═4aa4cdb4-af2a-4fcb-913d-389a9a899ab0
 # ╟─100d0645-1178-428a-b4c1-3859ecb3ee18
-# ╠═ad94415f-fc56-4a2f-9068-e05d8633aafe
-# ╠═93b8909b-479c-422a-b475-2befadf5e9ec
+# ╠═1626bf3e-8fe6-4e21-8cf4-76d84848114f
+# ╠═8a760833-139b-406b-b985-a1daf7585ed3
 # ╟─20893df2-fa42-46bf-889e-582b9ac39164
 # ╟─831816fa-7983-4c05-9a76-a03631bf1e57
-# ╟─40fdc182-c693-48fb-99ee-43d1bc78d95f
-# ╠═a38a2e2e-e742-4c0b-9cf5-cd8376178300
+# ╠═40fdc182-c693-48fb-99ee-43d1bc78d95f
 # ╠═342d3d34-4a3a-4f2d-811b-e9ab143504fd
-# ╠═d0a649dc-9bbc-449d-bfc9-34a18c1ef7a0
-# ╠═edc6f4b9-6863-4fc4-ba5e-1c184d40c53d
-# ╠═278c8df9-1a14-48e3-9bb4-9023f736ae1b
-# ╠═20f77dbd-ebd4-4e84-a96f-1d1643e9f897
-# ╠═721ecdb2-3dcf-41b9-82c6-297710f7a4c9
-# ╠═c2d75170-789d-41b4-b30b-40b143d23702
 # ╠═825b45d1-fe6a-4460-8fe2-b323019c56b6
 # ╟─ed315e83-6d73-4f9a-afb9-f0174e08ef29
 # ╟─a87ea61d-13d9-4c91-b08e-9f24cde3d290
 # ╠═10cb247f-d445-4091-b863-49deeb4c35fe
+# ╠═d1de5e6d-cbfd-40af-9580-f5633105c63e
 # ╟─c91395e7-393a-4ee1-ab44-7269cb1314d8
 # ╟─48a2cf2b-bd86-4131-a230-290124cc5f48
 # ╠═f012e77d-2703-4922-aa3e-7dd6f04757e4
-# ╠═4a6d00b9-5de6-4a31-8d4c-74f8e74ac81f
-# ╠═ae05a7df-bc1c-4d17-9c77-2e3669e51b7b
-# ╟─25374289-3cf1-4d27-887f-a47f9794f2bc
-# ╠═7069907d-2949-4f68-9602-9bef9ff46064
-# ╠═44dace14-5ec3-439f-9f74-60db63ee5399
 # ╟─c4dfe306-aad8-4248-bc9e-c2de841a7354
 # ╠═738b7617-00c5-4d25-ae1b-61788ba23f5c
 # ╟─39256cbd-7807-42bc-81b1-d6f2128ccaf9
 # ╠═7e0d083d-2de1-4a4c-8d19-7dea4f95152a
+# ╠═00c4a4be-33a7-4943-9f03-ecbb71d2a2b2
 # ╟─341a601f-2727-4362-b7d1-29dd47a92539
-# ╠═508b979f-6255-4be7-8b4d-3f6319ecbe24
 # ╟─759557c0-228f-4827-9038-1963b54a08d9
-# ╟─637a053e-1ce8-4107-926a-46f46b4718f8
+# ╠═637a053e-1ce8-4107-926a-46f46b4718f8
 # ╟─345c5270-0822-4ba6-b326-14a60d8a8d46
 # ╟─985131a7-7c11-4f9d-ae00-ef031002592d
 # ╟─3cede6ac-5765-4c72-9b53-103c9c6a9bd9
 # ╟─98885ec6-7561-43d7-bdf6-7f58fb2720f6
-# ╟─72450aaf-c6c4-458e-9555-39c31345116b
+# ╠═72450aaf-c6c4-458e-9555-39c31345116b
 # ╟─8e0750a9-2b83-4652-805b-dc1be2484161
 # ╟─1937642e-7f63-4ffa-b01f-22208a716dac
-# ╠═93cb669f-6743-4b50-80de-c8594ea20497
+# ╠═9b6e56ed-cd89-4684-83d7-b2f931a07d14
+# ╠═b9ea7ab5-080b-496a-bac6-3d02cf8936b3
+# ╠═3671ba34-71bc-4e11-ad5e-aaeecf3f1e3f
 # ╟─2c837f03-3329-4ab3-ad31-b0fe79df6bb7
-# ╠═2d564bf0-2584-4da3-9890-40b56b023915
+# ╠═a13fff49-bc77-492c-8402-3fec14e9a7e4
 # ╠═a6590191-0fbd-41a9-a7c3-b99e68bb27aa
 # ╠═a652cf9b-adb5-47d2-906f-a7b479face45
 # ╠═5bf9306d-ed0f-4d12-af1f-75ba9fe1e9a4
 # ╠═988a9fcb-ad5f-4be6-b5f5-c3b05587a8d4
 # ╠═4f7384d8-4c16-4a75-93ca-755215d74643
 # ╟─09540198-bead-4df1-99bd-6e7848e7d215
-# ╠═29b4d650-9e90-451a-b553-80d721b37c13
-# ╠═3b310c94-2125-4e60-bdec-ffa7673fd5af
-# ╠═4ec19946-3ac0-4fc4-8bd1-7cb50a4f42d4
-# ╠═5e637de5-3c0d-4e99-8a56-0c3dd39d53c3
-# ╠═25b71670-e966-4944-8c47-48f9a3f8ab73
-# ╠═921e3f48-c12e-4e83-8042-170fb4dee72c
-# ╠═70ecec9e-16c3-41fb-b093-7ad28d9e9568
 # ╟─6f40b5c4-1252-472c-8932-11a2ee0935d2
 # ╠═b6cd7a31-80b9-49eb-8004-34de5e6ad910
 # ╠═e3f2c391-4fc3-47b5-bad2-5abc8f89a345
 # ╠═e7f02f43-f8d5-4b7d-b097-4cbe7c7541a7
 # ╠═970cf900-f459-4eee-a0d3-226a40b6422f
 # ╠═f43b3b4c-9075-414b-9694-83e7c841605f
-# ╠═f7d39302-5a36-4a2c-a1da-099e372c2a13
-# ╠═d877c5d0-89af-48b9-bcd0-c1602d58339f
-# ╠═51d392f8-92e0-4d21-b16b-44d75f93e505
-# ╠═4a827a0c-b360-4b85-ac21-7e18e7e6af7d
-# ╠═63bbb84b-50ad-4c69-affe-397faadc7ed9
 # ╟─971693bb-1a08-4266-a93b-c3e9d60d8bcd
 # ╟─de772425-25de-4228-b12e-d567b8ceb20f
 # ╟─20819900-1129-4ff1-b97e-d079ffce8ab8
 # ╠═f6b4ba47-f9d2-42f0-9c86-e9810be7b810
-# ╠═12ffda44-7cee-48a7-999b-2224c3549dea
-# ╠═6deeecf9-f727-4b5d-82c5-f4f9a85eb55c
-# ╠═ccbfad20-549e-4275-8bbb-644157d98926
-# ╠═56d7f1d9-f291-446b-8281-013d017102f2
-# ╠═409b3357-dcf0-4ddb-8a4b-b7e2f21cee8f
-# ╠═19c42165-d4ba-4c86-b134-514f6b017fe9
-# ╠═13624365-3fba-49c7-bbe0-b33f9865e953
-# ╠═8fd45292-6704-4b57-b7e4-b650dce8d19c
-# ╠═a1714045-adf8-427e-a960-dad1fda7aaa3
-# ╠═2d3e4761-d868-42ee-99fa-40f2a9ee522b
 # ╟─aad0da61-59d2-4429-97fa-6612872bb863
 # ╟─d716423e-7945-4e0a-a6ab-17e0b94c721e
 # ╠═e518a2db-a02e-4cfb-8587-f892fd9cbc85
 # ╠═09d34d24-0fb0-4cc6-8ab6-c0d55b3346d0
 # ╠═840c2562-c444-4422-9cf8-e82429163627
-# ╠═006bf740-9fc1-41dc-982f-dda7c05ec977
-# ╟─a210fc8f-5d85-464d-8b0b-3fba19579a56
-# ╠═a4f875d7-685e-43bb-a806-be6ae6547ffb
-# ╠═3eb2368f-5cdf-4f43-84fa-478865936371
-# ╠═5cd2dbf8-5a55-4690-b16d-8b1432015054
-# ╟─3fe9215c-ba2f-4aaa-bcb0-1eb8f1982db8
-# ╠═c86a8e9f-c5e9-4931-8923-dcf114df3118
-# ╠═9883316d-c845-4a4d-a4f8-b8022727cb0b
-# ╠═1173f5f8-b355-468c-8bfb-beebff5ba12b
-# ╠═0cf5fa96-ff32-4853-b6c7-ef1843f5281f
 # ╟─0932e410-4a74-42b3-86c5-ac40f6be3543
 # ╟─b203aed5-3231-4e19-a961-089c0a4cf8c6
 # ╠═54855884-22b3-42e0-9120-c5f049043899
