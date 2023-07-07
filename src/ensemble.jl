@@ -1,6 +1,6 @@
 @kwdef struct Ensemble_config
-	input_filename::String
-	remove_candidates_ids::Union{Vector{Vector{Int64}}, Nothing} = nothing
+	data_path::String
+	remove_candidate_ids::Union{Vector{Int64}, Nothing} = nothing
 	sampling_configs::Vector{Union{Sampling_config, Nothing}} = [nothing]
 
 	voter_configs::Vector{Abstract_voter_config}
@@ -32,9 +32,9 @@ end
 
 function ensemble(ensemble_config::Ensemble_config, get_metrics::Function)
 	dataframes = Vector{DataFrame}()
-	init_election = parse_data(ensemble_config.input_filename)
-	if ensemble_config.remove_candidates_ids !== nothing
-		init_election = remove_candidates(election, ensemble_config.remove_candidates_ids)
+	init_election = parse_data(ensemble_config.data_path)
+	if ensemble_config.remove_candidate_ids !== nothing
+		init_election = remove_candidates(init_election, ensemble_config.remove_candidate_ids)
 	end
 
 	# election
@@ -61,9 +61,9 @@ function ensemble(ensemble_config::Ensemble_config, get_metrics::Function)
 				add_metrics!(accumulator, model)
 
 				# no diffusion
-				if ensemble_config.diffusion_configs === nothing
+				if ensemble_config.diffusion_run_configs === nothing
 					experiment_config = Experiment_config(
-						election_config=Election_config(data_path=ensemble_config.input_filename, remove_candidates_ids=ensemble_config.remove_candidates_ids, sampling_config=sampling_config),
+						election_config=Election_config(data_path=ensemble_config.data_path, remove_candidate_ids=ensemble_config.remove_candidate_ids, sampling_config=sampling_config),
 						model_config=General_model_config(voter_config=voter_config, graph_config=graph_config),
 						diffusion_config=nothing
 					)
@@ -85,7 +85,7 @@ function ensemble(ensemble_config::Ensemble_config, get_metrics::Function)
 
 					for (m, diffusion_run_config) in enumerate(ensemble_config.diffusion_run_configs)
 						for n in eachindex(diffusion_run_config.mutation_configs)
-							diffusion_run_config.mutation_configs[n] = resolve_dependencies(diffusion_config.mutation_configs[n], prev_configs)
+							diffusion_run_config.mutation_configs[n] = resolve_dependencies(diffusion_run_config.mutation_configs[n], prev_configs)
 						end
 						prev_configs["diffusion_run_config"] = diffusion_run_config
 
@@ -94,15 +94,13 @@ function ensemble(ensemble_config::Ensemble_config, get_metrics::Function)
 						run!(model_diffusion, diffusion_run_config; accumulator=accumulator_diffusion)
 
 						experiment_config = Experiment_config(
-							election_config=Election_config(data_path=ensemble_config.input_filename, remove_candidates_ids=ensemble_config.remove_candidates_ids, sampling_config=sampling_config),
+							election_config=Election_config(data_path=ensemble_config.data_path, remove_candidate_ids=ensemble_config.remove_candidate_ids, sampling_config=sampling_config),
 							model_config=General_model_config(voter_config=voter_config, graph_config=graph_config),
 							diffusion_config=Diffusion_config(diffusion_init_config=diffusion_init_config, diffusion_run_config=diffusion_run_config)
 						)
-						expanded_configs = Dict(key => fill(value, diffusion_config.diffusion_steps + 1) for (key, value) in prev_configs)
+						experiment_configs = fill(experiment_config, diffusion_run_config.diffusion_steps + 1)
 
-						df = hcat(DataFrame(expanded_configs), accumulated_metrics(accumulator_diffusion))
-						df.diffusion_step = collect(0:diffusion_config.diffusion_steps)
-
+						df = hcat(DataFrame("experiment_config" => experiment_configs, "diffusion_step" => collect(0:diffusion_run_config.diffusion_steps)), accumulated_metrics(accumulator_diffusion))
 						push!(dataframes, df)
 
 						delete!(prev_configs, "diffusion_config")
@@ -119,39 +117,6 @@ function ensemble(ensemble_config::Ensemble_config, get_metrics::Function)
 	end
 
 	return vcat(dataframes...)
-end
-
-@kwdef struct Experiment_config
-	election_config::Election_config
-	model_config::Abstract_model_config
-	diffusion_config::Union{Diffusion_config, Nothing} = nothing
-end
-
-function run_experiment(config::Experiment_config; experiment_name="experiment", get_metrics::Function=nothing, checkpoint::Int=1)
-	# Election
-	election = init_election(config.election_config)
-
-	# Model
-	model = init_model(election, config.model_config)
-
-	# Diffusion
-	accumulator = nothing
-	if get_metrics !== nothing
-		accumulator = Accumulator(get_metrics)
-		add_metrics!(accumulator, model)
-	end
-
-	experiment_logger = nothing
-	if checkpoint > 0
-		model_logger = Model_logger(election, model, config.model_config)
-		experiment_logger = Experiment_logger(model_logger, diffusion_config, experiment_name=experiment_name, checkpoint=checkpoint)
-	end
-
-	if config.diffusion_config !== nothing
-		run_diffusion!(model, config.diffusion_config; accumulator=accumulator, experiment_logger=experiment_logger)
-	end
-
-	return get_metrics !== nothing ? accumulated_metrics(accumulator) : nothing
 end
 
 function resolve_dependencies(config::Abstract_config, prev_configs)

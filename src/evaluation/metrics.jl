@@ -14,11 +14,66 @@ function metrics_vis(metrics, candidates, parties, exp_dir=Nothing)
 	return plots
 end
 
-function compare(gdf, x_col, y_col; labels=nothing, linestyles=[:solid], title="")
+function compare_voting_rule(gdf, x_col, y_col; candidates=nothing, linestyles=[:solid], labels=nothing, colors=to_colormap(:tab10))
+	f = Figure()
+
+	ax = f[1, 1] = Axis(f; xlabel=col_name(x_col), ylabel=col_name(y_col))
+	compare_voting_rule!(ax, gdf, x_col, y_col, candidates=candidates, linestyles=linestyles, colors=colors)
+
+	if labels !== nothing
+		legend_elements = []
+		for i in 1:length(gdf)
+			linestyle = linestyles[(i-1) % length(linestyles) + 1]
+			push!(legend_elements, [LineElement(color = :black, linestyle = linestyle)])
+		end
+		axislegend(ax, legend_elements, labels, position = :lt)
+	end
+
+	if candidates !== nothing
+		Legend(f[1, 2], ax)
+	end
+	f
+end
+
+function compare_voting_rule!(ax, gdf, x_col, y_col; candidates=nothing, linestyles=[:solid], colors=to_colormap(:tab20))
+	for (i, df) in enumerate(gdf)
+		stats_df = agg_stats(df, x_col, y_col)
+		draw_voting_rule!(ax, stats_df, x_col, y_col, candidates=candidates, linestyle=linestyles[(i-1) % length(linestyles) + 1], colors=colors)
+	end
+end
+
+function draw_voting_rule(stats_df, x_col, y_col; candidates=nothing, linestyle=:solid, colors=to_colormap(:tab20))
+	f = Figure()
+	ax = f[1, 1] = Axis(f; xlabel=col_name(x_col), ylabel=col_name(y_col))
+	draw_voting_rule!(ax, stats_df, x_col, y_col, candidates=candidates, linestyle=linestyle, colors=colors)
+	if candidates !== nothing
+		Legend(f[1, 2], ax)
+	end
+	return f
+end
+
+function draw_voting_rule!(ax, stats_df, x_col, y_col; candidates, linestyle=:solid, colors=to_colormap(:tab20))
+	means = extract_candidates(stats_df, y_col * "_mean")
+	stds = extract_candidates(stats_df, y_col * "_std")
+	mins = means - stds
+	maxs = means + stds
+
+	#mins = extract_candidates(stats_df, y_col * "_minimum")
+	#maxs = extract_candidates(stats_df, y_col * "_maximum")
+	#colors = Makie.wong_colors()
+	#colors = Colors.distinguishable_colors(length(means))
+
+	for i in eachindex(means)
+		label = candidates === nothing ? string(i) : string(get_ID(candidates[i])) * ". " * get_name(candidates[i]) * ", " * get_party_name(candidates[i])
+		draw_metric!(ax, stats_df[!, x_col], means[i], band=(mins[i], maxs[i]), color=colors[i], label=label, linestyle=linestyle)
+	end
+end
+
+function compare_metric(gdf, x_col, y_col; labels=nothing, linestyles=[:solid], title="")
 	f = Figure()
 	ax = f[1, 1] = Axis(f; xlabel=col_name(x_col), ylabel=col_name(y_col))
 
-	compare!(ax, gdf, x_col, y_col, labels=labels, linestyles=linestyles)
+	compare_metric!(ax, gdf, x_col, y_col, labels=labels, linestyles=linestyles)
 
 	if title != ""
 		ax.title = title
@@ -27,7 +82,7 @@ function compare(gdf, x_col, y_col; labels=nothing, linestyles=[:solid], title="
 	return f
 end
 
-function compare!(ax, gdf, x_col, y_col; labels=nothing, linestyles=[:solid])
+function compare_metric!(ax, gdf, x_col, y_col; labels=nothing, linestyles=[:solid])
 	colors = Makie.wong_colors()
 
 	for (i, df) in enumerate(gdf)
@@ -48,58 +103,6 @@ function compare!(ax, gdf, x_col, y_col; labels=nothing, linestyles=[:solid])
 	end
 	if labels !== nothing
 		axislegend(ax)
-	end
-end
-
-function compare_voting_rule(gdf, x_col, y_col; candidates=nothing, linestyles=[:solid], labels=nothing, colors=to_colormap(:tab10))
-	f = Figure()
-
-	ax = f[1, 1] = Axis(f; xlabel=col_name(x_col), ylabel=col_name(y_col))
-	compare_voting_rule!(ax, gdf, x_col, y_col, candidates=candidates, linestyles=linestyles, colors=colors)
-
-	if labels !== nothing
-		legend_elements = []
-		for i in 1:length(gdf)
-			linestyle = linestyles[(i-1) % length(linestyles) + 1]
-			push!(legend_elements, [LineElement(color = :black, linestyle = linestyle)])
-		end
-		axislegend(ax, legend_elements, labels, position = :lt)
-	else
-		axislegend(ax, position = :lt)
-	end
-
-	f
-end
-
-function compare_voting_rule!(ax, gdf, x_col, y_col; candidates=nothing, linestyles=[:solid], colors=to_colormap(:tab20))
-	for (i, df) in enumerate(gdf)
-		stats_df = agg_stats(df, x_col, y_col)
-		voting_rule_vis!(ax, stats_df, x_col, y_col, candidates=candidates, linestyle=linestyles[(i-1) % length(linestyles) + 1], colors=colors)
-	end
-end
-
-function voting_rule_vis(stats_df, x_col, y_col; candidates=nothing, linestyle=:solid, colors=to_colormap(:tab20))
-	f = Figure()
-	ax = f[1, 1] = Axis(f; xlabel=x_col, ylabel=y_col)
-	voting_rule_vis!(ax, stats_df, x_col, y_col, candidates=candidates, linestyle=linestyle, colors=colors)
-	Legend(f[1, 2], ax)
-	return f
-end
-
-function voting_rule_vis!(ax, stats_df, x_col, y_col; candidates, linestyle=:solid, colors=to_colormap(:tab20))
-	means = extract_candidates(stats_df, y_col * "_mean")
-	stds = extract_candidates(stats_df, y_col * "_std")
-	mins = means - stds
-	maxs = means + stds
-
-	#mins = extract_candidates(stats_df, y_col * "_minimum")
-	#maxs = extract_candidates(stats_df, y_col * "_maximum")
-	#colors = Makie.wong_colors()
-	#colors = Colors.distinguishable_colors(length(means))
-
-	for i in eachindex(means)
-		label = candidates === nothing ? string(i) : string(get_ID(candidates[i])) * ", party:" * string(get_party_ID(candidates[i]))
-		draw_metric!(ax, stats_df[!, x_col], means[i], band=(mins[i], maxs[i]), color=colors[i], label=label, linestyle=linestyle)
 	end
 end
 

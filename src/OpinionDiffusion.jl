@@ -87,16 +87,30 @@ include("graphs/random_graph.jl")
 include("models/Abstract_model.jl")
 include("models/General_model.jl")
 
-include("logging/logging.jl")
-include("logging/Model_logger.jl")
-include("logging/Experiment_logger.jl")
 include("evaluation/Accumulator.jl")
 
-include("diffusions/init_diffusion.jl")
-include("diffusions/diffusion.jl")
-include("diffusions/graph_mutation.jl")
-include("diffusions/kendall_mutation.jl")
-include("diffusions/spearman_mutation.jl")
+@kwdef struct Diffusion_run_config
+	diffusion_steps::Int64
+	mutation_configs::Vector{Abstract_mutation_config}
+end
+
+@kwdef struct Diffusion_config <: Abstract_config
+	diffusion_init_config::Union{Vector{Abstract_mutation_init_config}, Nothing}
+	diffusion_run_config::Diffusion_run_config
+end
+
+@kwdef struct Experiment_config
+	election_config::Election_config
+	model_config::Abstract_model_config
+	diffusion_config::Union{Diffusion_config, Nothing} = nothing
+end
+include("logging/Experiment_logger.jl")
+
+
+include("diffusion.jl")
+include("mutations/graph_mutation.jl")
+include("mutations/kendall_mutation.jl")
+include("mutations/spearman_mutation.jl")
 
 include("ensemble.jl")
 
@@ -133,12 +147,13 @@ export General_model
 export get_voters, get_social_network, get_candidates
 
 # Diffusion
-export Diffusion_config
+export Diffusion_config, Diffusion_run_config
 export init_diffusion!
 export SP_mutation_init_config, SP_mutation_config
 export KT_mutation_init_config, KT_mutation_config
 export Graph_mutation_init_config, Graph_mutation_config
 export run, run!
+export run_experiment
 
 # Ensemble
 export Ensemble_config, Experiment_config
@@ -152,8 +167,10 @@ export save_ensemble, load_ensemble
 
 # Metrics
 export Accumulator, add_metrics!, accumulated_metrics, get_metrics
-export agg_stats, extract!, col_name, compare, compare!, compare_voting_rule, compare_voting_rule!
-export draw_metric!, draw_metric, draw_range!, draw_voting_res
+export agg_stats, retrieve_variable
+export col_name
+export compare_metric, compare_metric!, draw_metric!, draw_metric
+export compare_voting_rule, compare_voting_rule!, draw_voting_rule, draw_voting_rule!
 export plurality_voting, borda_voting, copeland_voting, get_positions
 
 # Visualizations

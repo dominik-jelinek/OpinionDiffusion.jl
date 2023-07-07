@@ -1,18 +1,6 @@
-@kwdef struct Diffusion_run_config
-	diffusion_steps::Int64
-	mutation_configs::Vector{Abstract_mutation_config}
-end
-
-@kwdef struct Diffusion_config <: Abstract_config
-	diffusion_init_config::Union{Vector{Abstract_mutation_init_config}, Nothing}
-	diffusion_run_config::Diffusion_run_config
-end
-
 function run_diffusion!(model, diffusion_config::Diffusion_config; accumulator=nothing, experiment_logger=nothing)
 	init_diffusion!(model, diffusion_config.diffusion_init_config)
 	run!(model, diffusion_config.diffusion_run_config; accumulator=accumulator, experiment_logger=experiment_logger)
-
-	return accumulated_metrics(accumulator)
 end
 
 function init_diffusion(
@@ -105,4 +93,30 @@ end
 
 function mutate!(model::Abstract_model , mutation_config::Abstract_mutation_config)
 	throw(NotImplementedError("mutate!"))
+end
+
+function run_experiment(config::Experiment_config; experiment_name::String="experiment", get_metrics::Union{Function, Nothing}=nothing, checkpoint::Int64=1)
+	# Election
+	election = init_election(config.election_config)
+
+	# Model
+	model = init_model(election, config.model_config)
+
+	# Diffusion
+	accumulator = nothing
+	if get_metrics !== nothing
+		accumulator = Accumulator(get_metrics)
+		add_metrics!(accumulator, model)
+	end
+
+	experiment_logger = nothing
+	if checkpoint > 0
+		experiment_logger = Experiment_logger(model, config, experiment_name=experiment_name, checkpoint=checkpoint)
+	end
+
+	if config.diffusion_config !== nothing
+		run_diffusion!(model, config.diffusion_config; accumulator=accumulator, experiment_logger=experiment_logger)
+	end
+
+	return accumulator !== nothing ? accumulated_metrics(accumulator) : nothing
 end

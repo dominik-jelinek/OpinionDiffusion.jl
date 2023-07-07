@@ -5,32 +5,27 @@ struct Experiment_logger
 end
 
 function Experiment_logger(
-	model_logger::Model_logger,
-	diffusion_config::Diffusion_config;
+	model::Abstract_model,
+	config::Experiment_config;
 	checkpoint::Int64 = 1,
-	experiment_name::String = "experiment"
+	experiment_name::String = "experiment",
+	log_dir::String = "./logs"
 )
-	experiment_dir = "$(model_logger.model_dir)/$(experiment_name)_" * Dates.format(now(), "yyyy-mm-dd_HH-MM-SS")
+	experiment_dir = "$(log_dir)/$(experiment_name)_" * Dates.format(now(), "yyyy-mm-dd_HH-MM-SS")
 	mkpath(experiment_dir)
 
-	experiment_logger = Experiment_logger(experiment_dir, [0], checkpoint)
+	jldsave("$(experiment_dir)/model_0.jld2"; model)
+	jldsave("$(experiment_dir)/experiment_config.jld2"; config)
 
-	save_model(model_logger, experiment_logger)
-	save_configs(diffusion_config, experiment_logger)
-
-	return experiment_logger
+	return Experiment_logger(experiment_dir, [1], checkpoint)
 end
 
 function trigger(model::T, experiment_logger::Experiment_logger) where {T<:Abstract_model}
-	experiment_logger.diffusion_step[1] += 1
-
 	if experiment_logger.diffusion_step[1] % experiment_logger.checkpoint == 0
-		save_model(model, experiment_logger)
+		jldsave("$(experiment_logger.experiment_dir)/model_$(experiment_logger.diffusion_step[1]).jld2"; model)
 	end
-end
 
-function save_model(model::T, experiment_logger::Experiment_logger) where {T<:Abstract_model}
-	save_model(model, "$(experiment_logger.experiment_dir)/model_$(experiment_logger.diffusion_step[1]).jld2")
+	experiment_logger.diffusion_step[1] += 1
 end
 
 function load_models(experiment_dir::String, start_idx::Int64=0, end_idx::Int64=-1)
@@ -46,12 +41,20 @@ function load_models(experiment_dir::String, start_idx::Int64=0, end_idx::Int64=
 	return models
 end
 
-function load_model(experiment_logger::Experiment_logger, idx::Int64=-1)
-	if idx == -1
-		idx = last_log_idx(experiment_logger.experiment_dir)
+function load_model(experiment_dir::String, diffusion_step::Int64)
+	if diffusion_step == -1
+		idx = last_log_idx(experiment_dir)
 	end
 
-	return load_model("$(experiment_logger.experiment_dir)/model_$(idx).jld2")
+	return load_model("$(experiment_dir)/model_$(idx).jld2")
+end
+
+function load_model(path::String)
+	return load(path, "model")
+end
+
+function load_config(path::String)
+	return load(path, "config")
 end
 
 function last_log_idx(experiment_dir::String)
@@ -64,12 +67,4 @@ function last_log_idx(experiment_dir::String)
 	end
 
 	return idx
-end
-
-function save_configs(configs::T, experiment_logger::Experiment_logger) where {T<:Abstract_config}
-	save_config(configs, "$(experiment_logger.experiment_dir)/diffusion_configs.jld2")
-end
-
-function load_configs(experiment_logger::Experiment_logger)
-	return load_config("$(experiment_logger.experiment_dir)/diffusion_configs.jld2")
 end

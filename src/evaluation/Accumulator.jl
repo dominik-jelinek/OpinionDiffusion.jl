@@ -73,20 +73,22 @@ function agg_stats(df, x_col, y_col)
 	return cdf
 end
 
-function extract!(df, config_col::Union{String,Symbol}, variable::Union{String,Symbol})
-	df[!, variable] = [getproperty(x, Symbol(variable)) for x in df[!, config_col]]
-end
+function retrieve_variable(df::DataFrame, config_path)
+	if length(config_path) == 1
+		return df[!, config_path[1]]
+	end
 
-function extract!(df, config_col::Union{String,Symbol}, idx::Int64, variable::Union{String,Symbol})
-	df[!, variable] = [getproperty(x[idx], Symbol(variable)) for x in df[!, config_col]]
-end
+	variable_col = df[!, :experiment_config]
 
-function extract!(df, config_col::Union{String,Symbol}, func::Function)
-	df[!, string(config_col)*"_"*string(nameof(func))] = [func(x) for x in df[!, config_col]]
-end
+	for var in config_path
+		if typeof(var) == Int64
+			variable_col = [x[var] for x in variable_col]
+		else
+			variable_col = [getproperty(x, Symbol(var)) for x in variable_col]
+		end
+	end
 
-function extract!(df, config_col::Union{String,Symbol}, idx::Int64, func::Function)
-	df[!, string(config_col)*"_"*string(nameof(func))] = [func(x[idx]) for x in df[!, config_col]]
+	return variable_col
 end
 
 function col_name(col, func)

@@ -39,9 +39,9 @@ function parse_candidates_toc(lines)
 
 		if party == "Non-P" || !(party in parties)
 			push!(parties, party)
-			candidates[i] = Candidate(i, line[1:end-length(party)-2], length(parties))
+			candidates[i] = Candidate(i, line[1:end-length(party)-2], length(parties), party)
 		else
-			candidates[i] = Candidate(i, line[1:end-length(party)-2], findfirst(x -> x == party, parties))
+			candidates[i] = Candidate(i, line[1:end-length(party)-2], findfirst(x -> x == party, parties), party)
 		end
 	end
 

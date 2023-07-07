@@ -2,11 +2,13 @@ struct Candidate
 	ID::Int64
 	name::String
 	party_ID::Int64
+	party_name::String
 end
 
 get_ID(candidate::Candidate) = candidate.ID
 get_name(candidate::Candidate) = candidate.name
 get_party_ID(candidate::Candidate) = candidate.party_ID
+get_party_name(candidate::Candidate) = candidate.party_name
 
 struct Election
 	party_names::Vector{String}
@@ -15,6 +17,7 @@ struct Election
 end
 
 get_party_names(election::Election) = election.party_names
+get_party_name(election::Election, ID) = election.party_names[ID]
 get_candidates(election::Election) = election.candidates
 get_votes(election::Election) = election.votes
 
@@ -25,15 +28,15 @@ end
 
 @kwdef struct Election_config <: Abstract_config
 	data_path::String
-	remove_candidates_ids::Vector{Int64} = []
+	remove_candidate_ids::Vector{Int64} = []
 	sampling_config::Union{Sampling_config, Nothing} = nothing
 end
 
 function init_election(config::Election_config)
 	election = parse_data(config.data_path)
 
-	if length(config.remove_candidates_ids) > 0
-		election = remove_candidates(election, config.remove_candidates_ids)
+	if length(config.remove_candidate_ids) > 0
+		election = remove_candidates(election, config.remove_candidate_ids)
 	end
 
 	if config.sampling_config !== nothing
@@ -98,7 +101,7 @@ function remove_candidates(votes::Vector{Vote}, candidates::Vector{Candidate}, c
 	new_candidates = Vector{OpinionDiffusion.Candidate}()
 	for (i, can) in enumerate(candidates)
 		if i ∉ candidate_ids
-			push!(new_candidates, OpinionDiffusion.Candidate(get_ID(can), can.name, get_party_ID(can)))
+			push!(new_candidates, OpinionDiffusion.Candidate(get_ID(can), get_name(can), get_party_ID(can), get_party_name(can)))
 		end
 	end
 
