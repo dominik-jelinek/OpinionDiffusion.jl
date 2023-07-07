@@ -8,7 +8,7 @@ function timestamp_vis(model, sampled_voter_ids, reduce_dim_config, clustering_c
 	#voter visualization
 	sampled_voters = voters[sampled_voter_ids]
 	sampled_opinions = reduce(hcat, get_opinion(sampled_voters))
-	push!(visualizations, draw_election_summary(get_election_summary(get_votes(sampled_voters), length(candidates))))
+	push!(visualizations, draw_election_summary(get_election_summary(get_votes(sampled_voters))))
 
 	projections = reduce_dims(sampled_opinions, reduce_dim_config)
 
@@ -192,16 +192,22 @@ function get_election_summary(votes::Vector{Vote}; drop_last::Bool=false)
 		position = 1
 		for i in 1:length(vote) - 1
 			bucket = vote[i]
-			for c in bucket
-				result[c, position] += 1.0 / length(bucket)
+			for _ in bucket
+				frac = 1.0 / length(bucket)
+				for c in bucket
+					result[c, position] += frac
+				end
 				position += 1
 			end
 		end
 
 		if !drop_last || length(vote[end]) == 1
-			last_bucket = vote[end]
-			for c in last_bucket
-				result[c, position] += 1.0 / length(last_bucket)
+			bucket = vote[end]
+			for _ in bucket
+				frac = 1.0 / length(bucket)
+				for c in bucket
+					result[c, position] += frac
+				end
 				position += 1
 			end
 		end
@@ -254,7 +260,7 @@ function gather_vis(exp_dir, sampled_voter_ids, dim_reduction_config, clustering
 	interm_calc = Dict()
 
 	for t in timestamps
-		model_log = load_log(exp_dir, t)
+		model_log = load_model(exp_dir, t)
 		visualization, interm_calc = timestamp_vis(model_log, sampled_voter_ids, dim_reduction_config, clustering_config, interm_calc)
 		push!(visualizations, visualization)
 		#push!(visualizations, stack_visualizations(model_vis2(model_log, sampled_voter_ids, dim_reduction_config, clustering_config)))

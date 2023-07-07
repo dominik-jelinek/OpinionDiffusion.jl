@@ -1066,13 +1066,13 @@ function extreme_runs(df, metric)
 end
 
 # ╔═╡ a4f875d7-685e-43bb-a806-be6ae6547ffb
-min_row, max_row = extreme_runs(KT_result, metric, can)
+min_row, max_row = extreme_runs(SP_result, metric, can)
 #min_row, max_row = extreme_runs(df, metric)
 
 # ╔═╡ a35605c7-382c-4443-aa79-386b02834c40
 if anal_run
-	min_metrics = run_experiment(min_row[:experiment_config], experiment_name="min_borda_can_8", checkpoint=10)
-	max_metrics = run_experiment(max_row[:experiment_config], experiment_name="max_borda_can_8", checkpoint=1)
+	min_metrics = run_experiment(min_row[:experiment_config], experiment_name="min_borda_can_8_SP", checkpoint=10)
+	max_metrics = run_experiment(max_row[:experiment_config], experiment_name="max_borda_can_8_SP", checkpoint=1)
 end
 
 # ╔═╡ Cell order:

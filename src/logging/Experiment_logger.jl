@@ -28,33 +28,20 @@ function trigger(model::T, experiment_logger::Experiment_logger) where {T<:Abstr
 	experiment_logger.diffusion_step[1] += 1
 end
 
-function load_models(experiment_dir::String, start_idx::Int64=0, end_idx::Int64=-1)
-	if end_idx == -1
-		end_idx = last_log_idx(experiment_dir)
-	end
-	models = Vector{Abstract_model}(undef, end_idx - start_idx + 1)
-
-	for (i, j) in enumerate(start_idx:end_idx)
-		models[i] = load_model(experiment_dir, j)
-	end
-
-	return models
-end
-
 function load_model(experiment_dir::String, diffusion_step::Int64)
 	if diffusion_step == -1
-		idx = last_log_idx(experiment_dir)
+		diffusion_step = last_log_idx(experiment_dir)
 	end
 
-	return load_model("$(experiment_dir)/model_$(idx).jld2")
+	return load_model("$(experiment_dir)/model_$(diffusion_step).jld2")
 end
 
 function load_model(path::String)
 	return load(path, "model")
 end
 
-function load_config(path::String)
-	return load(path, "config")
+function load_config(experiment_dir::String)
+	return load(experiment_dir * "/experiment_config.jld2", "config")
 end
 
 function last_log_idx(experiment_dir::String)
