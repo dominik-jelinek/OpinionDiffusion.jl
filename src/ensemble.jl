@@ -10,26 +10,6 @@
 	diffusion_run_configs::Union{Vector{Diffusion_run_config}, Nothing} = nothing
 end
 
-function Base.length(ensemble_config::Ensemble_config)
-	len = 1
-	if length(ensemble_config.sampling_configs) > 0
-		len *= length(ensemble_config.sampling_configs)
-	end
-
-	len *= length(ensemble_config.voter_init_configs)
-	len *= length(ensemble_config.graph_init_configs)
-
-	if length(ensemble_config.diff_init_configs) > 0
-		len *= length(ensemble_config.diff_init_configs)
-	end
-
-	if length(ensemble_config.diff_configs) > 0
-		len *= length(ensemble_config.diff_configs)
-	end
-
-	return len
-end
-
 function ensemble(ensemble_config::Ensemble_config, get_metrics::Function)
 	dataframes = Vector{DataFrame}()
 	init_election = parse_data(ensemble_config.data_path)

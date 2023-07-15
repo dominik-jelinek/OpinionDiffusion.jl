@@ -159,12 +159,12 @@ function get_metrics(model)
 	votes = get_votes(voters)
 
 	metrics = Dict(
-		"min_degrees" => minimum(keyss),
-        "avg_degrees" => Graphs.ne(g) * 2 / Graphs.nv(g),
-        "max_degrees" => maximum(keyss),
+		#"min_degrees" => minimum(keyss),
+        #"avg_degrees" => Graphs.ne(g) * 2 / Graphs.nv(g),
+        #"max_degrees" => maximum(keyss),
         "avg_edge_dist" => mean(get_edge_distances(g, voters)),
-        "clustering_coefficient" => Graphs.global_clustering_coefficient(g),
-        #"diameter" => Graphs.diameter(g),
+        #"clustering_coefficient" => Graphs.global_clustering_coefficient(g), # Expensive
+        #"diameter" => Graphs.diameter(g), #EXPENSIVE
         
         "avg_vote_length" => mean([length(vote) for vote in votes]),
         "unique_votes" => length(unique(votes)),
@@ -172,7 +172,6 @@ function get_metrics(model)
         "plurality_scores" => plurality_voting(votes, can_count, true),
         "borda_scores" => borda_voting(votes, can_count, true),
         #"copeland_scores" => copeland_voting(votes, can_count),
-        "positions" => get_positions(voters, can_count)
 	)
 	
 	return metrics
@@ -438,7 +437,7 @@ end
 # ╔═╡ 90986999-59f8-4717-864e-20300d0d3918
 begin
 	selection = filter(row -> typeof(row["graph_config"]) != Random_graph_config, sample_graph_df)
-	selection[!, "homophily"] = retrieve_variable(selection, ["graph_config", "homophily"])
+	selection[!, "homophily"] = retrieve_variable(selection, ["model_config", "graph_config", "homophily"])
 	by_homophily = groupby(selection, "homophily")
 	labels_hom = ["Homophily = " * string(key[1]) for (key, _) in pairs(by_homophily)]
 end
@@ -483,7 +482,7 @@ compare_metric([SP_result, KT_result], "diffusion_step",  "unique_votes", labels
 md"#### Average Vote Length"
 
 # ╔═╡ 37ff3a7d-1d8d-4e10-8d93-9ebc6b0b366a
-compare([SP_result, KT_result], "diffusion_step",  "avg_vote_length", labels=[name(SP_result.voter_config[1]), name(KT_result.voter_config[1])])
+compare_metric([SP_result, KT_result], "diffusion_step",  "avg_vote_length", labels=[name(SP_result.voter_config[1]), name(KT_result.voter_config[1])])
 
 # ╔═╡ e1a67161-5e4c-4bc9-bb43-2ea60ed01e76
 compare_voting_rule([SP_result, KT_result], "diffusion_step", "borda_scores", linestyles=linestyles, labels=[name(SP_result.voter_config[1]), name(KT_result.voter_config[1])], candidates=get_candidates(election))
@@ -1030,7 +1029,7 @@ md"
 "
 
 # ╔═╡ a210fc8f-5d85-464d-8b0b-3fba19579a56
-md"## Diffusion with set seed"
+md"## Diffusion With Logging for In-Depth Analysis"
 
 # ╔═╡ 94c8e845-2069-4a49-b109-8c71f1ffa2cd
 md"Identify interesting runs of diffusion"

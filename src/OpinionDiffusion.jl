@@ -67,58 +67,53 @@ candidate_count(vote::Vote) = sum([length(bucket) for bucket in vote])
 @kwdef struct Action
 	operation::String
 	ID::Union{Int64,Tuple{Int64,Int64}}
-	old::Abstract_voter
-	new::Abstract_voter
 end
 
-include("election/election.jl")
-include("election/toc.jl")
-include("election/soi.jl")
+include("election/Election.jl")
+include("election/parsing/toc.jl")
+include("election/parsing/soi.jl")
 
-include("voters/Abstract_voter.jl")
-include("voters/Kendall_voter.jl")
-include("voters/Spearman_voter.jl")
+include("model/voters/Abstract_voter.jl")
+include("model/voters/Kendall_voter.jl")
+include("model/voters/Spearman_voter.jl")
 
-include("graphs/graph.jl")
-include("graphs/barabasi_albert.jl")
-include("graphs/DEG.jl")
-include("graphs/random_graph.jl")
+include("model/graphs/Abstract_graph.jl")
+include("model/graphs/barabasi_albert.jl")
+include("model/graphs/DEG.jl")
+include("model/graphs/random_graph.jl")
 
-include("models/Abstract_model.jl")
-include("models/General_model.jl")
+include("model/Abstract_model.jl")
+include("model/General_model.jl")
 
-include("evaluation/Accumulator.jl")
+include("diffusion/Accumulator.jl")
 
-@kwdef struct Diffusion_run_config
-	diffusion_steps::Int64
-	mutation_configs::Vector{Abstract_mutation_config}
-end
+include("diffusion/mutations/Abstract_mutation.jl")
+include("diffusion/mutations/graph_mutation.jl")
+include("diffusion/mutations/kendall_mutation.jl")
+include("diffusion/mutations/spearman_mutation.jl")
 
 @kwdef struct Diffusion_config <: Abstract_config
-	diffusion_init_config::Union{Vector{Abstract_mutation_init_config}, Nothing}
+	diffusion_init_configs::Union{Vector{Abstract_mutation_init_config}, Nothing}
 	diffusion_run_config::Diffusion_run_config
 end
-
 @kwdef struct Experiment_config
 	election_config::Election_config
 	model_config::Abstract_model_config
 	diffusion_config::Union{Diffusion_config, Nothing} = nothing
 end
-include("logging/Experiment_logger.jl")
+include("diffusion/Experiment_logger.jl")
+include("diffusion/diffusion.jl")
 
-
-include("diffusion.jl")
-include("mutations/graph_mutation.jl")
-include("mutations/kendall_mutation.jl")
-include("mutations/spearman_mutation.jl")
-
+include("experiment.jl")
 include("ensemble.jl")
 
+include("evaluation/dim_reduction/dim_reduction.jl")
+include.(filter(contains(r".jl$"), readdir("evaluation/dim_reduction"; join=true)))
+include("evaluation/clustering/clustering.jl")
+include.(filter(contains(r".jl$"), readdir("evaluation/clustering"; join=true)))
 include("evaluation/visualizations.jl")
 include("evaluation/metrics.jl")
 include("evaluation/voting_rules.jl")
-include("evaluation/dim_reduction.jl")
-include("evaluation/clustering.jl")
 
 include("utils.jl")
 

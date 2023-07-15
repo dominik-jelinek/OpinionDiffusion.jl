@@ -14,6 +14,17 @@ function metrics_vis(metrics, candidates, parties, exp_dir=Nothing)
 	return plots
 end
 
+function gather_metrics(experiment_dir::String, get_metrics::Function)
+	timestamps = sort([parse(Int64, split(splitext(file)[1], "_")[end]) for file in readdir(experiment_dir) if split(file, "_")[1] == "model"])
+
+	accumulator = Accumulator(get_metrics)
+	for timestamp in timestamps
+		add_metrics!(accumulator, load_model(experiment_dir, timestamp))
+	end
+
+	return hcat(DataFrame("diffusion_step" => timestamps), accumulated_metrics(accumulator))
+end
+
 function compare_voting_rule(gdf, x_col, y_col; candidates=nothing, linestyles=[:solid], labels=nothing, colors=to_colormap(:tab10))
 	f = Figure()
 
@@ -104,6 +115,17 @@ function compare_metric!(ax, gdf, x_col, y_col; labels=nothing, linestyles=[:sol
 	if labels !== nothing
 		axislegend(ax)
 	end
+end
+
+function draw_metric(stats_df, x_col, y; band::Union{Tuple,Nothing}=nothing, color=Makie.wong_colors()[1], label="", linestyle=:solid)
+	line = lines!(ax, x, y, linewidth=3, color=color, linestyle=linestyle, label=label)
+
+	if band !== nothing
+		min_y, max_y = band
+		band!(ax, x, min_y, max_y, color=(color, 0.3), transparency=true)
+	end
+
+	return line
 end
 
 function draw_metric!(ax, x, y; band::Union{Tuple,Nothing}=nothing, color=Makie.wong_colors()[1], label="", linestyle=:solid)

@@ -46,14 +46,6 @@ function init_election(config::Election_config)
 	return election
 end
 
-function parse_data(data_path::String)
-	ext = Symbol(lowercase(splitext(data_path)[2][2:end]))
-
-	return parse_data(data_path, Val(ext))
-end
-
-parse_data(data_path::String, ext)::Election = throw(ArgumentError("Unsupported format of input data $ext. Supported: [toc, soi]"))
-
 function remove_candidates(election::Election, candidate_ids::Vector{Int64})::Election
 	filtered_votes, filtered_candidates = remove_candidates(election.votes, election.candidates, candidate_ids)
 

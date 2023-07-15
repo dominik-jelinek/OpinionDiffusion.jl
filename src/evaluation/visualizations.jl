@@ -216,12 +216,12 @@ function get_election_summary(votes::Vector{Vote}; drop_last::Bool=false)
 	return result ./ length(votes)
 end
 
-function draw_election_summary(election_summary)
+function draw_election_summary_freq(election_summary)
 	can_count = size(election_summary, 1)
 	f = Figure(figure_padding=2)
 	axmain = Axis(f[2, 1], ylabel="Candidate ID", xlabel="Rank", yticks=1:can_count, xticks=(1:can_count))
 
-	hm = Makie.heatmap!(axmain, transpose(election_summary), label="Summary heatmap")#[parties[can.party] for can in candidates])
+	#hm = Makie.heatmap!(axmain, transpose(election_summary), label="Summary heatmap")#[parties[can.party] for can in candidates])
 	#Makie.Colorbar(f[1,2], hm)
 
 	ax2 = Axis(f[2, 2], xlabel="% Votes", ylabel="Candidate ID", yticks=1:can_count, xticks=0.0:0.2:1.0)
@@ -248,6 +248,17 @@ function draw_election_summary(election_summary)
 
 	#legend = Legend(f[1, 2], [bars, bars], ["1","2"])
 	#legend.tellwidth = false
+	return f
+end
+
+function draw_election_summary(election_summary)
+	can_count = size(election_summary, 1)
+	f = Figure(figure_padding=2)
+	axmain = Axis(f[1, 1], ylabel="Candidate ID", xlabel="Rank", yticks=1:can_count, xticks=(1:can_count))
+
+	hm = Makie.heatmap!(axmain, transpose(election_summary), label="Summary heatmap")#[parties[can.party] for can in candidates])
+	Makie.Colorbar(f[1,2], hm)
+
 	return f
 end
 

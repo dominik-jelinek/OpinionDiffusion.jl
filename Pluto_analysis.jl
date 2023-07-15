@@ -52,10 +52,13 @@ md"### Loading data"
 log_dir_path = "./logs"
 
 # ╔═╡ 02d8b06f-0add-4b9d-95da-25683e4ded82
-md"""Select experiment: $(@bind experiment_dir Select([filename for filename in readdir(log_dir_path) if isdir(log_dir_path * "/" * filename)]))"""
+md"""Select first experiment: $(@bind experiment_dir Select([filename for filename in readdir(log_dir_path) if isdir(log_dir_path * "/" * filename)]))"""
 
 # ╔═╡ 8d05a1b3-2501-47f2-abed-6362e1a6c946
 exp_dir_path = log_dir_path * "/" * experiment_dir
+
+# ╔═╡ af357a6c-9cca-45cf-a6b7-6ebfa2a81f53
+experiment_name = join(split(experiment_dir, "_")[1:end-2], " ")
 
 # ╔═╡ e50263d1-1800-4065-bc47-e2559949b5c7
 init_model = load_model(exp_dir_path, 0)
@@ -66,6 +69,61 @@ experiment_config = load_config(exp_dir_path)
 # ╔═╡ 5a82bfad-6d86-469b-8229-ffb7872e63db
 candidates = get_candidates(init_model)
 
+# ╔═╡ 57080d1e-1877-4996-a14f-070cb68fd4af
+md"## Compounded Metrics"
+
+# ╔═╡ 6670b9cb-d173-4a1c-a56f-a5173a53a946
+function get_metrics(model)
+	g = get_social_network(model)
+    voters = get_voters(model)
+	candidates = get_candidates(model)
+	can_count = length(candidates)
+	
+	histogram = Graphs.degree_histogram(g)
+    keyss = collect(keys(histogram))
+    
+	votes = get_votes(voters)
+
+	metrics = Dict(
+		#"min_degrees" => minimum(keyss),
+        #"avg_degrees" => Graphs.ne(g) * 2 / Graphs.nv(g),
+        #"max_degrees" => maximum(keyss),
+        "avg_edge_dist" => mean(get_edge_distances(g, voters)),
+        #"clustering_coefficient" => Graphs.global_clustering_coefficient(g), # Expensive
+        #"diameter" => Graphs.diameter(g), #EXPENSIVE
+        
+        "avg_vote_length" => mean([length(vote) for vote in votes]),
+        "unique_votes" => length(unique(votes)),
+        
+        "plurality_scores" => plurality_voting(votes, can_count, true),
+        "borda_scores" => borda_voting(votes, can_count, true),
+        #"copeland_scores" => copeland_voting(votes, can_count),
+	)
+	
+	return metrics
+end
+
+# ╔═╡ 012ebf20-e276-4335-bbb8-8437d814aa75
+ compounded_metrics = gather_metrics(exp_dir_path, get_metrics)	
+
+# ╔═╡ e6c46d0b-c1e7-4b90-b21d-1edcffac4696
+compare_voting_rule([compounded_metrics], "diffusion_step", "borda_scores")
+
+# ╔═╡ fff8db5e-147a-45a5-bfe4-76d494d86580
+compare_voting_rule([compounded_metrics], "diffusion_step", "plurality_scores")
+
+# ╔═╡ 6fc58be7-a1ee-4016-a568-a5bfcecb876e
+compare_metric([compounded_metrics], "diffusion_step", "unique_votes")
+
+# ╔═╡ 3ff75fe6-6468-42f7-a54a-7a6345ed60f2
+compare_metric([compounded_metrics], "diffusion_step", "avg_vote_length")
+
+# ╔═╡ fcc42626-64dc-49fc-baf6-33153834b8f3
+compare_metric([compounded_metrics], "diffusion_step", "avg_edge_dist")
+
+# ╔═╡ e12063e2-9afc-472a-b0d0-eb4eee4d9fb8
+md"## Configure visualizations"
+
 # ╔═╡ 67d59347-2491-44f8-ad07-91f55e314d0e
 md"### Sampling"
 
@@ -74,9 +132,6 @@ begin
 	sample_size = length(init_model.voters)#min(1024, length(init_model.voters))
 	sampled_voter_ids = sort(OpinionDiffusion.StatsBase.sample(1:length(init_model.voters), sample_size, replace=false))
 end
-
-# ╔═╡ e12063e2-9afc-472a-b0d0-eb4eee4d9fb8
-md"## Configure visualizations"
 
 # ╔═╡ 44bdb36d-cf1e-4a5a-b97c-5b5d9f45b54a
 md"### Dimensionality reduction"
@@ -165,19 +220,13 @@ visualizations[t][3]
 md"## Specific Diffusion Step"
 
 # ╔═╡ a0449758-593e-403b-a3ab-352a2bc3717b
-md"""Select diffusion step: $(@bind diff_step PlutoUI.Slider(sort([parse(Int64, split(filename, "_")[2][1:end-5]) for filename in readdir(exp_dir_path) if split(filename, "_")[1] == "model"])))"""
+md"""Select diffusion step: $(@bind diffusion_step PlutoUI.Slider(sort([parse(Int64, split(filename, "_")[2][1:end-5]) for filename in readdir(exp_dir_path) if split(filename, "_")[1] == "model"])))"""
 
 # ╔═╡ c3ba833f-9eee-46c6-b7ae-ea8cb831b6dc
-diff_step
+diffusion_step
 
 # ╔═╡ c2ba23c6-d23b-4754-a5b8-371500420b43
-model_log = load_model(exp_dir_path, diff_step)
-
-# ╔═╡ 41deda04-850e-4463-9161-f768e4631c90
-summary = get_election_summary(get_votes(get_voters(model_log)), drop_last=true)
-
-# ╔═╡ 8d407120-caae-4991-a250-ac84cc9148c4
-draw_election_summary(summary)
+model_log = load_model(exp_dir_path, diffusion_step)
 
 # ╔═╡ f35712d1-3c91-4202-8e90-55b1922dbd8e
 vis, _ = timestamp_vis(model_log, sampled_voter_ids, dim_reduction_config, clustering_config)
@@ -245,9 +294,6 @@ sils = OpinionDiffusion.Clustering.silhouettes(new_labels, dists)
 
 # ╔═╡ 05c64c67-e51a-49cc-8908-9d035fe18664
 median(sils)
-
-# ╔═╡ c245c7c0-fbe0-4e6a-8e6e-91fc997bd9df
- #md"Diff: $(@bind diff PlutoUI.Slider(1:100))"
 
 # ╔═╡ 218a9121-2633-493c-b126-5ddc5dcd8767
 md"### Compounded metrics"
@@ -330,9 +376,6 @@ end
 # ╔═╡ 2750e431-7c7f-4323-b74b-399ab7346603
 countss = [get_counts(get_votes(sampled_voters[collect(cluster)]), length(candidates)) for cluster in clusters if length(cluster) != 0]
 
-# ╔═╡ fc58665b-955b-4091-bd50-17ee0f8539ae
-plots = Plots.plot([Plots.heatmap(count, yticks=1:length(src_candidates), xticks=1:length(src_candidates), ylabel="Candidate", xlabel="Position") for count in countss]..., layout = (length(candidates), 1), size = (669,900))
-
 # ╔═╡ 816b8848-6198-498f-bacf-790693babfbc
 
 
@@ -351,13 +394,22 @@ plots = Plots.plot([Plots.heatmap(count, yticks=1:length(src_candidates), xticks
 # ╟─8aaf35b2-3c2c-45f9-afc0-2fe472f7cbbc
 # ╠═02d8b06f-0add-4b9d-95da-25683e4ded82
 # ╟─8d05a1b3-2501-47f2-abed-6362e1a6c946
+# ╠═af357a6c-9cca-45cf-a6b7-6ebfa2a81f53
 # ╠═e50263d1-1800-4065-bc47-e2559949b5c7
 # ╠═02a148bb-38f7-4fc4-9ae0-b7ef2e3b9b15
 # ╠═5a82bfad-6d86-469b-8229-ffb7872e63db
+# ╟─57080d1e-1877-4996-a14f-070cb68fd4af
+# ╠═6670b9cb-d173-4a1c-a56f-a5173a53a946
+# ╠═012ebf20-e276-4335-bbb8-8437d814aa75
+# ╠═e6c46d0b-c1e7-4b90-b21d-1edcffac4696
+# ╠═fff8db5e-147a-45a5-bfe4-76d494d86580
+# ╠═6fc58be7-a1ee-4016-a568-a5bfcecb876e
+# ╠═3ff75fe6-6468-42f7-a54a-7a6345ed60f2
+# ╠═fcc42626-64dc-49fc-baf6-33153834b8f3
+# ╟─e12063e2-9afc-472a-b0d0-eb4eee4d9fb8
 # ╟─67d59347-2491-44f8-ad07-91f55e314d0e
 # ╠═f00d2476-b96a-4595-a812-20cace428b75
 # ╠═bfb16d83-d0ca-4201-9c47-3584d23532f5
-# ╟─e12063e2-9afc-472a-b0d0-eb4eee4d9fb8
 # ╟─44bdb36d-cf1e-4a5a-b97c-5b5d9f45b54a
 # ╠═80a5d0d1-6522-4464-9eb4-bfd46b2124a1
 # ╠═2b59335e-14d5-4fee-acc7-af1e5e458c09
@@ -377,11 +429,9 @@ plots = Plots.plot([Plots.heatmap(count, yticks=1:length(src_candidates), xticks
 # ╠═9e2c288a-47bb-4b43-9668-fdd5ac22f43e
 # ╠═7d2c5850-0ae9-44ea-ac31-130bc248e2ce
 # ╟─4d57266e-0800-4f95-ac49-3a2ba791bcb4
-# ╟─a0449758-593e-403b-a3ab-352a2bc3717b
+# ╠═a0449758-593e-403b-a3ab-352a2bc3717b
 # ╟─c3ba833f-9eee-46c6-b7ae-ea8cb831b6dc
 # ╠═c2ba23c6-d23b-4754-a5b8-371500420b43
-# ╠═41deda04-850e-4463-9161-f768e4631c90
-# ╠═8d407120-caae-4991-a250-ac84cc9148c4
 # ╠═f35712d1-3c91-4202-8e90-55b1922dbd8e
 # ╠═230b0583-95ba-4dea-8593-81473a936f9e
 # ╠═e332e426-eb63-4a69-a330-7b0127ad1a2c
@@ -400,8 +450,6 @@ plots = Plots.plot([Plots.heatmap(count, yticks=1:length(src_candidates), xticks
 # ╠═195c6d1d-645e-4b7c-9d32-8f56359ebf99
 # ╠═b425603d-e34d-4f95-a3d9-1bfce2982cfd
 # ╠═05c64c67-e51a-49cc-8908-9d035fe18664
-# ╟─c245c7c0-fbe0-4e6a-8e6e-91fc997bd9df
-# ╠═fc58665b-955b-4091-bd50-17ee0f8539ae
 # ╟─218a9121-2633-493c-b126-5ddc5dcd8767
 # ╟─59cd2b6a-2f14-419f-be29-ef60b0f1c681
 # ╠═e02a5e33-75a6-4bb3-9a45-8ac0dedb3f5c
