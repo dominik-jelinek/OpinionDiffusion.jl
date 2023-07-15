@@ -88,14 +88,17 @@ function spearman_weights(weighting_rate, can_count)
 	weights = Vector{Float64}(undef, can_count)
 	weights[1] = 0.0
 	for i in 2:length(weights)
+		# adding one adds virtual bucket between neighoring buckets in full can_ranking
+		# as the number of buckets needs to be at least 2 * number of candidates - 1
 		weights[i] = weights[i - 1] + weight_func(i - 1) + 1
 	end
 
 	# normalize by max distance
-	max_sp_distance = get_max_distance(can_count, weights)
-	weights = weights ./ max_sp_distance
+	#max_sp_distance = get_max_distance(can_count, weights)
+	#weights = weights ./ max_sp_distance
 
-	eps=(weights[end] - weights[end - 1])/4
+	# divide by 4 instead of 2 as the minimum distance between two buckets in full ranking is now 2
+	eps=(weights[end] - weights[end - 1]) / 4
 	return weights, eps
 end
 

@@ -206,11 +206,39 @@ linestyles = [:solid, :dash, :dot, :dashdot, :dashdotdot]
 # ╔═╡ 13802e53-a71b-4a0e-9dbf-0320cb342512
 log_dir = "./logs/"
 
+# ╔═╡ 4c498215-b5ae-44f4-ab2d-1fe7618ea8fe
+recalculate = false
+
 # ╔═╡ eabc778b-5af6-47d5-97ef-c6156786ef19
 md"## Model"
 
 # ╔═╡ 978aca85-e644-40f3-ab0c-4dddf1c77b80
 md"### Clustering Coefficient"
+
+# ╔═╡ 11531f9f-1f8b-46c3-bc97-574965b028bb
+function get_metrics_cc(model)
+	g = get_social_network(model)
+    voters = get_voters(model)
+	candidates = get_candidates(model)
+	can_count = length(candidates)
+	
+	histogram = Graphs.degree_histogram(g)
+    keyss = collect(keys(histogram))
+    
+	votes = get_votes(voters)
+
+	metrics = Dict(
+        "avg_edge_dist" => mean(get_edge_distances(g, voters)),
+        "clustering_coefficient" => Graphs.global_clustering_coefficient(g), # Expensive
+        "avg_vote_length" => mean([length(vote) for vote in votes]),
+        "unique_votes" => length(unique(votes)),
+        
+        "plurality_scores" => plurality_voting(votes, can_count, true),
+        "borda_scores" => borda_voting(votes, can_count, true)
+	)
+	
+	return metrics
+end
 
 # ╔═╡ 30887bdf-9bcb-46ad-b93c-63ad0eb078f7
 ensemble_sample_graph = Ensemble_config(
@@ -416,7 +444,7 @@ function run(ensemble_config, get_metrics, path; recalculate=false)
 end
 
 # ╔═╡ f8492aca-23ea-406f-87a5-0722f4ee2330
-sample_graph_df = run(ensemble_sample_graph, get_metrics, log_dir * "ensemble_sample_graph.jld2", recalculate=false)
+sample_graph_df = run(ensemble_sample_graph, get_metrics_cc, log_dir * "ensemble_sample_graph.jld2", recalculate=recalculate)
 
 # ╔═╡ 4e06848c-4c0a-4441-9894-715f622ccf4e
 begin
@@ -455,10 +483,10 @@ begin
 end
 
 # ╔═╡ 5a7df6ee-e403-48ec-8349-0a29767d1af8
-SP_result = run(ensemble_config_SP_result, get_metrics, log_dir * "ensemble_SP_result.jld2", recalculate=false)
+SP_result = run(ensemble_config_SP_result, get_metrics, log_dir * "ensemble_SP_result.jld2", recalculate=recalculate)
 
 # ╔═╡ 9615b9f8-be60-4730-96e7-d6d45e68c346
-KT_result = run(ensemble_config_KT_result, get_metrics, log_dir * "ensemble_KT_result.jld2", recalculate=false)
+KT_result = run(ensemble_config_KT_result, get_metrics, log_dir * "ensemble_KT_result.jld2", recalculate=recalculate)
 
 # ╔═╡ 5837e6dd-122e-4d92-9e98-e38da9c96735
 md"#### Election Result"
@@ -548,7 +576,7 @@ ensemble_config_sample_result = Ensemble_config(
 )
 
 # ╔═╡ 48be4adc-9751-4afc-8dd0-262f65895abb
-sample_result = run(ensemble_config_sample_result, get_metrics, log_dir * "ensemble_sample_result.jld2", recalculate=false)
+sample_result = run(ensemble_config_sample_result, get_metrics, log_dir * "ensemble_sample_result.jld2", recalculate=recalculate)
 
 # ╔═╡ 7daf9dfc-f859-47f9-aeed-0e50054887cb
 ensemble_config_sample_result.diffusion_run_configs[1].diffusion_steps
@@ -643,7 +671,7 @@ ensemble_config_graphType_result = Ensemble_config(
 )
 
 # ╔═╡ acbfce7b-a7d1-4a75-9ccd-647dc05e3eab
-graphType_result = run(ensemble_config_graphType_result, get_metrics, log_dir * "ensemble_graphType_result.jld2", recalculate=false)
+graphType_result = run(ensemble_config_graphType_result, get_metrics, log_dir * "ensemble_graphType_result.jld2", recalculate=recalculate)
 
 # ╔═╡ 8aeade88-f959-4171-9951-c47faaf3f10e
 begin
@@ -732,7 +760,7 @@ ensemble_config_diffusionSeed_result = Ensemble_config(
 )
 
 # ╔═╡ 42e0f5bb-b6ae-4c95-bdf6-bb91aa33787f
-diffusionSeed_result = run(ensemble_config_diffusionSeed_result, get_metrics, log_dir * "ensemble_diffusionSeed_result.jld2", recalculate=false)
+diffusionSeed_result = run(ensemble_config_diffusionSeed_result, get_metrics, log_dir * "ensemble_diffusionSeed_result.jld2", recalculate=recalculate)
 
 # ╔═╡ 452f9e35-6625-4c08-8988-8c857a17197d
 compare_voting_rule([diffusionSeed_result], "diffusion_step", "borda_scores", linestyles=linestyles)
@@ -816,7 +844,7 @@ ensemble_config_weighting_result = Ensemble_config(
 )
 
 # ╔═╡ 3b519c74-6abb-410b-a711-e10671c87685
-weighting_result = run(ensemble_config_weighting_result, get_metrics, log_dir * "ensemble_weighting_result.jld2", recalculate=false)
+weighting_result = run(ensemble_config_weighting_result, get_metrics, log_dir * "ensemble_weighting_result.jld2", recalculate=recalculate)
 
 # ╔═╡ 40702ce9-a22e-47e3-aaf2-dae71fe69e4f
 weighting_result[!, "weighting_rate"] = retrieve_variable(weighting_result, ["model_config", "voter_config", "weighting_rate"])
@@ -903,19 +931,16 @@ ensemble_config_stubbornness_result_SP = Ensemble_config(
 )
 
 # ╔═╡ a1cf685e-646d-4619-aecf-a483373babc2
-stubbornness_result_SP = run(ensemble_config_stubbornness_result_SP, get_metrics, log_dir * "ensemble_stubbornness_result_SP.jld2", recalculate=false)
+stubbornness_result_SP = run(ensemble_config_stubbornness_result_SP, get_metrics, log_dir * "ensemble_stubbornness_result_SP.jld2", recalculate=recalculate)
 
 # ╔═╡ 321019e0-a8dc-483c-92fd-cb954d029cf4
-stubbornness_result_SP[!, "stubbornness_std"] = std.(retrieve_variable(stubbornness_result_SP, ["diffusion_config", "diffusion_init_config", 1, "stubbornness_distr"]))
+stubbornness_result_SP[!, "stubbornness_std"] = std.(retrieve_variable(stubbornness_result_SP, ["diffusion_config", "diffusion_init_configs", 1, "stubbornness_distr"]))
 
 # ╔═╡ 62553a5a-cfa7-4dab-a2cb-ce90aa750d86
 begin
 	stubbornness_result_SP_gdf = groupby(stubbornness_result_SP, "stubbornness_std")
 	stubbornness_result_SP_labels = ["Stubbornness std=" * string(key[1]) for (key, _) in pairs(stubbornness_result_SP_gdf)]
 end
-
-# ╔═╡ d7a1f736-0870-49d6-b2a9-d5767a21956e
-[(key, val) for (key, val) in pairs(stubbornness_result_SP_gdf)]
 
 # ╔═╡ fd198c81-9aad-4f2f-905d-583f927fd423
 compare_voting_rule(stubbornness_result_SP_gdf, "diffusion_step", "borda_scores", linestyles=linestyles, labels=stubbornness_result_SP_labels)
@@ -996,10 +1021,10 @@ ensemble_config_stubbornness_result_KT = Ensemble_config(
 )
 
 # ╔═╡ d863a58c-ee27-432f-b24b-2244ec27b430
-stubbornness_result_KT = run(ensemble_config_stubbornness_result_KT, get_metrics, log_dir * "ensemble_stubbornness_result_KT.jld2", recalculate=false)
+stubbornness_result_KT = run(ensemble_config_stubbornness_result_KT, get_metrics, log_dir * "ensemble_stubbornness_result_KT.jld2", recalculate=recalculate)
 
 # ╔═╡ 6090fa1d-28dc-4c34-ba36-eeed2bd33b9e
-stubbornness_result_KT[!, "stubbornness_std"] = std.(retrieve_variable(stubbornness_result_KT, ["diffusion_config", "diffusion_init_config", 1, "stubbornness_distr"]))
+stubbornness_result_KT[!, "stubbornness_std"] = std.(retrieve_variable(stubbornness_result_KT, ["diffusion_config", "diffusion_init_configs", 1, "stubbornness_distr"]))
 
 # ╔═╡ 0011a38e-a813-4a58-a224-4068e71151cc
 begin
@@ -1051,6 +1076,16 @@ md"""
 # ╔═╡ ebb18c60-75bf-45dd-8a20-3d402aed23ee
 md"Load specific config and save all the logs for in depth analysis."
 
+# ╔═╡ c0477020-8e3c-49f1-99e5-e8e553b1dbdf
+md"""
+Experiment logger $(@bind logging CheckBox(default=true))
+"""
+
+# ╔═╡ d6669c69-ed65-4404-85d8-4dd578902ffe
+md"""
+Calculate metrics $(@bind metrics CheckBox(default=false))
+"""
+
 # ╔═╡ 1173f5f8-b355-468c-8bfb-beebff5ba12b
 function extreme_runs(df, metric, can)
 	values = [result[can] for result in df[!, metric]]
@@ -1068,10 +1103,36 @@ end
 min_row, max_row = extreme_runs(SP_result, metric, can)
 #min_row, max_row = extreme_runs(df, metric)
 
+# ╔═╡ 5e143b33-e5d0-4828-9d8b-28028917f594
+begin
+	experiment_name = "max_borda_can_8_SP"
+	interval = 1
+	experiment_config = max_row[:experiment_config]
+end
+
 # ╔═╡ a35605c7-382c-4443-aa79-386b02834c40
 if anal_run
-	min_metrics = run_experiment(min_row[:experiment_config], experiment_name="min_borda_can_8_SP", checkpoint=10)
-	max_metrics = run_experiment(max_row[:experiment_config], experiment_name="max_borda_can_8_SP", checkpoint=1)
+	if logging
+		experiment_logger = Experiment_logger(
+			log_dir=log_dir, 
+			experiment_name=experiment_name, 
+			interval=interval
+		)
+	else
+		experiment_logger = nothing
+	end
+
+	if metrics
+		accumulator = Accumulator(get_metrics)
+	else
+		accumulator = nothing
+	end
+	
+	actions = run_experiment(
+		experiment_config, 
+		experiment_logger=experiment_logger, 
+		accumulator=accumulator
+	)
 end
 
 # ╔═╡ Cell order:
@@ -1103,8 +1164,10 @@ end
 # ╠═5a4937a0-abb0-440b-b9cc-ea43522f6674
 # ╠═489639d0-31b0-4da7-8e16-e5d7a33fbd85
 # ╠═13802e53-a71b-4a0e-9dbf-0320cb342512
+# ╠═4c498215-b5ae-44f4-ab2d-1fe7618ea8fe
 # ╟─eabc778b-5af6-47d5-97ef-c6156786ef19
 # ╟─978aca85-e644-40f3-ab0c-4dddf1c77b80
+# ╠═11531f9f-1f8b-46c3-bc97-574965b028bb
 # ╠═30887bdf-9bcb-46ad-b93c-63ad0eb078f7
 # ╠═f8492aca-23ea-406f-87a5-0722f4ee2330
 # ╟─b3007e9c-7b02-40e7-8666-e485bbe6ab05
@@ -1117,9 +1180,9 @@ end
 # ╟─5745da71-6421-41d9-aa2f-1626a3892ea0
 # ╟─48f5e7a0-260b-4153-a443-e4962a57861c
 # ╠═a22ab6ed-3e64-41af-a2fc-b7c6a22a6c42
-# ╟─1e6bb760-6a9c-4e6a-85b6-e2ec97653135
+# ╠═1e6bb760-6a9c-4e6a-85b6-e2ec97653135
 # ╠═5a7df6ee-e403-48ec-8349-0a29767d1af8
-# ╟─a1c06a57-20d2-4f4e-a9e2-343a74ff7841
+# ╠═a1c06a57-20d2-4f4e-a9e2-343a74ff7841
 # ╠═9615b9f8-be60-4730-96e7-d6d45e68c346
 # ╠═604d68b0-dff1-45f7-8a5b-ac2eb44949b2
 # ╟─5837e6dd-122e-4d92-9e98-e38da9c96735
@@ -1168,7 +1231,6 @@ end
 # ╠═7015811a-1d7e-4bee-80b8-b11e2c004b5a
 # ╠═a1cf685e-646d-4619-aecf-a483373babc2
 # ╠═321019e0-a8dc-483c-92fd-cb954d029cf4
-# ╠═d7a1f736-0870-49d6-b2a9-d5767a21956e
 # ╠═62553a5a-cfa7-4dab-a2cb-ce90aa750d86
 # ╠═fd198c81-9aad-4f2f-905d-583f927fd423
 # ╠═f2f5e329-81ed-48cd-988e-48a96b1e5516
@@ -1189,6 +1251,9 @@ end
 # ╠═a4f875d7-685e-43bb-a806-be6ae6547ffb
 # ╟─3fe9215c-ba2f-4aaa-bcb0-1eb8f1982db8
 # ╟─ebb18c60-75bf-45dd-8a20-3d402aed23ee
+# ╠═5e143b33-e5d0-4828-9d8b-28028917f594
+# ╟─c0477020-8e3c-49f1-99e5-e8e553b1dbdf
+# ╟─d6669c69-ed65-4404-85d8-4dd578902ffe
 # ╠═a35605c7-382c-4443-aa79-386b02834c40
 # ╠═1173f5f8-b355-468c-8bfb-beebff5ba12b
 # ╠═0cf5fa96-ff32-4853-b6c7-ef1843f5281f

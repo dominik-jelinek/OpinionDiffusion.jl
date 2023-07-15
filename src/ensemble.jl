@@ -54,14 +54,14 @@ function ensemble(ensemble_config::Ensemble_config, get_metrics::Function)
 				end
 
 				# diffusion
-				for (l, diffusion_init_config) in enumerate(ensemble_config.diffusion_init_configs)
-					for n in eachindex(diffusion_init_config)
-						diffusion_init_config[n] = resolve_dependencies(diffusion_init_config[n], prev_configs)
+				for (l, diffusion_init_configs) in enumerate(ensemble_config.diffusion_init_configs)
+					for n in eachindex(diffusion_init_configs)
+						diffusion_init_configs[n] = resolve_dependencies(diffusion_init_configs[n], prev_configs)
 					end
-					prev_configs["diffusion_init_config"] = diffusion_init_config
+					prev_configs["diffusion_init_config"] = diffusion_init_configs
 
 					model_init = deepcopy(model)
-					init_diffusion!(model_init, diffusion_init_config)
+					init_diffusion!(model_init, diffusion_init_configs)
 
 					for (m, diffusion_run_config) in enumerate(ensemble_config.diffusion_run_configs)
 						for n in eachindex(diffusion_run_config.mutation_configs)
@@ -71,16 +71,16 @@ function ensemble(ensemble_config::Ensemble_config, get_metrics::Function)
 
 						accumulator_diffusion = deepcopy(accumulator)
 						model_diffusion = deepcopy(model_init)
-						run!(model_diffusion, diffusion_run_config; accumulator=accumulator_diffusion)
+						run_diffusion!(model_diffusion, diffusion_run_config; accumulator=accumulator_diffusion)
 
 						experiment_config = Experiment_config(
 							election_config=Election_config(data_path=ensemble_config.data_path, remove_candidate_ids=ensemble_config.remove_candidate_ids, sampling_config=sampling_config),
 							model_config=General_model_config(voter_config=voter_config, graph_config=graph_config),
-							diffusion_config=Diffusion_config(diffusion_init_config=diffusion_init_config, diffusion_run_config=diffusion_run_config)
+							diffusion_config=Diffusion_config(diffusion_init_configs=diffusion_init_configs, diffusion_run_config=diffusion_run_config)
 						)
 						experiment_configs = fill(experiment_config, diffusion_run_config.diffusion_steps + 1)
 
-						df = hcat(DataFrame("experiment_config" => experiment_configs, "diffusion_step" => collect(0:diffusion_run_config.diffusion_steps)), accumulated_metrics(accumulator_diffusion))
+						df = hcat(DataFrame("experiment_config" => experiment_configs), accumulated_metrics(accumulator_diffusion))
 						push!(dataframes, df)
 
 						delete!(prev_configs, "diffusion_config")

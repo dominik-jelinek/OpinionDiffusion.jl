@@ -1,5 +1,5 @@
 struct Accumulator
-	accumulator::Dict{String, Vector{Any}}
+	data::Dict{String, Vector{Any}}
 	get_metrics::Function
 end
 
@@ -7,21 +7,25 @@ Accumulator(get_metrics::Function) = Accumulator(Dict(), get_metrics)
 
 function add_metrics!(accumulator::Accumulator, model::T) where {T<:Abstract_model}
 	metrics = accumulator.get_metrics(model)
-	if length(accumulator.accumulator) == 0
+
+	data = accumulator.data
+	if length(accumulator.data) == 0
 		for (key, value) in metrics
-			accumulator.accumulator[key] = [value]
+			data[key] = [value]
 		end
+		data["diffusion_step"] = [0]
+
 		return
 	end
 
-	accumulator = accumulator.accumulator
 	for (key, value) in metrics
-		push!(accumulator[key], value)
+		push!(data[key], value)
 	end
+	push!(data["diffusion_step"], length(data["diffusion_step"]))
 end
 
 function accumulated_metrics(accumulator::Accumulator)
-	return DataFrame(accumulator.accumulator)
+	return DataFrame(accumulator.data)
 end
 
 function get_metrics(model)

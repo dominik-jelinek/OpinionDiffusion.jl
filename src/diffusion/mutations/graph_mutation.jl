@@ -1,3 +1,4 @@
+#=
 @kwdef struct Graph_mutation_init_config <: Abstract_mutation_init_config
 	rng_seed::UInt32
 	openmindedness_distr::Distributions.UnivariateDistribution
@@ -8,6 +9,7 @@ function init_diffusion!(model::Abstract_model, mutation_init_config::Graph_muta
 	voters = get_voters(model)
 	set_property!(voters, "openmindedness", rand(rng, mutation_init_config.openmindedness_distr, length(voters)))
 end
+=#
 
 @kwdef struct Graph_mutation_config <: Abstract_mutation_config
 	rng::Random.MersenneTwister

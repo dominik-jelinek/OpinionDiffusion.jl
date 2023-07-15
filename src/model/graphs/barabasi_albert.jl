@@ -13,7 +13,7 @@ end
 function barabasi_albert_graph(voters::Vector{T}, average_degree::Int64; homophily=0.0, rng=Random.GLOBAL_RNG) where {T<:Abstract_voter}
 	m = ceil(Int64, average_degree / 2)
 	if m > length(voters)
-		throw(ArgumentError("Argument average_degree for Barabasi-Albert graph creation is higher than number of voters."))
+		throw(DomainError("Argument average_degree for Barabasi-Albert graph creation is higher than number of voters."))
 	end
 	n = length(voters)
 	social_network = SimpleGraph(n)

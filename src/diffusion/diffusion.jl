@@ -1,6 +1,25 @@
+@kwdef struct Diffusion_config <: Abstract_config
+	diffusion_init_configs::Vector{T} where {T<:Abstract_mutation_init_config}
+	diffusion_run_config::Diffusion_run_config
+end
+
+@kwdef struct Action
+	operation::String
+	ID::Union{Int64,Tuple{Int64,Int64}}
+end
+
+function diffusion(model, diffusion_config::Diffusion_config; accumulator=nothing, experiment_logger=nothing)
+	model = deepcopy(model)
+	diffusion_config = deepcopy(diffusion_config)
+
+	actions = diffusion!(model, diffusion_config; accumulator=accumulator, experiment_logger=experiment_logger)
+
+	return model, actions
+end
+
 function diffusion!(model, diffusion_config::Diffusion_config; accumulator=nothing, experiment_logger=nothing)
 	init_diffusion!(model, diffusion_config.diffusion_init_configs)
-	run_diffusion!(model, diffusion_config.diffusion_run_config; accumulator=accumulator, experiment_logger=experiment_logger)
+	return run_diffusion!(model, diffusion_config.diffusion_run_config; accumulator=accumulator, experiment_logger=experiment_logger)
 end
 
 function run_diffusion(

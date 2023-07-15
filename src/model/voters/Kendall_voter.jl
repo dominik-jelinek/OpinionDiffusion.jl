@@ -1,4 +1,3 @@
-
 struct Kendall_voter <: Abstract_voter
 	ID::Int64
 

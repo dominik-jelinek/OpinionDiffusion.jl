@@ -1,3 +1,28 @@
+@kwdef struct Experiment_config
+	election_config::Election_config
+	model_config::Abstract_model_config
+	diffusion_config::Union{Diffusion_config, Nothing} = nothing
+end
+
+function init_experiment(
+	experiment_logger::Experiment_logger,
+	model::Abstract_model,
+	config::Experiment_config
+)
+	if experiment_logger.diffusion_step[1] != 0
+		error("Experiment_logger has already been initialized")
+	end
+	experiment_dir = experiment_logger.experiment_dir
+
+	jldsave("$(experiment_logger.experiment_dir)/model_0.jld2"; model)
+	experiment_logger.diffusion_step[1] = 1
+	jldsave("$(experiment_dir)/experiment_config.jld2"; config)
+end
+
+function load_config(experiment_dir::String)
+	return load(experiment_dir * "/experiment_config.jld2", "config")
+end
+
 function run_experiment(
 	config::Experiment_config;
 	experiment_logger::Union{Experiment_logger, Nothing}=nothing,
@@ -10,7 +35,7 @@ function run_experiment(
 	model = init_model(election, config.model_config)
 
 	# Diffusion
-	if get_metrics !== nothing
+	if accumulator !== nothing
 		add_metrics!(accumulator, model)
 	end
 
@@ -19,6 +44,6 @@ function run_experiment(
 	end
 
 	if config.diffusion_config !== nothing
-		run_diffusion!(model, config.diffusion_config; accumulator=accumulator, experiment_logger=experiment_logger)
+		diffusion!(model, config.diffusion_config; accumulator=accumulator, experiment_logger=experiment_logger)
 	end
 end

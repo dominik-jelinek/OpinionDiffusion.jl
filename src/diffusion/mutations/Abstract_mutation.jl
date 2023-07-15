@@ -10,7 +10,7 @@ end
 
 function init_diffusion!(
 	model::Abstract_model,
-	mutation_init_configs::Vector{Abstract_mutation_init_config}
+	mutation_init_configs::Vector{T} where {T<:Abstract_mutation_init_config}
 )
 	for mutation_init_config in mutation_init_configs
 		init_mutation!(model, mutation_init_config)
@@ -19,7 +19,7 @@ end
 
 function init_mutation!(
 	model::Abstract_model,
-	mutation_init_configs::Vector{Abstract_mutation_init_config}
+	mutation_init_configs::Vector{T} where {T<:Abstract_mutation_init_config}
 )
 	throw(NotImplementedError("init_mutation!"))
 end
@@ -29,7 +29,10 @@ end
 	mutation_configs::Vector{Abstract_mutation_config}
 end
 
-function run_mutations!(model::Abstract_model, mutation_configs::Vector{Abstract_mutation_config})
+function run_mutations!(
+	model::Abstract_model,
+	mutation_configs::Vector{Abstract_mutation_config}
+)
 	actions = Vector{Action}()
 
 	for mutation_config in mutation_configs

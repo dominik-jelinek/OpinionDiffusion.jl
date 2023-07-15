@@ -5,6 +5,7 @@ struct Experiment_logger
 end
 
 function Experiment_logger(
+	;
 	log_dir::String = "./logs",
 	experiment_name::String = "experiment",
 	interval::Int64 = 1
@@ -15,22 +16,12 @@ function Experiment_logger(
 	return Experiment_logger(experiment_dir, [0], interval)
 end
 
-function init_experiment(
-	experiment_logger::Experiment_logger,
-	model::Abstract_model,
-	config::Experiment_config
-)
-	if experiment_logger.diffusion_step[1] != 0
-		error("Experiment_logger has already been initialized")
-	end
-	experiment_dir = experiment_logger.experiment_dir
-
-	trigger(experiment_logger, model)
-	jldsave("$(experiment_dir)/experiment_config.jld2"; config)
-end
-
 function trigger(experiment_logger::Experiment_logger, model::Abstract_model)
-	if experiment_logger.diffusion_step[1] % experiment_logger.checkpoint == 0
+	if experiment_logger.diffusion_step[1] == 0
+		throw(error("Experiment_logger has not been initialized, use init_experiment function"))
+	end
+
+	if experiment_logger.diffusion_step[1] % experiment_logger.interval == 0
 		jldsave("$(experiment_logger.experiment_dir)/model_$(experiment_logger.diffusion_step[1]).jld2"; model)
 	end
 
@@ -47,10 +38,6 @@ end
 
 function load_model(path::String)
 	return load(path, "model")
-end
-
-function load_config(experiment_dir::String)
-	return load(experiment_dir * "/experiment_config.jld2", "config")
 end
 
 function last_log_idx(experiment_dir::String)
