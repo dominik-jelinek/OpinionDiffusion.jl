@@ -3,19 +3,19 @@ function timestamp_vis(model, sampled_voter_ids, reduce_dim_config, clustering_c
 	visualizations = []
 	social_network = get_social_network(model)
 	voters = get_voters(model)
-	candidates = get_candidates(model)
 
-	#voter visualization
+	# Sampling for conjested or expensive visualizations
 	sampled_voters = voters[sampled_voter_ids]
 	sampled_opinions = reduce(hcat, get_opinion(sampled_voters))
-	push!(visualizations, draw_election_summary(get_election_summary(get_votes(sampled_voters))))
 
+	# Dimensionality reduction
 	projections = reduce_dims(sampled_opinions, reduce_dim_config)
 
 	if haskey(interm_calcs, "prev_projections")
 		unify_projections!(interm_calcs["prev_projections"], projections)
 	end
 
+	# Clustering
 	labels, clusters = clustering(sampled_voters, clustering_config, projections)
 	if haskey(interm_calcs, "prev_clusters")
 		unify_clusters!(interm_calcs["prev_clusters"], clusters)
@@ -23,6 +23,10 @@ function timestamp_vis(model, sampled_voter_ids, reduce_dim_config, clustering_c
 			labels[collect(indices)] .= label
 		end
 	end
+
+	# Visualizations
+
+	push!(visualizations, draw_election_summary(get_election_summary(get_votes(sampled_voters))))
 
 	title = name(reduce_dim_config) * "_" * name(clustering_config) * "_" * string(length(sampled_voters))
 	push!(visualizations, draw_voter_vis(projections, clusters, title))
@@ -43,8 +47,10 @@ function timestamp_vis(model, sampled_voter_ids, reduce_dim_config, clustering_c
 	push!(visualizations, draw_degree_distr(Graphs.degree_histogram(social_network)))
 	push!(visualizations, draw_edge_distances(get_edge_distances(social_network, voters)))
 
+	# if synchronization from previous visualization is needed we can communicate via interm_calcs
 	interm_calcs["prev_projections"] = projections
 	interm_calcs["prev_clusters"] = clusters
+
 	return visualizations, interm_calcs
 end
 

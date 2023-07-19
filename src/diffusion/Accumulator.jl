@@ -1,5 +1,5 @@
 struct Accumulator
-	data::Dict{String, Vector{Any}}
+	data
 	get_metrics::Function
 end
 

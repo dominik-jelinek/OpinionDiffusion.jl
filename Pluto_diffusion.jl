@@ -225,16 +225,13 @@ model_config = General_model_config(
 model = General_model(voters, social_network, get_candidates(election))
 
 # ╔═╡ 2c837f03-3329-4ab3-ad31-b0fe79df6bb7
-md"## Initial Model Analysis"
+md"#### Initial Model Analysis"
 
 # ╔═╡ a6590191-0fbd-41a9-a7c3-b99e68bb27aa
 begin
 	sample_size = length(model.voters)
 	sampled_voter_ids = OpinionDiffusion.StatsBase.sample(1:length(model.voters), sample_size, replace=false)
 end
-
-# ╔═╡ aedf6b50-f4f2-4f02-af9f-4806d14b2971
-social_network
 
 # ╔═╡ 24cae31c-a6bb-4e90-b374-ece5d82a3eb7
 function save_pdf(f, filename)
@@ -394,7 +391,7 @@ if cb_run
 end
 
 # ╔═╡ aad0da61-59d2-4429-97fa-6612872bb863
-md"## Diffusion Analysis"
+md"#### Diffusion Analysis"
 
 # ╔═╡ d716423e-7945-4e0a-a6ab-17e0b94c721e
 md"### Compounded metrics"
@@ -442,6 +439,9 @@ Graph centric: (graph)
 - Degree distribution
 - Edge distance distribution
 "
+
+# ╔═╡ 34071ce1-f2e8-46fc-a34f-89cceb22e298
+
 
 # ╔═╡ 0935d857-42c8-41b2-bdbf-83aac9779266
 out_dim = 2
@@ -495,6 +495,9 @@ save_pdf(vs[1][4], "voter_density_clusters")
 
 # ╔═╡ 503d64f9-58d8-4a42-87ca-d30886371cc2
 vs[1][5]
+
+# ╔═╡ 047d4381-ba3f-4e01-b09b-c2cca2def550
+vs[1][6]
 
 # ╔═╡ ffac6a61-b4c9-4b8c-8667-03a0339a8056
 title = dim_reduction_method * "_" * clustering_method * "_" * string(sample_size)
@@ -552,10 +555,9 @@ title = dim_reduction_method * "_" * clustering_method * "_" * string(sample_siz
 # ╟─98885ec6-7561-43d7-bdf6-7f58fb2720f6
 # ╠═9b6e56ed-cd89-4684-83d7-b2f931a07d14
 # ╠═ae3b0483-665b-4444-a24a-c2a8bc583cdc
-# ╟─2c837f03-3329-4ab3-ad31-b0fe79df6bb7
+# ╠═2c837f03-3329-4ab3-ad31-b0fe79df6bb7
 # ╠═a6590191-0fbd-41a9-a7c3-b99e68bb27aa
 # ╠═a652cf9b-adb5-47d2-906f-a7b479face45
-# ╠═aedf6b50-f4f2-4f02-af9f-4806d14b2971
 # ╠═5bf9306d-ed0f-4d12-af1f-75ba9fe1e9a4
 # ╠═bda3719f-ddb3-4b35-a84a-67b39d7a1963
 # ╠═1710026a-ec55-48b5-9064-02db2c0ea9ba
@@ -563,6 +565,7 @@ title = dim_reduction_method * "_" * clustering_method * "_" * string(sample_siz
 # ╠═b58bcc62-9b81-4be8-b220-61fb6de33356
 # ╠═29dffbd2-333e-4914-99df-18e2ea27ec1f
 # ╠═503d64f9-58d8-4a42-87ca-d30886371cc2
+# ╠═047d4381-ba3f-4e01-b09b-c2cca2def550
 # ╠═4f7384d8-4c16-4a75-93ca-755215d74643
 # ╠═09540198-bead-4df1-99bd-6e7848e7d215
 # ╟─6f40b5c4-1252-472c-8932-11a2ee0935d2
@@ -577,11 +580,12 @@ title = dim_reduction_method * "_" * clustering_method * "_" * string(sample_siz
 # ╠═90b09d11-5368-4598-9f89-aaf3945206f6
 # ╟─20819900-1129-4ff1-b97e-d079ffce8ab8
 # ╠═f6b4ba47-f9d2-42f0-9c86-e9810be7b810
-# ╟─aad0da61-59d2-4429-97fa-6612872bb863
+# ╠═aad0da61-59d2-4429-97fa-6612872bb863
 # ╟─d716423e-7945-4e0a-a6ab-17e0b94c721e
 # ╠═989fba90-fc00-4b23-b77d-88d738f5aab3
 # ╟─4c140c0e-71c7-4567-b37e-286395a450a3
 # ╟─f539cf71-34ae-4e22-a7ac-d259b55cb2d3
+# ╠═34071ce1-f2e8-46fc-a34f-89cceb22e298
 # ╠═0935d857-42c8-41b2-bdbf-83aac9779266
 # ╠═d1de1343-138b-4a43-b830-f48c7f03a77a
 # ╟─0cc624f3-6841-4fbb-959d-f51e3ade8459

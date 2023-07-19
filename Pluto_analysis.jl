@@ -178,7 +178,7 @@ end
 title = dim_reduction_method * "_" * clustering_method * "_" * string(sample_size)
 
 # ╔═╡ 00bf833f-22d5-47c3-ba59-6d7841bd93f0
-md"## Evolving visualizations"
+md"## Animated visualizations"
 
 # ╔═╡ c2bf6676-5922-4e8c-ba3e-2331cdb07725
 md"""
@@ -203,16 +203,19 @@ t = clk % length(visualizations) + 1
 visualizations[t][1]
 
 # ╔═╡ fc6982c4-c79d-4d1d-ad1a-3888943629bc
-#visualizations[t][2]
+visualizations[t][2]
 
 # ╔═╡ 7f136b0d-2d39-48a4-89e6-96fc7b574bc1
-visualizations[t][3]
+#visualizations[t][3]
 
 # ╔═╡ 9e2c288a-47bb-4b43-9668-fdd5ac22f43e
-#visualizations[t][4]
+visualizations[t][4]
 
 # ╔═╡ 7d2c5850-0ae9-44ea-ac31-130bc248e2ce
-#visualizations[t][5]
+visualizations[t][5]
+
+# ╔═╡ f84192f4-f7f2-4c87-b4a0-16c0df6f24a4
+visualizations[t][6]
 
 # ╔═╡ 4d57266e-0800-4f95-ac49-3a2ba791bcb4
 md"## Specific Diffusion Step"
@@ -426,6 +429,7 @@ end
 # ╠═7f136b0d-2d39-48a4-89e6-96fc7b574bc1
 # ╠═9e2c288a-47bb-4b43-9668-fdd5ac22f43e
 # ╠═7d2c5850-0ae9-44ea-ac31-130bc248e2ce
+# ╠═f84192f4-f7f2-4c87-b4a0-16c0df6f24a4
 # ╟─4d57266e-0800-4f95-ac49-3a2ba791bcb4
 # ╠═a0449758-593e-403b-a3ab-352a2bc3717b
 # ╟─c3ba833f-9eee-46c6-b7ae-ea8cb831b6dc
