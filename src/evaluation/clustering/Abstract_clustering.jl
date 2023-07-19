@@ -1,5 +1,5 @@
 function clustering(voters, clustering_config::Abstract_clustering_config, projections=nothing)
-	throw(NotImplementedError("init_graph"))
+	throw(NotImplementedError("clustering"))
 end
 name(config::Abstract_clustering_config) = "Missing clustering name"
 

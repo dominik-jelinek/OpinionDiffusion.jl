@@ -22,7 +22,7 @@ function gather_metrics(experiment_dir::String, get_metrics::Function)
 		add_metrics!(accumulator, load_model(experiment_dir, timestamp))
 	end
 
-	return hcat(DataFrame("diffusion_step" => timestamps), accumulated_metrics(accumulator))
+	return accumulated_metrics(accumulator)
 end
 
 function compare_voting_rule(gdf, x_col, y_col; candidates=nothing, linestyles=[:solid], labels=nothing, colors=to_colormap(:tab10))

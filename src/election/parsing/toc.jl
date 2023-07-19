@@ -21,10 +21,10 @@ function parse_data(path_data::String, ::Val{:toc})::Election
 	lines = readlines(f)
 	close(f)
 
-	parties, candidates = parse_candidates_toc(lines)
+	candidates = parse_candidates_toc(lines)
 	votes = parse_votes_toc(lines, length(candidates))
 
-	return Election(parties, candidates, votes)
+	return Election(candidates, votes)
 end
 
 function parse_candidates_toc(lines)
@@ -45,7 +45,7 @@ function parse_candidates_toc(lines)
 		end
 	end
 
-	return parties, candidates
+	return candidates
 end
 
 function parse_votes_toc(lines, can_count)::Vector{Vote}

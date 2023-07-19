@@ -11,13 +11,10 @@ get_party_ID(candidate::Candidate) = candidate.party_ID
 get_party_name(candidate::Candidate) = candidate.party_name
 
 struct Election
-	party_names::Vector{String}
 	candidates::Vector{Candidate}
 	votes::Vector{Vote}
 end
 
-get_party_names(election::Election) = election.party_names
-get_party_name(election::Election, ID) = election.party_names[ID]
 get_candidates(election::Election) = election.candidates
 get_votes(election::Election) = election.votes
 
@@ -49,7 +46,7 @@ end
 function remove_candidates(election::Election, candidate_ids::Vector{Int64})::Election
 	filtered_votes, filtered_candidates = remove_candidates(election.votes, election.candidates, candidate_ids)
 
-	return Election(election.party_names, filtered_candidates, filtered_votes)
+	return Election(filtered_candidates, filtered_votes)
 end
 
 function remove_candidates(votes::Vector{Vote}, candidates::Vector{Candidate}, candidate_ids::Vector{Int64})
@@ -107,5 +104,5 @@ function sample(election::Election, sampling_config::Sampling_config)::Election
 	votes = get_votes(election)
 	votes = votes[StatsBase.sample(rng, 1:length(votes), sampling_config.sample_size, replace=false)]
 
-	return Election(get_party_names(election), get_candidates(election), votes)
+	return Election(get_candidates(election), votes)
 end

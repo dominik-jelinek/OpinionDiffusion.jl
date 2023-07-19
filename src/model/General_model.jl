@@ -3,7 +3,6 @@ struct General_model <: Abstract_model
 
 	social_network::AbstractGraph
 
-	party_names::Vector{String}
 	candidates::Vector{Candidate}
 end
 
@@ -20,5 +19,5 @@ function init_model(election::Election, config::General_model_config)
 	# graph
 	social_network = init_graph(voters, config.graph_config)
 
-	return General_model(voters, social_network, get_party_names(election), get_candidates(election))
+	return General_model(voters, social_network, get_candidates(election))
 end

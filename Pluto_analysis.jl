@@ -140,7 +140,7 @@ md"### Dimensionality reduction"
 out_dim = 2
 
 # ╔═╡ e1599782-86c1-443e-8f4f-59e47fdd5f86
-md"""Dimensionality reduction method: $(@bind dim_reduction_method Select(["PCA", "Tsne", "MDS"], default="PCA"))"""
+md"""Dimensionality reduction method: $(@bind dim_reduction_method Select(["PCA", "Tsne"], default="PCA"))"""
 
 # ╔═╡ 2b59335e-14d5-4fee-acc7-af1e5e458c09
 if dim_reduction_method == "PCA"
@@ -150,8 +150,6 @@ elseif dim_reduction_method == "Tsne"
         											reduce_dims = 5,
         											max_iter = 2000,
         											perplexity = 50.0)
-else dim_reduction_method == "MDS"
-	dim_reduction_config = MDS_dim_reduction_config(out_dim)
 end
 
 # ╔═╡ bfb16d83-d0ca-4201-9c47-3584d23532f5
@@ -307,6 +305,15 @@ md"## Specific Community"
 # ╔═╡ 5d0a8c5f-fc2a-48c1-92d6-7e0aaf52ad9e
 cluster_id
 
+# ╔═╡ 51210b99-e186-4ad2-adef-cce3ce376f3d
+cluster_voter_ids = sort(collect(clusters[cluster_id][2]))
+
+# ╔═╡ 393c099a-9d06-4d86-afba-9f3d6aedc827
+cluster_voters = get_voters(model_log)[cluster_voter_ids]
+
+# ╔═╡ 7512a4f8-a64d-4c6a-a0d6-839f10053d69
+draw_election_summary(get_election_summary(get_votes(cluster_voters)))
+
 # ╔═╡ 8d700326-62c9-4775-bb86-9a1393b9c87c
 [(cl[1], reverse(sortperm(borda_voting(get_votes(get_voters(model_log)[collect(cl[2])]), length(get_candidates(model_log)), true)))) for cl in clusters]
 
@@ -370,15 +377,6 @@ begin
 	f
 end
 
-# ╔═╡ fc865475-463f-40b1-9481-35123adcbffa
-[sortperm(borda_voting(get_votes(sampled_voters[collect(cluster)]), length(candidates), true), rev=true) for cluster in clusters if length(cluster) != 0]
-
-# ╔═╡ 2750e431-7c7f-4323-b74b-399ab7346603
-countss = [get_counts(get_votes(sampled_voters[collect(cluster)]), length(candidates)) for cluster in clusters if length(cluster) != 0]
-
-# ╔═╡ 816b8848-6198-498f-bacf-790693babfbc
-
-
 # ╔═╡ Cell order:
 # ╠═b6b67170-8dcf-11ed-22a8-c935c756f9b0
 # ╠═521fad35-0852-48a1-93b0-7b8794544706
@@ -413,10 +411,10 @@ countss = [get_counts(get_votes(sampled_voters[collect(cluster)]), length(candid
 # ╟─44bdb36d-cf1e-4a5a-b97c-5b5d9f45b54a
 # ╠═80a5d0d1-6522-4464-9eb4-bfd46b2124a1
 # ╠═2b59335e-14d5-4fee-acc7-af1e5e458c09
-# ╟─e1599782-86c1-443e-8f4f-59e47fdd5f86
+# ╠═e1599782-86c1-443e-8f4f-59e47fdd5f86
 # ╟─6e9b9800-3ea8-432c-905f-de2049a6021a
 # ╠═60d1816d-5dd3-4166-bb11-8cd2307bc9ee
-# ╟─de79e133-798a-490b-a4c9-9f38d5f31a98
+# ╠═de79e133-798a-490b-a4c9-9f38d5f31a98
 # ╠═5d368a4f-d7ff-4ee7-a7b0-5c14fbe0fb48
 # ╟─00bf833f-22d5-47c3-ba59-6d7841bd93f0
 # ╟─c2bf6676-5922-4e8c-ba3e-2331cdb07725
@@ -454,6 +452,9 @@ countss = [get_counts(get_votes(sampled_voters[collect(cluster)]), length(candid
 # ╟─59cd2b6a-2f14-419f-be29-ef60b0f1c681
 # ╠═e02a5e33-75a6-4bb3-9a45-8ac0dedb3f5c
 # ╠═5d0a8c5f-fc2a-48c1-92d6-7e0aaf52ad9e
+# ╠═51210b99-e186-4ad2-adef-cce3ce376f3d
+# ╠═393c099a-9d06-4d86-afba-9f3d6aedc827
+# ╠═7512a4f8-a64d-4c6a-a0d6-839f10053d69
 # ╠═8d700326-62c9-4775-bb86-9a1393b9c87c
 # ╠═de27090f-d315-479a-ba17-9d4bc67342ca
 # ╠═059b1554-b27f-4c59-a99f-2ad6b93b9366
@@ -467,6 +468,3 @@ countss = [get_counts(get_votes(sampled_voters[collect(cluster)]), length(candid
 # ╠═0c59f190-d1b3-4bf9-8577-7fad3e53143a
 # ╟─a737af01-3210-4340-b7c9-99a9060b295b
 # ╠═af31098c-bba9-42f2-8a72-e03f51f26ff3
-# ╠═fc865475-463f-40b1-9481-35123adcbffa
-# ╠═2750e431-7c7f-4323-b74b-399ab7346603
-# ╠═816b8848-6198-498f-bacf-790693babfbc

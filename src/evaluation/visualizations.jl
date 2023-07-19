@@ -28,14 +28,17 @@ function timestamp_vis(model, sampled_voter_ids, reduce_dim_config, clustering_c
 	push!(visualizations, draw_voter_vis(projections, clusters, title))
 
 	f = Figure()
+	draw_voter_KDE!(f[1, 1], projections, name(reduce_dim_config) * "_" * string(length(sampled_voters)))
+	push!(visualizations, f)
+
+	f = Figure()
 	draw_voter_KDE!(f[1, 1], projections, title)
 	cluster_graph = get_cluster_graph(model, clusters, labels, projections)
+	draw_cluster_graph!(f[1, 1], cluster_graph)
+	push!(visualizations, f)
+
 	cluster_metrics = nothing#cluster_graph_metrics(cluster_graph, social_network, voters, 4)
 	#println(modularity(cluster_graph, labels))
-
-	draw_cluster_graph!(f[1, 1], cluster_graph)
-
-	push!(visualizations, f)
 
 	push!(visualizations, draw_degree_distr(Graphs.degree_histogram(social_network)))
 	push!(visualizations, draw_edge_distances(get_edge_distances(social_network, voters)))
@@ -79,62 +82,20 @@ function draw_voter_KDE!(ax, projections, title="Voter Density Map")
 	heatmap(ax, dens, colormap=[:blue, :white, :red, :yellow], axis=(; title=title, xlabel="PC1", ylabel="PC2"))
 end
 
-function draw_degree_distr(degree_distribution, exp_dir=Nothing, diff_counter=[0])
-	plot = Plots.plot()
-	draw_degree_distr!(plot, degree_distribution, exp_dir, diff_counter)
-
-	return plot
+function draw_degree_distr(degree_distribution)
+	f = Figure()
+	draw_degree_distr!(f[1, 1], degree_distribution)
+	return f
 end
 
-function draw_degree_distr!(plot, degree_distribution, exp_dir=Nothing, diff_counter=[0])
+function draw_degree_distr!(ax, degree_distribution)
 	sorted = sort(degree_distribution)
-	keyss = collect(keys(sorted))
-	vals = collect(values(sorted))
+	degrees = collect(keys(sorted))
 
-	Plots.plot!(plot, keyss, vals,
-		title="Degree distribution",
-		legend=false,
-		xaxis=:log, yaxis=:log,
-		ylabel="Num. of vertices (log)",
-		xlabel="Degree (log)")
-
-	if exp_dir != Nothing
-		Plots.savefig(plot, "$(exp_dir)/images/degree_distribution_$(diff_counter[1]).png")
-	end
-end
-
-function draw_voting_res(candidates, parties, result, title::String; linestyle=:solid, log_idx="")
-	plot = Plots.plot()
-	draw_voting_res!(plot, candidates, parties, result, title; linestyle=linestyle, log_idx="")
-
-	return plot
-end
-
-function draw_voting_res!(plot, candidates, parties, result, title::String; linestyle=:solid, log_idx="")
-	names = [string(i) * " - " * parties[candidate.party] * " " * log_idx for (i, candidate) in enumerate(candidates)]
-	c = Colors.distinguishable_colors(size(result, 2))
-
-	for (i, col) in enumerate(eachcol(result))
-		draw_range!(plot, [x[2] for x in col], [x[3] for x in col], [x[4] for x in col], c=c[i], linestyle=linestyle, label=names[i])
-		Plots.plot!(plot, title=title, xlabel="Timestamp", ylabel="Percentage", yformatter=:plain, legnd=false)
-	end
-end
-
-function draw_heat_vis(projections, difference, title, exp_dir=Nothing, counter=[0])
-	plot = Plots.plot()
-	draw_heat_vis!(plot, projections, difference, title, exp_dir, counter)
-
-	return plot
-end
-
-function draw_heat_vis!(plot, projections, difference, title, exp_dir=Nothing, counter=[0])
-	Plots.scatter!(plot, Tuple(eachrow(projections)), marker_z=difference, title=title)
-
-	if exp_dir != Nothing
-		Plots.savefig(plot, "$(exp_dir)/images/$(title)_$(counter[1]).png")
-	end
-
-	return plot
+	counts = collect(values(sorted))
+	Axis(ax, xscale=log10, yscale=log10, xlabel="Degree (log10)", ylabel="Num. of vertices (log)", title="Degree distribution")
+	println(degree_distribution)
+	return Makie.lines!(ax, degrees, counts)
 end
 
 function get_edge_distances(social_network, voters)

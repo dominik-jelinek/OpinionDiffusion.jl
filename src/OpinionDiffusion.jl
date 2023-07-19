@@ -94,7 +94,6 @@ include("experiment.jl")
 include("ensemble.jl")
 
 include("evaluation/dim_reduction/Abstract_dim_reduction.jl")
-include("evaluation/dim_reduction/MDS.jl")
 include("evaluation/dim_reduction/PCA.jl")
 include("evaluation/dim_reduction/tsne.jl")
 
@@ -105,9 +104,9 @@ include("evaluation/clustering/kmeans.jl")
 include("evaluation/clustering/party.jl")
 include("evaluation/clustering/watershed.jl")
 
-include("evaluation/visualizations.jl")
-include("evaluation/metrics.jl")
 include("evaluation/voting_rules.jl")
+include("evaluation/metrics.jl")
+include("evaluation/visualizations.jl")
 
 include("utils.jl")
 
@@ -166,8 +165,10 @@ export plurality_voting, borda_voting, copeland_voting, get_positions
 
 # Visualizations
 export get_election_summary, draw_election_summary, draw_election_summary_frequencies
-export reduce_dims, PCA_dim_reduction_config, Tsne_dim_reduction_config, MDS_dim_reduction_config
-export clustering, Kmeans_clustering_config, GM_clustering_config, Party_clustering_config, DBSCAN_clustering_config, Density_clustering_config
+# Dimensionality reduction
+export reduce_dims, PCA_dim_reduction_config, Tsne_dim_reduction_config
+# Clustering
+export clustering, Kmeans_clustering_config, GM_clustering_config, Party_clustering_config, DBSCAN_clustering_config, Watershed_clustering_config
 
 export draw_voter_vis, draw_heat_vis, unify_projections!, gather_metrics
 export gather_vis, timestamp_vis

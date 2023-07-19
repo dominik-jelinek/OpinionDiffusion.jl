@@ -246,7 +246,7 @@ ensemble_sample_graph = Ensemble_config(
 	remove_candidate_ids= remove_candidate_ids,
 	sampling_configs = [
 		Sampling_config(
-			rng_seed = 42,
+			rng_seed = 69,
 			sample_size = x
 		) for x in 100:200:2100
 	],
@@ -462,6 +462,9 @@ begin
 	compare_metric(by_graph_type, "sample_size",  "clustering_coefficient", linestyles=linestyles, labels=labels)
 end
 
+# ╔═╡ a975e06a-84bc-485e-a3c5-f015ca872151
+save("img/" * "graph_type_sample_CC.pdf", compare_metric(by_graph_type, "sample_size",  "clustering_coefficient", linestyles=linestyles, labels=labels), pt_per_unit=1)
+
 # ╔═╡ 90986999-59f8-4717-864e-20300d0d3918
 begin
 	selection = filter(row -> typeof(row["graph_config"]) != Random_graph_config, sample_graph_df)
@@ -473,14 +476,20 @@ end
 # ╔═╡ e544bb0d-7577-4ad6-a961-fd656fdd254b
 begin
 	by_homophily_DEG = [filter(row -> typeof(row["graph_config"]) == DEG_graph_config, df) for df in by_homophily]
-	compare_metric(by_homophily_DEG, "sample_size",  "clustering_coefficient", linestyles=linestyles, labels=labels_hom, title="DEG Graph Clustering Coefficient Based on Homophily and Sample Size")
+	compare_metric(by_homophily_DEG, "sample_size",  "clustering_coefficient", linestyles=linestyles, labels=labels_hom, title="DEG Graph Impact of Homophily")
 end
+
+# ╔═╡ 1bab93d5-d781-488b-9af5-147165905bf2
+save("img/" * "deg_homophily_sample_CC.pdf",compare_metric(by_homophily_DEG, "sample_size",  "clustering_coefficient", linestyles=linestyles, labels=labels_hom, title="DEG Graph Impact of Homophily"), pt_per_unit=1)
 
 # ╔═╡ 22ddc889-129d-4489-934d-740be4334c5c
 begin
 	by_homophily_BA = [filter(row -> typeof(row["graph_config"]) == BA_graph_config, df) for df in by_homophily]
-	compare_metric(by_homophily_BA, "sample_size",  "clustering_coefficient", linestyles=linestyles, labels=labels_hom)
+	compare_metric(by_homophily_BA, "sample_size",  "clustering_coefficient", linestyles=linestyles, labels=labels_hom, title="Barabasi-Albert Graph Impact of Homophily")
 end
+
+# ╔═╡ e4544d5c-693e-464e-8ddf-e065c3f69616
+save("img/" * "BA_homophily_sample_CC.pdf", compare_metric(by_homophily_BA, "sample_size",  "clustering_coefficient", linestyles=linestyles, labels=labels_hom, title="Barabasi-Albert Graph Impact of Homophily"), pt_per_unit=1)
 
 # ╔═╡ 5a7df6ee-e403-48ec-8349-0a29767d1af8
 SP_result = run(ensemble_config_SP_result, get_metrics, log_dir * "ensemble_SP_result.jld2", recalculate=recalculate)
@@ -504,19 +513,36 @@ end
 md"#### Unique Votes"
 
 # ╔═╡ a5ca4eff-ccb7-4a48-b762-1d31343526a6
-compare_metric([SP_result, KT_result], "diffusion_step",  "unique_votes", labels=[name(SP_result.voter_config[1]), name(KT_result.voter_config[1])])
+plot = compare_metric([SP_result, KT_result], "diffusion_step",  "unique_votes", labels=[name(SP_result.voter_config[1]), name(KT_result.voter_config[1])])
+
+# ╔═╡ 88ca70b6-f75a-4dc3-87fb-f200953c8e0b
+function save_pdf(f, filename)
+	save("img/" * filename * ".pdf", f, pt_per_unit=1)
+end
+
+# ╔═╡ af4d3369-a2c0-424c-a32e-6d3f34f16f43
+save_pdf(plot, "voter_type_unique_votes")
 
 # ╔═╡ a1cbb7fb-fb0a-46a4-a8f6-0bfed218cb3d
 md"#### Average Vote Length"
 
 # ╔═╡ 37ff3a7d-1d8d-4e10-8d93-9ebc6b0b366a
-compare_metric([SP_result, KT_result], "diffusion_step",  "avg_vote_length", labels=[name(SP_result.voter_config[1]), name(KT_result.voter_config[1])])
+plot2 = compare_metric([SP_result, KT_result], "diffusion_step",  "avg_vote_length", labels=[name(SP_result.voter_config[1]), name(KT_result.voter_config[1])])
+
+# ╔═╡ 0762ddb9-58cf-4835-8e7a-e69b13a453c3
+save_pdf(plot2, "voter_type_avg_vote_length")
 
 # ╔═╡ e1a67161-5e4c-4bc9-bb43-2ea60ed01e76
-compare_voting_rule([SP_result, KT_result], "diffusion_step", "borda_scores", linestyles=linestyles, labels=[name(SP_result.voter_config[1]), name(KT_result.voter_config[1])], candidates=get_candidates(election))
+plot3 = compare_voting_rule([SP_result, KT_result], "diffusion_step", "borda_scores", linestyles=linestyles, labels=[name(SP_result.voter_config[1]), name(KT_result.voter_config[1])])
+
+# ╔═╡ a1538009-2cd4-4ecd-a67d-c17035c04bf4
+save_pdf(plot3, "voter_type_borda")
 
 # ╔═╡ 30950dda-b87f-47c3-ad51-8da72d8c0b1a
-compare_voting_rule([SP_result, KT_result], "diffusion_step", "plurality_scores", linestyles=linestyles, labels=[name(SP_result.voter_config[1]), name(KT_result.voter_config[1])])
+plot4 = compare_voting_rule([SP_result, KT_result], "diffusion_step", "plurality_scores", linestyles=linestyles, labels=[name(SP_result.voter_config[1]), name(KT_result.voter_config[1])])
+
+# ╔═╡ 5a0a8851-e975-462b-8372-6a7317e26fd0
+save_pdf(plot4, "voter_type_plurality")
 
 # ╔═╡ bacc2f88-a732-4c00-98f9-61c3b9eb2531
 md"### Diffusion Result"
@@ -1173,10 +1199,13 @@ end
 # ╟─b3007e9c-7b02-40e7-8666-e485bbe6ab05
 # ╠═4e06848c-4c0a-4441-9894-715f622ccf4e
 # ╠═f4151588-8ea6-45e7-9c83-b8cd33fb820d
+# ╠═a975e06a-84bc-485e-a3c5-f015ca872151
 # ╟─9077caca-08cc-4371-91ab-c84e58815bf8
 # ╠═90986999-59f8-4717-864e-20300d0d3918
 # ╠═e544bb0d-7577-4ad6-a961-fd656fdd254b
+# ╠═1bab93d5-d781-488b-9af5-147165905bf2
 # ╠═22ddc889-129d-4489-934d-740be4334c5c
+# ╠═e4544d5c-693e-464e-8ddf-e065c3f69616
 # ╟─5745da71-6421-41d9-aa2f-1626a3892ea0
 # ╟─48f5e7a0-260b-4153-a443-e4962a57861c
 # ╠═a22ab6ed-3e64-41af-a2fc-b7c6a22a6c42
@@ -1190,10 +1219,15 @@ end
 # ╠═6c98c5a0-b3c8-48dc-b848-caa7c6688493
 # ╟─1cce7716-74eb-4766-a678-51bf46d588fd
 # ╠═a5ca4eff-ccb7-4a48-b762-1d31343526a6
+# ╠═af4d3369-a2c0-424c-a32e-6d3f34f16f43
+# ╠═88ca70b6-f75a-4dc3-87fb-f200953c8e0b
 # ╟─a1cbb7fb-fb0a-46a4-a8f6-0bfed218cb3d
 # ╠═37ff3a7d-1d8d-4e10-8d93-9ebc6b0b366a
+# ╠═0762ddb9-58cf-4835-8e7a-e69b13a453c3
 # ╠═e1a67161-5e4c-4bc9-bb43-2ea60ed01e76
+# ╠═a1538009-2cd4-4ecd-a67d-c17035c04bf4
 # ╠═30950dda-b87f-47c3-ad51-8da72d8c0b1a
+# ╠═5a0a8851-e975-462b-8372-6a7317e26fd0
 # ╟─bacc2f88-a732-4c00-98f9-61c3b9eb2531
 # ╟─b642ebb6-469b-43e3-aa77-b88ab419126f
 # ╠═9acf1a32-26e9-49c3-bb8c-9c281a3840d2

@@ -6,11 +6,12 @@ name(type::Type{Random_graph_config}) = "Random"
 
 function init_graph(voters::Vector{T}, graph_config::Random_graph_config) where {T<:Abstract_voter}
 	rng = MersenneTwister(graph_config.rng_seed)
-	return random_regular_graph(length(voters), graph_config.average_degree; rng=rng)
-	#return random_graph(voters, graph_config.average_degree; rng=rng)
+	#return random_regular_graph(length(voters), graph_config.average_degree; rng=rng)
+
+	return random_graph(voters, graph_config.average_degree; rng=rng)
 end
 
-function random_graph(voters::Vector{T}, average_degree::Float64; rng=Random.GLOBAL_RNG) where {T<:Abstract_voter}
+function random_graph(voters::Vector{T}, average_degree::Int64; rng=Random.GLOBAL_RNG) where {T<:Abstract_voter}
 	n = length(voters)
 	social_network = SimpleGraph(n)
 
