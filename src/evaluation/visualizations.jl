@@ -1,4 +1,18 @@
+"""
+	timestamp_vis(model, sampled_voter_ids, reduce_dim_config, clustering_config, interm_calcs=Dict())
 
+Creates a visualization of the model at the current timestamp.
+
+# Arguments
+- `model::Model`: The model to visualize.
+- `sampled_voter_ids::Vector{Int64}`: The ids of the voters to sample.
+- `reduce_dim_config::Reduce_dim_config`: The config to reduce the dimensionality of the opinions.
+- `clustering_config::Clustering_config`: The config to cluster the opinions.
+- `interm_calcs::Dict`: A dictionary to store intermediate calculations in.
+
+# Returns
+- `visualizations::Vector{Figure}`: The visualizations of the model at the current timestamp.
+"""
 function timestamp_vis(model, sampled_voter_ids, reduce_dim_config, clustering_config, interm_calcs=Dict())
 	visualizations = []
 	social_network = get_social_network(model)
@@ -61,7 +75,6 @@ function save_pdf(plot_function, filename)
 	plot_function(f[1, 1])
 	save("img/" * filename, f, pt_per_unit=1)
 end
-
 function draw_voter_vis(projections, clusters, title, exp_dir=Nothing, counter=[0])
 	plot = Plots.plot()
 	draw_voter_vis!(plot, projections, clusters, title, exp_dir, counter)

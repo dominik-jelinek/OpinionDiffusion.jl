@@ -3,6 +3,20 @@ Base.@kwdef struct Watershed_clustering_config <: Abstract_clustering_config
 end
 name(config::Watershed_clustering_config) = "Watershed clustering"
 
+"""
+	clustering(voters::Vector{Abstract_voter}, config::Watershed_clustering_config, projections=nothing)
+
+Returns the labels and clusters of the voters using the watershed clustering algorithm.
+
+# Arguments
+- `voters::Vector{Abstract_voter}`: The voters in the election.
+- `config::Watershed_clustering_config`: The configuration of the clustering algorithm.
+- `projections::Matrix{Float64}`: The projections of the voters. If nothing, the projections are calculated from the voters.
+
+# Returns
+- `Vector{Int64}`: The labels of the voters.
+- `Vector{Vector{Abstract_voter}}`: The clusters of the voters.
+"""
 function clustering(voters, clustering_config::Watershed_clustering_config, projections)
 	@assert(size(projections, 1) == 2)
 
@@ -33,7 +47,16 @@ function clustering(voters, clustering_config::Watershed_clustering_config, proj
 end
 
 """
+	watershed(density_map::Matrix{Float64}, step_size::Float64)
+
 Finds all basins and then uses watershed algorithm adaptation to expand them in order to define areas that belong to the clusters.
+
+# Arguments
+- `density_map::Matrix{Float64}`: The density map of the voters.
+- `step_size::Float64`: The step size of the density map.
+
+# Returns
+- `Matrix{Int64}`: The label map of the voters.
 """
 function watershed(density_map, step_size)
 	peaks_mask_y = zeros(Bool, size(density_map, 1), size(density_map, 2))
@@ -78,6 +101,18 @@ function watershed(density_map, step_size)
 	return label_map, merges#, ploty
 end
 
+"""
+	inbounds(matrix::Matrix, coord::CartesianIndex)
+
+Returns true if the coordinate is inside the matrix.
+
+# Arguments
+- `matrix::Matrix`: The matrix.
+- `coord::CartesianIndex`: The coordinate.
+
+# Returns
+- `Bool`: True if the coordinate is inside the matrix.
+"""
 function inbounds(matrix, coord)
 	return !(coord[1] < 1 || coord[2] < 1 || coord[1] > size(matrix, 1) || coord[2] > size(matrix, 2))
 end
@@ -120,6 +155,22 @@ function expand_basins!(density_map, queue, step, step_size, depth, water_level,
 	return merges
 end
 
+"""
+	relabel!(label_map, label_1, label_2, label_depths, point_depth)
+
+Relabels all points with label_2 to label_1 if the point is closer to label_1 than to label_2.
+
+# Arguments
+- `label_map::Matrix{Int64}`: The label map.
+- `label_1::Int64`: The label to relabel to.
+- `label_2::Int64`: The label to relabel from.
+- `label_depths::Vector{Float64}`: The depths of the labels.
+- `point_depth::Float64`: The depth of the point.
+
+# Returns
+- `Int64`: The label that was relabeled.
+- `Vector{CartesianIndex}`: The indices of the points that were relabeled.
+"""
 function relabel!(label_map, label_1, label_2, label_depths, point_depth)
 	if label_depths[label_1] > label_depths[label_2]
 		label_1, label_2 = label_2, label_1
@@ -139,6 +190,18 @@ function relabel!(label_map, label_1, label_2, label_depths, point_depth)
 	return label_2, merged_pos
 end
 
+"""
+	init_labels(queue, shape)
+
+Initializes the label map with the labels of the peaks.
+
+# Arguments
+- `queue::Vector{Vector{CartesianIndex}}`: The queue of points.
+- `shape::Tuple{Int64, Int64}`: The shape of the label map.
+
+# Returns
+- `Matrix{Int64}`: The label map.
+"""
 function init_labels(queue, shape)
 	labels = zeros(Int64, shape)
 
@@ -152,7 +215,15 @@ end
 
 find_local_minima(a) = find_local_maxima(-a)
 """
-Finds all local maxima in a vector of real values and returns their indices
+	find_local_maxima(a)
+
+Finds all local maxima in a vector of real values and returns their indices.
+
+# Arguments
+- `a::Vector{Float64}`: The vector of real values.
+
+# Returns
+- `Vector{Int64}`: The indices of the local maxima.
 """
 function find_local_maxima(a)
 	max_indices = Vector{Int64}()

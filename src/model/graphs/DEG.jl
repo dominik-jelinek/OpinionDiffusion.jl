@@ -6,6 +6,18 @@
 end
 name(type::Type{DEG_graph_config}) = "DEG"
 
+"""
+	init_graph(voters::Vector{T}, graph_config::DEG_graph_config) where {T<:Abstract_voter}
+
+Initializes the given voters with the given graph_config.
+
+# Arguments
+- `voters::Vector{T}`: The voters to initialize.
+- `graph_config::DEG_graph_config`: The config to initialize the voters with.
+
+# Returns
+- `voters::Vector{T}`: The initialized voters.
+"""
 function init_graph(voters::Vector{T}, graph_config::DEG_graph_config) where {T<:Abstract_voter}
 	rng = MersenneTwister(graph_config.rng_seed)
 	target_degrees = Int.(round.(rand(rng, graph_config.target_deg_distr, length(voters))))
@@ -20,6 +32,21 @@ function init_graph(voters::Vector{T}, graph_config::DEG_graph_config) where {T<
 	)
 end
 
+"""
+	get_DEG(voters, targed_deg_distr, target_cc; rng=Random.GLOBAL_RNG, homophily=0.0)
+
+Returns a social network with the given target degree distribution and clustering coefficient.
+
+# Arguments
+- `voters::Vector{T}`: The voters to initialize.
+- `targed_deg_distr::Vector{Int}`: The target degree distribution.
+- `target_cc::Float64`: The target clustering coefficient.
+- `rng::Random.MersenneTwister`: The random number generator to use.
+- `homophily::Float64`: The homophily to use.
+
+# Returns
+- `social_network::SimpleGraph`: The social network.
+"""
 function get_DEG(voters, targed_deg_distr, target_cc; rng=Random.GLOBAL_RNG, homophily=0.0)
 	n = length(voters)
 	social_network = SimpleGraph(n)

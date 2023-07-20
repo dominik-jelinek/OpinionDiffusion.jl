@@ -1,5 +1,14 @@
 """
+	parse_data(path_data::String, ::Val{:toc})::Election
+
 Parses input file and initializes DB from it
+
+# Arguments
+- `path_data::String`: Path to input file
+
+# Returns
+- `election::Election`: Parsed election
+
 ## Input data:
 ```
 9
@@ -27,6 +36,17 @@ function parse_data(path_data::String, ::Val{:toc})::Election
 	return Election(candidates, votes)
 end
 
+"""
+	parse_candidates_toc(lines::Vector{String})::Vector{Candidate}
+
+Parses candidates from input file
+
+# Arguments
+- `lines::Vector{String}`: Lines of input file
+
+# Returns
+- `candidates::Vector{Candidate}`: Vector of candidates
+"""
 function parse_candidates_toc(lines)
 	can_count = parse(Int, lines[1])
 
@@ -48,6 +68,18 @@ function parse_candidates_toc(lines)
 	return candidates
 end
 
+"""
+	parse_votes_toc(lines, can_count)::Vector{Vote}
+
+Parses votes from input file
+
+# Arguments
+- `lines::Vector{String}`: Lines of input file
+- `can_count::Int`: Number of candidates
+
+# Returns
+- `votes::Vector{Vote}`: Vector of votes
+"""
 function parse_votes_toc(lines, can_count)::Vector{Vote}
 	voters_count = parse(Int, split(lines[2+can_count], ",")[1])
 	voters_uniq = parse(Int, split(lines[2+can_count], ",")[3])

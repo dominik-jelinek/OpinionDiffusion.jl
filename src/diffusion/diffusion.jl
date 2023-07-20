@@ -8,6 +8,19 @@ end
 	ID::Union{Int64,Tuple{Int64,Int64}}
 end
 
+"""
+	diffusion(model::Abstract_model, diffusion_config::Diffusion_config)::Tuple{Abstract_model, Vector{Vector{Action}}}
+
+Diffuses the given model with the given diffusion_config.
+
+# Arguments
+- `model::Abstract_model`: The model to diffuse.
+- `diffusion_config::Diffusion_config`: The config to diffuse the model with.
+
+# Returns
+- `model::Abstract_model`: The diffused model.
+- `actions::Vector{Vector{Action}}`: The actions taken during diffusion.
+"""
 function diffusion(model, diffusion_config::Diffusion_config; accumulator=nothing, experiment_logger=nothing)
 	model = deepcopy(model)
 	diffusion_config = deepcopy(diffusion_config)
@@ -17,11 +30,36 @@ function diffusion(model, diffusion_config::Diffusion_config; accumulator=nothin
 	return model, actions
 end
 
+"""
+	diffusion!(model::Abstract_model, diffusion_config::Diffusion_config)::Vector{Vector{Action}}
+
+Diffuses the given model with the given diffusion_config.
+
+# Arguments
+- `model::Abstract_model`: The model to diffuse.
+- `diffusion_config::Diffusion_config`: The config to diffuse the model with.
+
+# Returns
+- `actions::Vector{Vector{Action}}`: The actions taken during diffusion.
+"""
 function diffusion!(model, diffusion_config::Diffusion_config; accumulator=nothing, experiment_logger=nothing)
 	init_diffusion!(model, diffusion_config.diffusion_init_configs)
 	return run_diffusion!(model, diffusion_config.diffusion_run_config; accumulator=accumulator, experiment_logger=experiment_logger)
 end
 
+"""
+	run_diffusion(model::Abstract_model, diffusion_config::Diffusion_config)::Tuple{Vector{Vector{Action}}, Accumulator}
+
+Diffuses the given model with the given diffusion_config.
+
+# Arguments
+- `model::Abstract_model`: The model to diffuse.
+- `diffusion_config::Diffusion_config`: The config to diffuse the model with.
+
+# Returns
+- `actions::Vector{Vector{Action}}`: The actions taken during diffusion.
+- `accumulator::Accumulator`: The accumulator containing the accumulated data.
+"""
 function run_diffusion(
 	model::Abstract_model,
 	diffusion_config::Diffusion_config;
@@ -39,6 +77,18 @@ function run_diffusion(
 	return actions, accumulator
 end
 
+"""
+	run_diffusion!(model::Abstract_model, diffusion_init_configs::Vector{Abstract_mutation_init_config})
+
+Diffuses the given model with the given diffusion_init_configs.
+
+# Arguments
+- `model::Abstract_model`: The model to diffuse.
+- `diffusion_init_configs::Vector{Abstract_mutation_init_config}`: The configs to diffuse the model with.
+
+# Returns
+- `actions::Vector{Vector{Action}}`: The actions taken during diffusion.
+"""
 function run_diffusion!(
 	model::Abstract_model,
 	diffusion_run_config::Diffusion_run_config;
@@ -54,6 +104,18 @@ function run_diffusion!(
 	return actions
 end
 
+"""
+	_run_diffusion!(model::Abstract_model, mutation_configs::Vector{Abstract_mutation_config})
+
+Diffuses the given model with the given mutation_configs.
+
+# Arguments
+- `model::Abstract_model`: The model to diffuse.
+- `mutation_configs::Vector{Abstract_mutation_config}`: The configs to diffuse the model with.
+
+# Returns
+- `actions::Vector{Action}`: The actions taken during diffusion.
+"""
 function _run_diffusion!(
 	model::Abstract_model,
 	mutation_configs::Vector{Abstract_mutation_config};

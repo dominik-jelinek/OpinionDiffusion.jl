@@ -10,6 +10,18 @@
 	diffusion_run_configs::Union{Vector{Diffusion_run_config}, Nothing} = nothing
 end
 
+"""
+    ensemble(ensemble_config::Ensemble_config, get_metrics::Function)
+
+Runs an ensemble of experiments with the given configuration and returns the results as a DataFrame.
+
+# Arguments
+- `ensemble_config::Ensemble_config`: The configuration to run the ensemble with.
+- `get_metrics::Function`: The function to get the metrics from the model.
+
+# Returns
+- `dataframes::Vector{DataFrame}`: The results of the ensemble as a DataFrame.
+"""
 function ensemble(ensemble_config::Ensemble_config, get_metrics::Function)
 	dataframes = Vector{DataFrame}()
 	init_election = parse_data(ensemble_config.data_path)
@@ -99,10 +111,32 @@ function ensemble(ensemble_config::Ensemble_config, get_metrics::Function)
 	return vcat(dataframes...)
 end
 
+"""
+    resolve_dependencies(config::Abstract_config, prev_configs)
+
+Resolves the dependencies of the given config.
+
+# Arguments
+- `config::Abstract_config`: The config to resolve the dependencies of.
+- `prev_configs::Dict`: The previous configs.
+
+# Returns
+- `config::Abstract_config`: The config with resolved dependencies.
+"""
 function resolve_dependencies(config::Abstract_config, prev_configs)
 	return config
 end
 
+"""
+    save_ensemble(ensemble_config::Ensemble_config, dataframe::DataFrame, path::String)
+
+Saves the ensemble to the given path.
+
+# Arguments
+- `ensemble_config::Ensemble_config`: The ensemble config.
+- `dataframe::DataFrame`: The ensemble results.
+- `path::String`: The path to save the ensemble to.
+"""
 function save_ensemble(ensemble_config::Ensemble_config, dataframe::DataFrame, path::String)
 	try
 		jldsave(path; ensemble_config, dataframe)
@@ -112,6 +146,18 @@ function save_ensemble(ensemble_config::Ensemble_config, dataframe::DataFrame, p
 	end
 end
 
+"""
+    load_ensemble(path::String)
+
+Loads the ensemble from the given path.
+
+# Arguments
+- `path::String`: The path to load the ensemble from.
+
+# Returns
+- `ensemble_config::Ensemble_config`: The ensemble config.
+- `dataframe::DataFrame`: The ensemble results.
+"""
 function load_ensemble(path::String)
 	return load(path, "ensemble_config"), load(path, "dataframe")
 end

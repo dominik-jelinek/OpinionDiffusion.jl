@@ -13,6 +13,18 @@ end
 end
 name(config::Spearman_voter_config) = "Spearman voter"
 
+"""
+    init_voters(votes::Vector{Vote}, voter_config::Spearman_voter_config)::Vector{Spearman_voter}
+
+Initializes voters from the given votes and voter_config.
+
+# Arguments
+- `votes::Vector{Vote}`: The votes to initialize the voters with.
+- `voter_config::Spearman_voter_config`: The config to initialize the voters with.
+
+# Returns
+- `voters::Vector{Spearman_voter}`: The initialized voters.
+"""
 function init_voters(votes::Vector{Vote}, voter_config::Spearman_voter_config)::Vector{Spearman_voter}
 	can_count = candidate_count(votes[1])
 	weights, eps = spearman_weights(voter_config.weighting_rate, can_count)
@@ -32,6 +44,13 @@ end
 	spearman_encoding(vote, weights)
 
 Encodes bucket ordered vote to spearman encoded space
+
+# Arguments
+- `vote::Vote`: The vote to encode.
+- `weights::Vector{Float64}`: The weights to use for the encoding.
+
+# Returns
+- `opinion::Vector{Float64}`: The opinion of the given vote.
 """
 function spearman_encoding(vote::Vote, weights)
 	opinion = Vector{Float64}(undef, length(weights))
@@ -54,6 +73,17 @@ function spearman_encoding(vote::Vote, weights)
 	return opinion
 end
 
+"""
+    get_vote(voter::Spearman_voter)::Vote
+
+Returns the vote of the given voter.
+
+# Arguments
+- `voter::Spearman_voter`: The voter to get the vote of.
+
+# Returns
+- `vote::Vote`: The vote of the given voter.
+"""
 function get_vote(voter::Spearman_voter)::Vote
 	# sort indexes based on opinions
 	opinion = get_opinion(voter)
@@ -78,10 +108,34 @@ function get_vote(voter::Spearman_voter)::Vote
 	return vote
 end
 
+"""
+    get_pos(voter::Spearman_voter, can::Int64)::Float64
+
+Returns the position of the given candidate in the opinion of the given voter.
+
+# Arguments
+- `voter::Spearman_voter`: The voter to get the position of the candidate in.
+- `can::Int64`: The candidate to get the position of.
+
+# Returns
+- `pos::Float64`: The position of the given candidate in the opinion of the given voter.
+"""
 function get_pos(voter::Spearman_voter, can)
 	return get_opinion(voter)[can]
 end
 
+"""
+    spearman_weights(weighting_rate, can_count)
+
+Returns the weights to use for the spearman encoding.
+
+# Arguments
+- `weighting_rate::Float64`: The weighting rate to use.
+- `can_count::Int64`: The number of candidates.
+
+# Returns
+- `weights::Vector{Float64}`: The weights to use for the spearman encoding.
+"""
 function spearman_weights(weighting_rate, can_count)
 	weight_func = position -> (can_count - position)^weighting_rate
 
@@ -102,6 +156,18 @@ function spearman_weights(weighting_rate, can_count)
 	return weights, eps
 end
 
+"""
+    get_max_distance(can_count, weights)
+
+Returns the maximum distance between two candidates in the spearman encoding.
+
+# Arguments
+- `can_count::Int64`: The number of candidates.
+- `weights::Vector{Float64}`: The weights to use for the spearman encoding.
+
+# Returns
+- `max_distance::Float64`: The maximum distance between two candidates in the spearman encoding.
+"""
 function get_max_distance(can_count, weights)
 	a = Vote()
 	b = Vote()

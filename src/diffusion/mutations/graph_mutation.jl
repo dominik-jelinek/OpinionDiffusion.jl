@@ -17,6 +17,18 @@ end
 	homophily::Float64
 end
 
+"""
+	mutate!(model::Abstract_model, mutation_config::Graph_mutation_config)
+
+Mutates the given model with the given mutation_config.
+
+# Arguments
+- `model::Abstract_model`: The model to mutate.
+- `mutation_config::Graph_mutation_config`: The config to mutate the model with.
+
+# Returns
+- `actions::Vector{Action}`: The actions taken during mutation.
+"""
 function mutate!(model::Abstract_model, mutation_config::Graph_mutation_config)
 	voters = get_voters(model)
 	actions = Vector{Action}()
@@ -33,6 +45,20 @@ function mutate!(model::Abstract_model, mutation_config::Graph_mutation_config)
 	return actions
 end
 
+"""
+	edge_diffusion!(self::Voter, model::Abstract_model, homophily::Float64)
+
+Diffuses the given voter's edges according to the given homophily.
+
+# Arguments
+- `self::Voter`: The voter to diffuse.
+- `model::Abstract_model`: The model to diffuse the voter in.
+- `homophily::Float64`: The homophily to diffuse the voter with.
+- `rng::Random.MersenneTwister`: The random number generator to use.
+
+# Returns
+- `actions::Vector{Action}`: The actions taken during diffusion.
+"""
 function edge_diffusion!(self, model, homophily; rng=Random.GLOBAL_RNG)
 	voters, social_network = get_voters(model), get_social_network(model)
 	ID = self.ID

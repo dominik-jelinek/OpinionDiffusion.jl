@@ -5,11 +5,36 @@
 end
 name(type::Type{BA_graph_config}) = "Barabasi-Albert"
 
+"""
+	init_graph(voters::Vector{T}, graph_config::BA_graph_config) where {T<:Abstract_voter}
+
+Initializes the given voters with the given graph_config.
+
+# Arguments
+- `voters::Vector{T}`: The voters to initialize.
+- `graph_config::BA_graph_config`: The config to initialize the voters with.
+
+# Returns
+- `voters::Vector{T}`: The initialized voters.
+"""
 function init_graph(voters::Vector{T}, graph_config::BA_graph_config) where {T<:Abstract_voter}
 	rng = Random.MersenneTwister(graph_config.rng_seed)
 	return barabasi_albert_graph(voters, graph_config.average_degree; homophily=graph_config.homophily, rng=rng)
 end
 
+"""
+	barabasi_albert_graph(voters::Vector{T}, average_degree::Int64; homophily=0.0, rng=Random.GLOBAL_RNG) where {T<:Abstract_voter}
+
+Returns a social network with the given average degree.
+
+# Arguments
+- `voters::Vector{T}`: The voters to initialize.
+- `average_degree::Int64`: The average degree.
+- `rng::Random.MersenneTwister`: The random number generator to use.
+
+# Returns
+- `social_network::SimpleGraph`: The social network.
+"""
 function barabasi_albert_graph(voters::Vector{T}, average_degree::Int64; homophily=0.0, rng=Random.GLOBAL_RNG) where {T<:Abstract_voter}
 	m = ceil(Int64, average_degree / 2)
 	if m > length(voters)

@@ -1,5 +1,14 @@
 """
+	parse_data(path_data::String, ::Val{:soi})::Election
+
 Parses input file and initializes DB from it
+
+# Arguments
+- `path_data::String`: Path to input file
+
+# Returns
+- `election::Election`: The parsed election.
+
 ## Input data:
 ```
 9
@@ -27,6 +36,18 @@ function parse_data(path_data::String, ::Val{:soi})::Election
 	return Election(parties, candidates, votes)
 end
 
+"""
+	parse_candidates_soi(lines::Vector{String})::Tuple{Vector{String}, Vector{Candidate}}
+
+Parses candidates from input file
+
+# Arguments
+- `lines::Vector{String}`: Lines of input file
+
+# Returns
+- `parties::Vector{String}`: Vector of parties
+- `candidates::Vector{Candidate}`: Vector of candidates
+"""
 function parse_candidates_soi(lines)
 	can_count = parse(Int, lines[1])
 
@@ -48,7 +69,18 @@ function parse_candidates_soi(lines)
 	return parties, candidates
 end
 
-#soi format outdated
+"""
+	parse_votes_soi(lines::Vector{String}, can_count::Int)::Matrix{Int}
+
+Parses votes from input file
+
+# Arguments
+- `lines::Vector{String}`: Lines of input file
+- `can_count::Int`: Number of candidates
+
+# Returns
+- `database::Matrix{Int}`: Matrix of votes
+"""
 function parse_votes_soi(lines, can_count)
 	voters_count = parse(Int, split(lines[2+can_count], ",")[1])
 	voters_uniq = parse(Int, split(lines[2+can_count], ",")[3])

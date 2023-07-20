@@ -3,6 +3,18 @@
 	stubbornness_distr::Distributions.UnivariateDistribution
 end
 
+"""
+	init_mutation!(model::T, mutation_init_config::SP_mutation_init_config)
+
+Initializes the given model with the given mutation_init_config.
+
+# Arguments
+- `model::T`: The model to initialize.
+- `mutation_init_config::SP_mutation_init_config`: The config to initialize the model with.
+
+# Returns
+- `model::T`: The initialized model.
+"""
 function init_mutation!(model::T, mutation_init_config::SP_mutation_init_config) where {T<:Abstract_model}
 	rng = Random.MersenneTwister(mutation_init_config.rng_seed)
 	voters = get_voters(model)
@@ -17,6 +29,18 @@ end
 	normalize_shifts::Bool
 end
 
+"""
+	mutate!(model::T, mutation_config::SP_mutation_config)
+
+Mutates the given model with the given mutation_config.
+
+# Arguments
+- `model::T`: The model to mutate.
+- `mutation_config::SP_mutation_config`: The config to mutate the model with.
+
+# Returns
+- `actions::Vector{Action}`: The actions taken during mutation.
+"""
 function mutate!(model::T, mutation_config::SP_mutation_config) where {T<:Abstract_model}
 	rng = mutation_config.rng
 	voters = get_voters(model)
@@ -38,6 +62,21 @@ function mutate!(model::T, mutation_config::SP_mutation_config) where {T<:Abstra
 	return actions
 end
 
+"""
+	average_all!(self::Spearman_voter, neighbor::Spearman_voter, attract_proba, change_rate, normalize=nothing; rng=Random.GLOBAL_RNG)
+
+Average the opinions of the given self and neighbor voter. The opinions are averaged with the given attract_proba and change_rate. If normalize is given, the shifts are normalized.
+
+# Arguments
+- `self::Spearman_voter`: The first voter.
+- `neighbor::Spearman_voter`: The second voter.
+- `attract_proba::Float64`: The probability to attract.
+- `change_rate::Float64`: The rate of change.
+- `normalize::Tuple{Bool, Bool}`: Whether to normalize the shifts. The first element is whether to normalize the shifts of the first voter, the second element is whether to normalize the shifts of the second voter.
+
+# Returns
+- `actions::Vector{Action}`: The actions taken during averaging.
+"""
 function average_all!(self::Spearman_voter, neighbor::Spearman_voter, attract_proba, change_rate, normalize=nothing; rng=Random.GLOBAL_RNG)
 	opinion_1 = get_opinion(self)
 	opinion_2 = get_opinion(neighbor)
@@ -64,6 +103,19 @@ function average_all!(self::Spearman_voter, neighbor::Spearman_voter, attract_pr
 	return [Action(method, (get_ID(neighbor), get_ID(self)))]#, Action(method, (get_ID(self), get_ID(neighbor)), cp_2, deepcopy(neighbor))]
 end
 
+"""
+	normalize_shifts(shifts::Vector{Float64}, opinion::Vector{Float64}, weights::Vector{Float64})
+
+Normalizes the given shifts with the given opinion and weights.
+
+# Arguments
+- `shifts::Vector{Float64}`: The shifts to normalize.
+- `opinion::Vector{Float64}`: The opinion to normalize with.
+- `weights::Vector{Float64}`: The weights to normalize with.
+
+# Returns
+- `normalized::Vector{Float64}`: The normalized shifts.
+"""
 function normalize_shifts(shifts::Vector{Float64}, opinion::Vector{Float64}, weights::Vector{Float64})
 	min_opin, max_opin = weights[1], weights[end]
 	# decrease opinion changes that push candidates outside of [min_opin, max_opin] boundary
@@ -80,6 +132,20 @@ function normalize_shifts(shifts::Vector{Float64}, opinion::Vector{Float64}, wei
 	return normalized
 end
 
+"""
+	normalize_shift(shift::Float64, can_opinion::Float64, min_opin, max_opin)
+
+Normalizes the given shift with the given opinion and weights.
+
+# Arguments
+- `shift::Float64`: The shift to normalize.
+- `can_opinion::Float64`: The opinion to normalize with.
+- `min_opin::Float64`: The minimum opinion.
+- `max_opin::Float64`: The maximum opinion.
+
+# Returns
+- `normalized::Float64`: The normalized shift.
+"""
 function normalize_shift(shift::Float64, can_opinion::Float64, min_opin, max_opin)
 	if shift == 0.0 || min_opin <= can_opinion || can_opinion <= max_opin
 		return shift

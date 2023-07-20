@@ -29,6 +29,17 @@ end
 	sampling_config::Union{Sampling_config, Nothing} = nothing
 end
 
+"""
+	init_election(config::Election_config)
+
+Initializes an election from the given config. The election is loaded from the given data_path and the candidates with the given IDs are removed. If a sampling_config is given, the election is sampled with the given sampling_config.
+
+# Arguments
+- `config::Election_config`: The config to initialize the election from.
+
+# Returns
+- `election::Election`: The initialized election.
+"""
 function init_election(config::Election_config)
 	election = parse_data(config.data_path)
 
@@ -43,12 +54,38 @@ function init_election(config::Election_config)
 	return election
 end
 
+"""
+	remove_candidates(election::Election, candidate_ids::Vector{Int64})::Election
+
+Removes the candidates with the given IDs from the given election.
+
+# Arguments
+- `election::Election`: The election to remove the candidates from.
+- `candidate_ids::Vector{Int64}`: The IDs of the candidates to remove.
+
+# Returns
+- `election::Election`: The election without the removed candidates.
+"""
 function remove_candidates(election::Election, candidate_ids::Vector{Int64})::Election
 	filtered_votes, filtered_candidates = remove_candidates(election.votes, election.candidates, candidate_ids)
 
 	return Election(filtered_candidates, filtered_votes)
 end
 
+"""
+	remove_candidates(votes::Vector{Vote}, candidates::Vector{Candidate}, candidate_ids::Vector{Int64})::Tuple{Vector{Vote}, Vector{Candidate}}
+
+Removes the candidates with the given IDs from the given votes and candidates.
+
+# Arguments
+- `votes::Vector{Vote}`: The votes to remove the candidates from.
+- `candidates::Vector{Candidate}`: The candidates to remove the candidates from.
+- `candidate_ids::Vector{Int64}`: The IDs of the candidates to remove.
+
+# Returns
+- `votes::Vector{Vote}`: The votes without the removed candidates.
+- `candidates::Vector{Candidate}`: The candidates without the removed candidates.
+"""
 function remove_candidates(votes::Vector{Vote}, candidates::Vector{Candidate}, candidate_ids::Vector{Int64})
 	if length(candidate_ids) == 0
 		return votes, candidates
@@ -99,6 +136,18 @@ function remove_candidates(votes::Vector{Vote}, candidates::Vector{Candidate}, c
 	return new_election, new_candidates
 end
 
+"""
+	sample(election::Election, sampling_config::Sampling_config)::Election
+
+Samples the given election with the given sampling_config.
+
+# Arguments
+- `election::Election`: The election to sample.
+- `sampling_config::Sampling_config`: The sampling_config to sample the election with.
+
+# Returns
+- `election::Election`: The sampled election.
+"""
 function sample(election::Election, sampling_config::Sampling_config)::Election
 	rng = MersenneTwister(sampling_config.rng_seed)
 	votes = get_votes(election)

@@ -1,3 +1,14 @@
+"""
+	clustering(voters, clustering_config::Abstract_clustering_config, projections=nothing)
+
+# Arguments
+- `voters`: a vector of voters
+- `clustering_config`: a clustering configuration
+- `projections`: a vector of projections
+
+# Returns
+- `clusters`: a vector of tuples (label, set of indices)
+"""
 function clustering(voters, clustering_config::Abstract_clustering_config, projections=nothing)
 	throw(NotImplementedError("clustering"))
 end
@@ -22,12 +33,36 @@ function clusterize(labels::Vector{Int64})
 	return clusters
 end
 
+"""
+	jaccard_similarity(set1::Set{Int64}, set2::Set{Int64})
+
+Calculates the Jaccard similarity between two sets.
+
+# Arguments
+- `set1`: a set of indices
+- `set2`: a set of indices
+
+# Returns
+- `Float64`: the Jaccard similarity between the two sets
+"""
 function jaccard_similarity(set1::Set{Int64}, set2::Set{Int64})
 	intersection_size = length(intersect(set1, set2))
 	union_size = length(union(set1, set2))
 	return intersection_size / union_size
 end
 
+"""
+	create_similarity_matrix(template_clusters::Vector{Tuple{Int64,Set{Int64}}}, clusters::Vector{Tuple{Int64,Set{Int64}}})
+
+Creates a similarity matrix between two sets of clusters.
+
+# Arguments
+- `template_clusters`: a vector of tuples (label, set of indices)
+- `clusters`: a vector of tuples (label, set of indices)
+
+# Returns
+- `matrix`: a matrix of similarities between the two sets of clusters
+"""
 function create_similarity_matrix(template_clusters, clusters)
 	matrix = Array{Float64}(undef, length(clusters), length(template_clusters))
 
@@ -40,6 +75,15 @@ function create_similarity_matrix(template_clusters, clusters)
 	return matrix
 end
 
+"""
+	unify_clusters!(template_clusters::Vector{Tuple{Int64,Set{Int64}}}, clusters::Vector{Tuple{Int64,Set{Int64}}})
+
+Unifies the clusters in `clusters` with the clusters in `template_clusters`.
+
+# Arguments
+- `template_clusters`: a vector of tuples (label, set of indices)
+- `clusters`: a vector of tuples (label, set of indices)
+"""
 function unify_clusters!(template_clusters::Vector{Tuple{Int64,Set{Int64}}}, clusters::Vector{Tuple{Int64,Set{Int64}}})
 	similarity_matrix = create_similarity_matrix(template_clusters, clusters)
 	changed = Vector{Bool}(undef, length(clusters))
@@ -69,6 +113,18 @@ function unify_clusters!(template_clusters::Vector{Tuple{Int64,Set{Int64}}}, clu
 	end
 end
 
+"""
+	best_k_elbow(opinions, max_clusters::Int)
+
+Calculates the best number of clusters using the elbow method.
+
+# Arguments
+- `opinions`: a matrix of opinions
+- `max_clusters`: the maximum number of clusters to try
+
+# Returns
+- `best_k`: the best number of clusters
+"""
 function best_k_elbow(opinions, max_clusters::Int)
 	# Calculate the sum of squared errors (SSE) for different numbers of clusters
 	sse = zeros(max_clusters)
@@ -91,6 +147,18 @@ function best_k_elbow(opinions, max_clusters::Int)
 	return best_k
 end
 
+"""
+	best_k_silhouettes(opinions, max_k::Int)
+
+Calculates the best number of clusters using the silhouette method.
+
+# Arguments
+- `opinions`: a matrix of opinions
+- `max_k`: the maximum number of clusters to try
+
+# Returns
+- `best_k`: the best number of clusters
+"""
 function best_k_silhouettes(opinions, max_k::Int)
 	best_k = 2
 	best_silhouette_avg = -1.0
@@ -111,6 +179,20 @@ function best_k_silhouettes(opinions, max_k::Int)
 	return best_k
 end
 
+"""
+	get_cluster_graph(model, clusters, labels, projections)
+
+Creates a graph of clusters.
+
+# Arguments
+- `model`: a model
+- `clusters`: a vector of tuples (label, set of indices)
+- `labels`: a vector of labels
+- `projections`: a matrix of projections
+
+# Returns
+- `cluster_graph`: a graph of clusters
+"""
 function get_cluster_graph(model, clusters, labels, projections)
 	g = get_social_network(model)
 	voters = get_voters(model)
@@ -147,6 +229,21 @@ function get_cluster_graph(model, clusters, labels, projections)
 	return cluster_graph
 end
 
+"""
+	cluster_graph_metrics(cluster_graph, g, voters, can_count)
+
+Calculates metrics for a cluster graph.
+
+# Arguments
+- `cluster_graph`: a graph of clusters
+- `g`: a social network
+- `voters`: a matrix of voters
+- `can_count`: a matrix of candidates
+
+# Returns
+- `vertex_metrics`: a dictionary of vertex metrics
+- `edge_metrics`: a dictionary of edge metrics
+"""
 function cluster_graph_metrics(cluster_graph::AbstractMetaGraph, g, voters, can_count)
 	vertex_metrics = Dict{Any,Dict}()
 	edge_metrics = Dict{Any,Dict}()
@@ -209,6 +306,15 @@ function cluster_graph_metrics(cluster_graph::AbstractMetaGraph, g, voters, can_
 	return vertex_metrics, edge_metrics
 end
 
+"""
+	draw_cluster_graph!(ax, g)
+
+Draws a cluster graph.
+
+# Arguments
+- `ax`: a PyPlot axis
+- `g`: a cluster graph
+"""
 function draw_cluster_graph!(ax, g)
 	cluster_labels = [get_prop(g, v, :label) for v in vertices(g)]
 	colors = Colors.distinguishable_colors(maximum(cluster_labels))
