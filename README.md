@@ -1,7 +1,10 @@
 # OpinionDiffusion.jl
 
 ## Installation
-- [Install Julia](https://julialang.org/downloads/)
+- Install [Julia](https://julialang.org/)
+  - [Juliaup](https://github.com/JuliaLang/juliaup) (recommended)
+	- native julia version manager
+	- does not require installing Julia first
 - clone repo from github
 - Start Julia REPL in your local repository by writing julia
 - Press ] to enter package manager
