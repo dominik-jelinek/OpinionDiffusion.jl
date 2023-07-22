@@ -6,7 +6,7 @@
 - Start Julia REPL in your local repository by writing julia
 - Press ] to enter package manager
 ```
-(v1.9) pkg> dev /path/to/clone/OpinionDiffusion
+(v1.9) pkg> dev /path/to/clone/OpinionDiffusion.jl
 ```
 - press backspace to exit package manager
 ## Execution
@@ -20,8 +20,7 @@ julia> ]
 ```
 - backspace to exit package manager
 ```
-julia> import Pluto
-julia> Pluto.run()
+julia> import Pluto & Pluto.run()
 ```
 - select one of the Pluto notebooks below
 #### Pluto_diffusion.jl
