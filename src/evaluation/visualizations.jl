@@ -75,6 +75,7 @@ function save_pdf(plot_function, filename)
 	plot_function(f[1, 1])
 	save("img/" * filename, f, pt_per_unit=1)
 end
+
 function draw_voter_vis(projections, clusters, title, exp_dir=Nothing, counter=[0])
 	plot = Plots.plot()
 	draw_voter_vis!(plot, projections, clusters, title, exp_dir, counter)
