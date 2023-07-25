@@ -83,16 +83,16 @@ function ensemble(ensemble_config::Ensemble_config, get_metrics::Function)
 
 						accumulator_diffusion = deepcopy(accumulator)
 						model_diffusion = deepcopy(model_init)
-						run!(model_diffusion, diffusion_run_config; accumulator=accumulator_diffusion)
+						run_diffusion!(model_diffusion, diffusion_run_config; accumulator=accumulator_diffusion)
 
 						experiment_config = Experiment_config(
 							election_config=Election_config(data_path=ensemble_config.data_path, remove_candidate_ids=ensemble_config.remove_candidate_ids, sampling_config=sampling_config),
 							model_config=General_model_config(voter_config=voter_config, graph_config=graph_config),
-							diffusion_config=Diffusion_config(diffusion_init_config=diffusion_init_config, diffusion_run_config=diffusion_run_config)
+							diffusion_config=Diffusion_config(diffusion_init_configs=diffusion_init_config, diffusion_run_config=diffusion_run_config)
 						)
 						experiment_configs = fill(experiment_config, diffusion_run_config.diffusion_steps + 1)
 
-						df = hcat(DataFrame("experiment_config" => experiment_configs, "diffusion_step" => collect(0:diffusion_run_config.diffusion_steps)), accumulated_metrics(accumulator_diffusion))
+						df = hcat(DataFrame("experiment_config" => experiment_configs), accumulated_metrics(accumulator_diffusion))
 						push!(dataframes, df)
 
 						delete!(prev_configs, "diffusion_config")

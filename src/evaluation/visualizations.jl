@@ -265,3 +265,8 @@ function stack_visualizations(visualizations)
 	n = length(visualizations)
 	return Plots.plot(visualizations..., size=Plots.default(:size) .* (1, n), layout=(n, 1), bottom_margin=10Plots.mm, left_margin=5Plots.mm, legend=true)
 end
+
+function save_pdf(figure, filename, out_dir="img/")
+	mkpath(out_dir)
+	save(out_dir * filename * ".pdf", figure, pt_per_unit=1)
+end

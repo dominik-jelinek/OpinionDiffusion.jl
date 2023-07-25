@@ -173,6 +173,7 @@ export clustering, Kmeans_clustering_config, GM_clustering_config, Party_cluster
 export draw_voter_vis, draw_heat_vis, unify_projections!, gather_metrics
 export gather_vis, timestamp_vis
 export get_edge_distances, draw_degree_distr, draw_edge_distances
+export save_pdf
 
 # Utils
 export to_string
